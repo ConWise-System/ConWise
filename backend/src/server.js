@@ -1,37 +1,24 @@
-import express from "express";
-import cors from "cors";
-import morgan from "morgan";
-import dotenv from "dotenv";
-
-import apiRoutes from "./routes/index.js";
-import notFoundHandler from "./middlewares/notFound.middleware.js";
-import errorHandler from "./middlewares/error.middleware.js";
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
+import taskRoutes from './modules/task/task.routes.js';
 
 dotenv.config();
 
 const app = express();
 
 app.use(cors());
-app.use(morgan("dev"));
+app.use(morgan('dev'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "ConWise backend is running",
-  });
-});
+// Mount routes
+app.use('/api', taskRoutes);
 
-app.use("/api", apiRoutes);
-
-app.use(notFoundHandler);
-app.use(errorHandler);
-
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
