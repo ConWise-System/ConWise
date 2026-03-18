@@ -1,12 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -14,51 +7,339 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum CompanyStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum UserRole {
+  PLATFORM_ADMIN
+  COMPANY_ADMIN
+  PROJECT_MANAGER
+  SITE_ENGINEER
+  SITE_SUPERVISOR
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum VerificationType {
+  EMAIL_VERIFICATION
+  PHONE_VERIFICATION
+  PASSWORD_RESET
+  INVITE
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
 enum TaskPriority {
-  HIGH
-  MEDIUM
   LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 enum TaskStatus {
   TODO
   IN_PROGRESS
+  BLOCKED
   DONE
 }
 
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum ReportType {
+  DAILY_SITE_REPORT
+  PROGRESS_REPORT
+  INCIDENT_REPORT
+  QUALITY_REPORT
+}
+
+enum NotificationEntityType {
+  PROJECT
+  TASK
+  REPORT
+  ISSUE
+  MESSAGE
+  USER
+}
+
+enum ChatType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+model Company {
+  id          Int           @id @default(autoincrement())
+  name        String
+  email       String?       @unique
+  phone       String?       @unique
+  address     String?
+  status      CompanyStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  users       User[]
+  projects    Project[]
+
+  @@index([name])
+  @@map("companies")
+}
+
 model User {
-  id        String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  role      String?
-  firstName String
-  lastName  String
-  email     String @unique
-  password  String
-  tasks     Task[]
+  id             Int        @id @default(autoincrement())
+  companyId      Int?
+  role           UserRole
+  firstName      String
+  lastName       String
+  email          String?    @unique
+  phone          String?    @unique
+  passwordHash   String
+  isVerified     Boolean    @default(false)
+  status         UserStatus @default(PENDING_VERIFICATION)
+  lastLoginAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  company        Company?              @relation(fields: [companyId], references: [id])
+  ownedProjects  Project[]             @relation("ProjectOwner")
+  assignedTasks  Task[]                @relation("TaskAssignee")
+  reports        Report[]
+  notifications  Notification[]        @relation("NotificationRecipient")
+  reportedIssues Issue[]               @relation("Reporter")
+  assignedIssues Issue[]               @relation("IssueAssignee")
+  sentMessages   Chat[]                @relation("ChatSender")
+  sessions       Session[]
+  verifications  VerificationCode[]
+
+  @@index([companyId])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model Session {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  refreshTokenHash String
+  deviceInfo       String?
+  ipAddress        String?
+  userAgent        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model VerificationCode {
+  id         Int              @id @default(autoincrement())
+  userId     Int
+  code       String
+  type       VerificationType
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime         @default(now())
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([expiresAt])
+  @@map("verification_codes")
 }
 
 model Project {
-  id            String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id            Int           @id @default(autoincrement())
+  companyId     Int
+  ownerUserId   Int
   projectName   String
-  location      String?
-  startDate     DateTime?
+  location      String
+  startDate     DateTime
   endDate       DateTime?
-  clientName    String?
-  projectBudget Float?
+  clientName    String
+  projectBudget Decimal       @db.Decimal(15, 2)
+  status        ProjectStatus @default(PLANNING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  company       Company            @relation(fields: [companyId], references: [id])
+  owner         User               @relation("ProjectOwner", fields: [ownerUserId], references: [id])
   tasks         Task[]
+  projectProgress ProjectProgress?
+  reports       Report[]
+  costSummary   CostSummary?
+  issues        Issue[]
+  chats         Chat[]
+
+  @@index([companyId])
+  @@index([ownerUserId])
+  @@map("projects")
+}
+
+model ProjectProgress {
+  id                   Int      @id @default(autoincrement())
+  projectId            Int      @unique
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  completionPercentage Decimal  @db.Decimal(5, 2)
+  totalTasks           Int
+  tasksCompleted       Int
+  lastUpdated          DateTime @default(now())
+
+  @@map("project_progress")
 }
 
 model Task {
-  id              String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  project         Project     @relation(fields: [projectId], references: [id])
-  projectId       String
-  taskAssignee    User        @relation(fields: [taskAssigneeID], references: [id])
-  taskAssigneeID  String
+  id              Int          @id @default(autoincrement())
+  projectId       Int
+  assigneeUserId  Int
+  materialUsedId  Int?
   taskTitle       String
   taskDescription String?
   startDate       DateTime?
-  dueDate         DateTime?
-  taskBudget      Float?
-  materialUsed    String?
+  dueDate         DateTime
+  taskBudget      Decimal      @db.Decimal(15, 2)
   taskPriority    TaskPriority
-  taskStatus      TaskStatus
+  taskStatus      TaskStatus   @default(TODO)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee        User         @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
+  taskProgress    TaskProgress?
+  materialUsed    MaterialUsed? @relation(fields: [materialUsedId], references: [id])
+
+  @@index([projectId])
+  @@index([assigneeUserId])
+  @@map("tasks")
+}
+
+model TaskProgress {
+  id             Int      @id @default(autoincrement())
+  taskId         Int      @unique
+  task           Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  daysRemaining  Int
+  deadlineStatus String
+  taskStatus     TaskStatus
+  lastUpdated    DateTime @default(now())
+
+  @@map("task_progress")
+}
+
+model MaterialUsed {
+  id               Int      @id @default(autoincrement())
+  materialName     String
+  quantityUsed     Decimal  @db.Decimal(10, 2)
+  unit             String
+  usageDescription String?
+  materialStatus   String
+  tasks            Task[]
+
+  @@map("materials_used")
+}
+
+model CostSummary {
+  id             Int      @id @default(autoincrement())
+  projectId      Int      @unique
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  estimatedCost  Decimal  @db.Decimal(15, 2)
+  actualTaskCost Decimal  @db.Decimal(15, 2)
+  costVariance   Decimal  @db.Decimal(15, 2)
+  lastUpdated    DateTime @default(now())
+
+  @@map("cost_summaries")
+}
+
+model Report {
+  id               Int        @id @default(autoincrement())
+  userId           Int
+  projectId        Int
+  reportTitle      String
+  reportType       ReportType
+  reportDate       DateTime
+  workCompleted    String
+  progressPhotoUrl String?
+  submittedAt      DateTime   @default(now())
+
+  user             User       @relation(fields: [userId], references: [id])
+  project          Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([projectId])
+  @@map("reports")
+}
+
+model Notification {
+  id                      Int                    @id @default(autoincrement())
+  recipientUserId         Int
+  notificationTitle       String
+  notificationDescription String?
+  notifiedDate            DateTime               @default(now())
+  isRead                  Boolean                @default(false)
+  relatedEntityType       NotificationEntityType
+  relatedEntityId         Int
+
+  recipient               User                   @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId, isRead])
+  @@map("notifications")
+}
+
+model Issue {
+  id                  Int         @id @default(autoincrement())
+  reporterUserId      Int
+  projectId           Int?
+  issueName           String
+  issueDescription    String
+  issuePhotoUrl       String?
+  issueStatus         IssueStatus @default(OPEN)
+  issueAssigneeUserId Int?
+  reportedAt          DateTime    @default(now())
+
+  reporter            User        @relation("Reporter", fields: [reporterUserId], references: [id])
+  project             Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignee            User?       @relation("IssueAssignee", fields: [issueAssigneeUserId], references: [id])
+
+  @@index([reporterUserId])
+  @@index([projectId])
+  @@index([issueAssigneeUserId])
+  @@map("issues")
+}
+
+model Chat {
+  id             Int      @id @default(autoincrement())
+  senderUserId   Int
+  projectId      Int
+  messageContent String
+  timestamp      DateTime @default(now())
+  chatType       ChatType @default(TEXT)
+
+  sender         User     @relation("ChatSender", fields: [senderUserId], references: [id])
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([senderUserId])
+  @@index([projectId])
+  @@map("chats")
 }
