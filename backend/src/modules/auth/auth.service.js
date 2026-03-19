@@ -21,6 +21,10 @@ import {
   verifyPassword,
 } from "../../utils/auth/hash.js";
 import roleService from "./role.service.js";
+import {
+  sendStaffInviteEmail,
+  sendVerificationEmail,
+} from "../../utils/email/sendEmail.js";
 
 const AUTH_SELECT = {
   id: true,
@@ -547,6 +551,19 @@ export const registerCompany = async (payload, meta = {}) => {
     };
   });
 
+  console.log("This is verification code", created.verification.code);
+
+  try {
+    if (created.user.email) {
+      await sendVerificationEmail(
+        created.user.email,
+        created.verification.code,
+      );
+    }
+  } catch (error) {
+    console.error("Failed to send verification email:", error);
+  }
+
   return {
     message: AUTH_MESSAGES.REGISTRATION_SUCCESS,
     user: sanitizeUser(created.user),
@@ -691,6 +708,10 @@ export const resendVerificationCode = async (payload, meta = {}) => {
       ? VERIFICATION_TYPES.EMAIL_VERIFICATION
       : VERIFICATION_TYPES.PHONE_VERIFICATION,
   );
+
+  if (identifier.email) {
+    await sendVerificationEmail(identifier.email, verification.code);
+  }
 
   return {
     message: "A new verification code has been generated.",
@@ -892,9 +913,15 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
   ensureActorCanManageRole(actor.role, role);
   await ensureUniqueUser({ email, phone });
 
-  const passwordHash = password
-    ? (await hashPassword(password)).value
-    : (await hashPassword(generateVerificationCodeValue())).value;
+  let temporaryPassword = null;
+  let passwordHash = null;
+
+  if (password) {
+    passwordHash = (await hashPassword(password)).value;
+  } else {
+    temporaryPassword = generateVerificationCodeValue();
+    passwordHash = (await hashPassword(temporaryPassword)).value;
+  }
 
   const createdUser = await prisma.user.create({
     data: {
@@ -908,7 +935,7 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
       email,
       phone,
       passwordHash,
-      isVerified: Boolean(password),
+      isVerified: true,
       status: password
         ? USER_STATUSES.ACTIVE
         : USER_STATUSES.PENDING_VERIFICATION,
@@ -918,32 +945,24 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
     },
   });
 
-  let verification = null;
+  // let verification = null;
+  //
+  // console.log("Created User Email", createdUser.email);
 
-  if (!password) {
-    verification = await createVerificationCode(
-      createdUser.id,
-      email ? VERIFICATION_TYPES.INVITE : VERIFICATION_TYPES.INVITE,
-    );
+  if (!password && createdUser.email) {
+    try {
+      await sendStaffInviteEmail(createdUser.email, temporaryPassword);
+    } catch (error) {
+      console.error("Staff invite email failed to send:", error);
+    }
   }
 
   return {
     message: password
       ? "User created successfully."
-      : "User created successfully. Verification/invite code generated.",
+      : "User created successfully. A temporary password has been sent to their email.",
     user: sanitizeUser(createdUser),
-    verification: verification
-      ? {
-          verificationId: verification.id,
-          type: verification.type,
-          expiresAt: verification.expiresAt,
-          code:
-            meta.includeVerificationCode === true
-              ? verification.code
-              : undefined,
-          destination: email || phone,
-        }
-      : null,
+    tempPassword: meta.includeVerificationCode ? temporaryPassword : undefined,
   };
 };
 
