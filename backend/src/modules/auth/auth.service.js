@@ -725,7 +725,7 @@ export const loginUser = async (payload, meta = {}) => {
     throw createError(AUTH_MESSAGES.INVALID_CREDENTIALS, 401);
   }
 
-  ensureLoginAllowed(user);
+  // ensureLoginAllowed(user);
 
   const lastLoginAt = new Date();
 
