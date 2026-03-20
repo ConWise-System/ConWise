@@ -44,6 +44,26 @@ const companyNameSchema = z
     `Company name must not exceed ${MAX_COMPANY_NAME_LENGTH} characters.`,
   );
 
+export const changePasswordSchema = z
+  .object({
+    newPassword: z
+      .string({ required_error: "New password is required" })
+      .min(8, "Password must be at least 8 characters long"),
+    confirmPassword: z.string({
+      required_error: "Please confirm your password",
+    }),
+  })
+  // Apply refine to the main object, just like your working example
+  .superRefine((data, ctx) => {
+    if (data.newPassword !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: "Passwords do not match.",
+      });
+    }
+  });
+
 const verificationCodeSchema = z
   .string()
   .trim()
@@ -240,6 +260,7 @@ export const resetPasswordSchema = z
 export default {
   registerCompanySchema,
   createUserSchema,
+  changePasswordSchema,
   inviteUserSchema,
   acceptInviteSchema,
   updateUserRoleSchema,

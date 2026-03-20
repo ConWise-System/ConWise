@@ -2,8 +2,6 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
-import taskRoutes from "./modules/task/task.routes.js";
-import authRoutes from "./modules/auth/auth.routes.js";
 import notFoundHandler from "./middlewares/notFound.middleware.js";
 import errorHandler from "./middlewares/error.middleware.js";
 

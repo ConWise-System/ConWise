@@ -936,9 +936,7 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
       phone,
       passwordHash,
       isVerified: true,
-      status: password
-        ? USER_STATUSES.ACTIVE
-        : USER_STATUSES.PENDING_VERIFICATION,
+      status: USER_STATUSES.ACTIVE,
     },
     include: {
       company: true,
@@ -964,6 +962,21 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
     user: sanitizeUser(createdUser),
     tempPassword: meta.includeVerificationCode ? temporaryPassword : undefined,
   };
+};
+
+export const changePassword = async (userId, newPassword) => {
+  const { value: hashedPassword } = await hashPassword(newPassword);
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordHash: hashedPassword,
+      isVerified: true,
+      status: USER_STATUSES.ACTIVE,
+    },
+  });
+
+  return sanitizeUser(updatedUser);
 };
 
 export const inviteUser = async (actor, payload, meta = {}) => {
@@ -1289,10 +1302,10 @@ export const revokeSession = async (userId, sessionId) => {
     message: "Session revoked successfully.",
   };
 };
-
 const authService = {
   registerCompany,
   verifyAccount,
+  changePassword,
   resendVerificationCode,
   loginUser,
   refreshUserToken,

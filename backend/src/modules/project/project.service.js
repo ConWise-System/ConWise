@@ -1,6 +1,4 @@
-import { PrismaClient } from "../../generated/prisma/index.js";
-
-const prisma = new PrismaClient();
+import prisma from "../../config/prisma.js";
 
 // Helper to serialize Decimal fields to plain numbers
 const serializeProject = (project) => ({
