@@ -15,7 +15,7 @@ export default function LoginForm() {
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      router.push('/dashboard');
+      router.push('/dashboardHome');
     }, 1800);
   };
 
