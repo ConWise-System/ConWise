@@ -15,6 +15,9 @@ const registerCompany = catchAsync(async (req, res) => {
   });
 });
 
+
+
+
 const login = catchAsync(async (req, res) => {
   const result = await authService.loginUser(req.body, {
     ipAddress: req.ip,
@@ -170,6 +173,22 @@ const getUserById = catchAsync(async (req, res) => {
   });
 });
 
+const updateProfile = catchAsync(async (req, res) => {
+  const result = await authService.updateProfile(
+    req.user,
+    req.params.userId,
+    req.body,
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: result.message,
+    data: {
+      user: result.user,
+    },
+  });
+});
+
 const changeUserRole = catchAsync(async (req, res) => {
   const result = await authService.changeUserRole(
     req.user,
@@ -287,6 +306,7 @@ export default {
   changeUserRole,
   changePassword,
   updateUserStatus,
+  updateProfile,
   deactivateUser,
   activateUser,
   suspendUser,

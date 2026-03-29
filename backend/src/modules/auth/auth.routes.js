@@ -18,6 +18,7 @@ import {
   acceptInviteSchema,
   updateUserRoleSchema,
   updateUserStatusSchema,
+  updateProfileSchema,
   userIdParamSchema,
   sessionIdParamSchema,
   companyUsersQuerySchema,
@@ -123,9 +124,15 @@ router.get(
 
 router.get(
   "/users/:userId",
-  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN),
   validate(userIdParamSchema, "params"),
   authController.getUserById,
+);
+
+router.patch(
+  "/users/:userId/profile",
+  validate(userIdParamSchema, "params"),
+  validate(updateProfileSchema),
+  authController.updateProfile,
 );
 
 router.patch(

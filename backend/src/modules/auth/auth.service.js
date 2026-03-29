@@ -102,6 +102,7 @@ const sanitizeUser = (user) => {
     fullName: `${user.firstName} ${user.lastName}`.trim(),
     email: user.email ?? null,
     phone: user.phone ?? null,
+    bio: user.bio ?? null,
     isVerified: user.isVerified,
     status: user.status,
     lastLoginAt: user.lastLoginAt ?? null,
@@ -1155,10 +1156,58 @@ export const listCompanyUsers = async (actor, query = {}) => {
 };
 
 export const getUserById = async (actor, userId) => {
-  const user = await getManagedUserOrThrow(actor, userId);
+  const targetId = Number(userId);
+
+  const isOwner = actor.id === targetId;
+  const isAdmin = [ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN].includes(
+    actor.role,
+  );
+
+  if (!isOwner && !isAdmin) {
+    throw createError(
+      "Forbidden: You do not have permission to view this profile.",
+      403,
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: targetId },
+    include: {
+      company: true,
+      // You can include other relations here if the Admin needs more data
+    },
+  });
+
+  if (!user) {
+    throw createError("User not found", 404);
+  }
+
+  return sanitizeUser(user);
+};
+
+// user update his/her profile
+export const updateProfile = async (actor, userId, payload) => {
+  if (actor.id !== Number(userId)) {
+    throw createError("Forbidden: You can only update your own profile.", 403);
+  }
+
+  const { firstName, lastName, email, phone, bio } = payload;
+
+  const updated = await prisma.user.update({
+    where: {
+      id: actor.id,
+    },
+    data: {
+      ...payload,
+    },
+    include: {
+      company: true,
+    },
+  });
 
   return {
-    user: sanitizeUser(user),
+    message: "User profile updated successfully.",
+    user: sanitizeUser(updated),
   };
 };
 
@@ -1317,6 +1366,7 @@ const authService = {
   acceptInvite,
   listCompanyUsers,
   getUserById,
+  updateProfile,
   changeUserRole,
   updateUserStatus,
   deactivateUser,
