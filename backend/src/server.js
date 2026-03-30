@@ -22,8 +22,8 @@ app.get("/api/health", (req, res) => {
 
 // Mount routes
 app.use("/api/auth", authRoutes);
-app.use("/api", taskRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api", taskRoutes);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
