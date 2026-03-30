@@ -54,44 +54,26 @@ export const createProjectSchema = z
 
 export const updateProjectSchema = z
   .object({
-    projectName: z
-      .string()
-      .min(2, "Project name must be at least 2 characters.")
-      .max(100, "Project name must not exceed 100 characters.")
-      .optional(),
-
-    location: z
-      .string()
-      .min(2, "Location must be at least 2 characters.")
-      .max(100, "Location must not exceed 100 characters.")
-      .optional(),
-
+    projectName: z.string().min(2).max(100).optional(),
+    location: z.string().min(2).max(100).optional(),
     startDate: z.coerce.date().optional(),
-
     endDate: z.coerce.date().optional(),
-
-    clientName: z
-      .string()
-      .min(2, "Client name must be at least 2 characters.")
-      .max(100, "Client name must not exceed 100 characters.")
+    clientName: z.string().min(2).max(100).optional(),
+    projectBudget: z.number().positive().optional(),
+    status: z
+      .enum(["PLANNING", "ACTIVE", "ON_HOLD", "COMPLETED", "CANCELLED"])
       .optional(),
-
-    projectBudget: z
-      .number()
-      .positive("Project budget must be a positive number.")
-      .optional(),
-
-    status: ProjectStatus.optional(),
   })
   .refine(
     (data) => {
-      if (data.endDate && data.startDate) {
+      // Only validate ordering if BOTH dates are provided together
+      if (data.startDate && data.endDate) {
         return data.endDate > data.startDate;
       }
       return true;
     },
     {
-      message: "End date must be after start date.",
+      message: "endDate must be after startDate",
       path: ["endDate"],
     },
   );
