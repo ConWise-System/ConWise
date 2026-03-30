@@ -14,7 +14,25 @@ const serializeProject = (project) => ({
           project.projectProgress.completionPercentage?.toString(),
       }
     : null,
+
+  costSummary: project.costSummary
+    ? {
+        ...project.costSummary,
+        estimatedCost: project.costSummary.estimatedCost?.toString(),
+        actualTaskCost: project.costSummary.actualTaskCost?.toString(),
+        costVariance: project.costSummary.costVariance?.toString(),
+      }
+    : null,
 });
+
+const parseDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date value: ${value}`);
+  }
+  return date;
+};
 
 export const projectService = {
   // Create project + initialize ProjectProgress in a single transaction
@@ -27,8 +45,8 @@ export const projectService = {
           companyId,
           projectName: projectData.projectName,
           location: projectData.location,
-          startDate: new Date(projectData.startDate),
-          endDate: projectData.endDate ? new Date(projectData.endDate) : null,
+          startDate: parseDate(projectData.startDate),
+          endDate: projectData.endDate ? parseDate(projectData.endDate) : null,
           clientName: projectData.clientName,
           projectBudget: projectData.projectBudget,
           status: projectData.status ?? "PLANNING",
