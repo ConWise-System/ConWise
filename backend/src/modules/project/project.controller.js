@@ -72,7 +72,7 @@ export const projectController = {
       const projectId = Number(req.params.id);
       const { id: userId, companyId, role } = req.user;
 
-      if (isNaN(projectId)) {
+      if (!projectId || isNaN(projectId) || projectId <= 0) {
         return res.status(400).json({
           success: false,
           message: "Invalid project ID.",
