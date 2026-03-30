@@ -3,6 +3,14 @@ import { ROLES } from "../../config/constants.js";
 
 const prisma = new PrismaClient();
 
+const parseDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date value: ${value}`);
+  }
+  return date;
+};
 // Helper to serialize Decimal fields to plain numbers
 const serializeProject = (project) => ({
   ...project,
@@ -24,15 +32,6 @@ const serializeProject = (project) => ({
       }
     : null,
 });
-
-const parseDate = (value) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (isNaN(date.getTime())) {
-    throw new Error(`Invalid date value: ${value}`);
-  }
-  return date;
-};
 
 export const projectService = {
   // Create project + initialize ProjectProgress in a single transaction
