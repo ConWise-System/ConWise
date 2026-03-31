@@ -16,8 +16,6 @@ const registerCompany = catchAsync(async (req, res) => {
 });
 
 
-
-
 const login = catchAsync(async (req, res) => {
   const result = await authService.loginUser(req.body, {
     ipAddress: req.ip,
@@ -50,47 +48,6 @@ const verifyAccount = catchAsync(async (req, res) => {
   });
 });
 
-const resendVerificationCode = catchAsync(async (req, res) => {
-  const result = await authService.resendVerificationCode(req.body);
-
-  return res.status(200).json({
-    success: true,
-    message: result.message,
-    data: {
-      verification: result.verification,
-    },
-  });
-});
-
-const refreshToken = catchAsync(async (req, res) => {
-  const result = await authService.refreshUserToken(req.body, {
-    ipAddress: req.ip,
-    userAgent: req.get("user-agent"),
-  });
-
-  return res.status(200).json({
-    success: true,
-    message: result.message,
-    data: {
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-      refreshTokenExpiresAt: result.refreshTokenExpiresAt,
-      user: result.user,
-      redirectTo: result.redirectTo,
-    },
-  });
-});
-
-const logout = catchAsync(async (req, res) => {
-  const result = await authService.logoutUser(req.body);
-
-  return res.status(200).json({
-    success: true,
-    message: result.message,
-    data: {},
-  });
-});
-
 const getCurrentUser = catchAsync(async (req, res) => {
   const result = await authService.getMyProfile(req.user.id);
 
@@ -114,6 +71,7 @@ const createStaffUser = catchAsync(async (req, res) => {
   });
 });
 
+
 const changePassword = catchAsync(async (req, res) => {
   const result = await authService.changePassword(
     req.user.id,
@@ -124,32 +82,6 @@ const changePassword = catchAsync(async (req, res) => {
     success: true,
     message: result.message,
     data: result.user,
-  });
-});
-
-const inviteUser = catchAsync(async (req, res) => {
-  const result = await authService.inviteUser(req.user, req.body);
-
-  return res.status(201).json({
-    success: true,
-    message: result.message,
-    data: {
-      user: result.user,
-      invite: result.invite,
-    },
-  });
-});
-
-const acceptInvite = catchAsync(async (req, res) => {
-  const result = await authService.acceptInvite(req.body);
-
-  return res.status(200).json({
-    success: true,
-    message: result.message,
-    data: {
-      user: result.user,
-      redirectTo: result.redirectTo,
-    },
   });
 });
 
@@ -204,6 +136,78 @@ const changeUserRole = catchAsync(async (req, res) => {
     },
   });
 });
+
+const resendVerificationCode = catchAsync(async (req, res) => {
+  const result = await authService.resendVerificationCode(req.body);
+
+  return res.status(200).json({
+    success: true,
+    message: result.message,
+    data: {
+      verification: result.verification,
+    },
+  });
+});
+
+const refreshToken = catchAsync(async (req, res) => {
+  const result = await authService.refreshUserToken(req.body, {
+    ipAddress: req.ip,
+    userAgent: req.get("user-agent"),
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: result.message,
+    data: {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      refreshTokenExpiresAt: result.refreshTokenExpiresAt,
+      user: result.user,
+      redirectTo: result.redirectTo,
+    },
+  });
+});
+
+const logout = catchAsync(async (req, res) => {
+  const result = await authService.logoutUser(req.body);
+
+  return res.status(200).json({
+    success: true,
+    message: result.message,
+    data: {},
+  });
+});
+
+
+
+
+const inviteUser = catchAsync(async (req, res) => {
+  const result = await authService.inviteUser(req.user, req.body);
+
+  return res.status(201).json({
+    success: true,
+    message: result.message,
+    data: {
+      user: result.user,
+      invite: result.invite,
+    },
+  });
+});
+
+const acceptInvite = catchAsync(async (req, res) => {
+  const result = await authService.acceptInvite(req.body);
+
+  return res.status(200).json({
+    success: true,
+    message: result.message,
+    data: {
+      user: result.user,
+      redirectTo: result.redirectTo,
+    },
+  });
+});
+
+
 
 const updateUserStatus = catchAsync(async (req, res) => {
   const result = await authService.updateUserStatus(
