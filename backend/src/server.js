@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
+import notFoundHandler from "./middlewares/notFound.middleware.js";
+import errorHandler from "./middlewares/error.middleware.js";
 
 import taskRoutes from "./modules/task/task.routes.js";
 import projectRoutes from "./modules/project/project.routes.js";
@@ -24,6 +26,9 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api", taskRoutes);
+
+app.use(errorHandler);
+app.use(notFoundHandler);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {

@@ -13,6 +13,7 @@ import {
   refreshTokenSchema,
   logoutSchema,
   createUserSchema,
+  changePasswordSchema,
   inviteUserSchema,
   acceptInviteSchema,
   updateUserRoleSchema,
@@ -75,6 +76,12 @@ router.use(authenticate);
  * Current authenticated user
  */
 router.get("/me", authController.getCurrentUser);
+
+router.patch(
+  "/change-password",
+  validate(changePasswordSchema),
+  authController.changePassword,
+);
 
 /**
  * Session management for current user

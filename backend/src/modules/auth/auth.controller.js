@@ -111,6 +111,19 @@ const createStaffUser = catchAsync(async (req, res) => {
   });
 });
 
+const changePassword = catchAsync(async (req, res) => {
+  const result = await authService.changePassword(
+    req.user.id,
+    req.body.newPassword,
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: result.message,
+    data: result.user,
+  });
+});
+
 const inviteUser = catchAsync(async (req, res) => {
   const result = await authService.inviteUser(req.user, req.body);
 
@@ -272,6 +285,7 @@ export default {
   listCompanyUsers,
   getUserById,
   changeUserRole,
+  changePassword,
   updateUserStatus,
   deactivateUser,
   activateUser,
