@@ -953,7 +953,7 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
       await sendStaffInviteEmail(createdUser.email, temporaryPassword);
     } catch (error) {
       console.error("Staff invite email failed to send:", error);
-    }
+      }
   }
 
   return {
