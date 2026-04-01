@@ -1,5 +1,17 @@
-import prisma from "../../config/prisma.js";
 
+import { PrismaClient } from "../../generated/prisma/index.js";
+import { ROLES } from "../../config/constants.js";
+
+const prisma = new PrismaClient();
+
+const parseDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date value: ${value}`);
+  }
+  return date;
+};
 // Helper to serialize Decimal fields to plain numbers
 const serializeProject = (project) => ({
   ...project,
@@ -9,6 +21,15 @@ const serializeProject = (project) => ({
         ...project.projectProgress,
         completionPercentage:
           project.projectProgress.completionPercentage?.toString(),
+      }
+    : null,
+
+  costSummary: project.costSummary
+    ? {
+        ...project.costSummary,
+        estimatedCost: project.costSummary.estimatedCost?.toString(),
+        actualTaskCost: project.costSummary.actualTaskCost?.toString(),
+        costVariance: project.costSummary.costVariance?.toString(),
       }
     : null,
 });
@@ -24,8 +45,8 @@ export const projectService = {
           companyId,
           projectName: projectData.projectName,
           location: projectData.location,
-          startDate: new Date(projectData.startDate),
-          endDate: projectData.endDate ? new Date(projectData.endDate) : null,
+          startDate: parseDate(projectData.startDate),
+          endDate: projectData.endDate ? parseDate(projectData.endDate) : null,
           clientName: projectData.clientName,
           projectBudget: projectData.projectBudget,
           status: projectData.status ?? "PLANNING",
@@ -48,10 +69,26 @@ export const projectService = {
     return serializeProject(result);
   },
 
-  // List all projects belonging to the user's company
-  getAllProjects: async ({ companyId }) => {
+  // List projects — SITE_ENGINEER and SITE_SUPERVISOR only see
+  // projects they are assigned to via tasks
+  getAllProjects: async ({ companyId, userId, role }) => {
+    let where = { companyId };
+
+    // Site Engineer and Supervisor only see projects
+    // where they have been assigned tasks
+    if (role === ROLES.SITE_ENGINEER || role === ROLES.SITE_SUPERVISOR) {
+      where = {
+        companyId,
+        tasks: {
+          some: {
+            assigneeUserId: userId,
+          },
+        },
+      };
+    }
+
     const projects = await prisma.project.findMany({
-      where: { companyId },
+      where,
       include: {
         projectProgress: true,
         owner: {
@@ -70,13 +107,25 @@ export const projectService = {
     return projects.map(serializeProject);
   },
 
-  // Get single project by ID with full details
-  getProjectById: async ({ projectId, companyId }) => {
-    const project = await prisma.project.findFirst({
-      where: {
+  // Get single project — Site Engineer and Supervisor
+  // can only view projects they are assigned to
+  getProjectById: async ({ projectId, companyId, userId, role }) => {
+    let where = { id: projectId, companyId };
+
+    if (role === ROLES.SITE_ENGINEER || role === ROLES.SITE_SUPERVISOR) {
+      where = {
         id: projectId,
         companyId,
-      },
+        tasks: {
+          some: {
+            assigneeUserId: userId,
+          },
+        },
+      };
+    }
+
+    const project = await prisma.project.findFirst({
+      where,
       include: {
         projectProgress: true,
         owner: {

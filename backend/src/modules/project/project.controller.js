@@ -37,7 +37,7 @@ export const projectController = {
   // GET /api/projects
   getAllProjects: async (req, res) => {
     try {
-      const companyId = req.user.companyId;
+      const { id: userId, companyId, role } = req.user;
 
       if (!companyId) {
         return res.status(400).json({
@@ -46,7 +46,11 @@ export const projectController = {
         });
       }
 
-      const projects = await projectService.getAllProjects({ companyId });
+      const projects = await projectService.getAllProjects({
+        companyId,
+        userId,
+        role,
+      });
 
       return res.status(200).json({
         success: true,
@@ -66,9 +70,9 @@ export const projectController = {
   getProjectById: async (req, res) => {
     try {
       const projectId = Number(req.params.id);
-      const companyId = req.user.companyId;
+      const { id: userId, companyId, role } = req.user;
 
-      if (isNaN(projectId)) {
+      if (!projectId || isNaN(projectId) || projectId <= 0) {
         return res.status(400).json({
           success: false,
           message: "Invalid project ID.",
@@ -85,6 +89,8 @@ export const projectController = {
       const project = await projectService.getProjectById({
         projectId,
         companyId,
+        userId,
+        role,
       });
 
       if (!project) {
