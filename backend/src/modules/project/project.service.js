@@ -169,8 +169,23 @@ export const projectService = {
     if (!project) return null;
 
     // Project Manager can only delete their own projects
-    if (role === ROLES.PROJECT_MANAGER && project.ownerUserId !== userId) {
-      const error = new Error("You can only delete projects you own.");
+    // AFTER — whitelist approach (gap closed)
+    if (role === ROLES.COMPANY_ADMIN) {
+      // COMPANY_ADMIN can delete any project in their company
+      // no additional check needed — proceed to delete
+    } else if (role === ROLES.PROJECT_MANAGER) {
+      // PROJECT_MANAGER can only delete projects they own
+      if (project.ownerUserId !== userId) {
+        const error = new Error("You can only delete projects you own.");
+        error.statusCode = 403;
+        throw error;
+      }
+    } else {
+      // Any other role that somehow bypasses route middleware
+      // is explicitly denied here at the service level
+      const error = new Error(
+        "You do not have permission to delete this project.",
+      );
       error.statusCode = 403;
       throw error;
     }
