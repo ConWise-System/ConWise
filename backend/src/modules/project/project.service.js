@@ -152,7 +152,7 @@ export const projectService = {
     return serializeProject(project);
   },
 
-  // Delete project
+  // Delete_project
   // COMPANY_ADMIN can delete any project in their company
   // PROJECT_MANAGER can only delete projects they own
   // Cascade deletes: tasks, reports, issues, chats,
