@@ -150,7 +150,9 @@ export const projectController = {
 
       return res.status(200).json({
         success: true,
-        message: `Project "${deleted.projectName}" deleted successfully.`,
+        message: deleted.projectName
+          ? `Project "${deleted.projectName}" deleted successfully.`
+          : "Project deleted successfully.",
         data: { id: deleted.id },
       });
     } catch (error) {
