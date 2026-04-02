@@ -113,4 +113,59 @@ export const projectController = {
       });
     }
   },
+
+  // DELETE /api/projects/:id
+  deleteProject: async (req, res) => {
+    try {
+      const projectId = Number(req.params.id);
+      const { id: userId, companyId, role } = req.user;
+
+      if (!projectId || isNaN(projectId) || projectId <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid project ID.",
+        });
+      }
+
+      if (!companyId) {
+        return res.status(400).json({
+          success: false,
+          message: "User is not associated with a company.",
+        });
+      }
+
+      const deleted = await projectService.deleteProject({
+        projectId,
+        companyId,
+        userId,
+        role,
+      });
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: "Project not found.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: `Project "${deleted.projectName}" deleted successfully.`,
+        data: { id: deleted.id },
+      });
+    } catch (error) {
+      // Handle ownership error thrown from service
+      if (error.statusCode === 403) {
+        return res.status(403).json({
+          success: false,
+          message: error.message,
+        });
+      }
+      console.error("Error in deleteProject:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error.",
+      });
+    }
+  },
 };
