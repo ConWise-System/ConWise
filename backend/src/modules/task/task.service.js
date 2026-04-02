@@ -1,6 +1,5 @@
-import { PrismaClient } from '../../generated/prisma/index.js';
+import prisma from "../../config/prisma.js"
 
-const prisma = new PrismaClient();
 
 const calculateDaysRemaining = (dueDate) => {
     if (!dueDate) return 0;

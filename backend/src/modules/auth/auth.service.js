@@ -21,6 +21,10 @@ import {
   verifyPassword,
 } from "../../utils/auth/hash.js";
 import roleService from "./role.service.js";
+import {
+  sendStaffInviteEmail,
+  sendVerificationEmail,
+} from "../../utils/email/sendEmail.js";
 
 const AUTH_SELECT = {
   id: true,
@@ -98,6 +102,7 @@ const sanitizeUser = (user) => {
     fullName: `${user.firstName} ${user.lastName}`.trim(),
     email: user.email ?? null,
     phone: user.phone ?? null,
+    bio: user.bio ?? null,
     isVerified: user.isVerified,
     status: user.status,
     lastLoginAt: user.lastLoginAt ?? null,
@@ -547,6 +552,19 @@ export const registerCompany = async (payload, meta = {}) => {
     };
   });
 
+  console.log("This is verification code", created.verification.code);
+
+  try {
+    if (created.user.email) {
+      await sendVerificationEmail(
+        created.user.email,
+        created.verification.code,
+      );
+    }
+  } catch (error) {
+    console.error("Failed to send verification email:", error);
+  }
+
   return {
     message: AUTH_MESSAGES.REGISTRATION_SUCCESS,
     user: sanitizeUser(created.user),
@@ -691,6 +709,10 @@ export const resendVerificationCode = async (payload, meta = {}) => {
       ? VERIFICATION_TYPES.EMAIL_VERIFICATION
       : VERIFICATION_TYPES.PHONE_VERIFICATION,
   );
+
+  if (identifier.email) {
+    await sendVerificationEmail(identifier.email, verification.code);
+  }
 
   return {
     message: "A new verification code has been generated.",
@@ -892,9 +914,15 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
   ensureActorCanManageRole(actor.role, role);
   await ensureUniqueUser({ email, phone });
 
-  const passwordHash = password
-    ? (await hashPassword(password)).value
-    : (await hashPassword(generateVerificationCodeValue())).value;
+  let temporaryPassword = null;
+  let passwordHash = null;
+
+  if (password) {
+    passwordHash = (await hashPassword(password)).value;
+  } else {
+    temporaryPassword = generateVerificationCodeValue();
+    passwordHash = (await hashPassword(temporaryPassword)).value;
+  }
 
   const createdUser = await prisma.user.create({
     data: {
@@ -908,43 +936,48 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
       email,
       phone,
       passwordHash,
-      isVerified: Boolean(password),
-      status: password
-        ? USER_STATUSES.ACTIVE
-        : USER_STATUSES.PENDING_VERIFICATION,
+      isVerified: true,
+      status: USER_STATUSES.ACTIVE,
     },
     include: {
       company: true,
     },
   });
 
-  let verification = null;
+  // let verification = null;
+  //
+  // console.log("Created User Email", createdUser.email);
 
-  if (!password) {
-    verification = await createVerificationCode(
-      createdUser.id,
-      email ? VERIFICATION_TYPES.INVITE : VERIFICATION_TYPES.INVITE,
-    );
+  if (!password && createdUser.email) {
+    try {
+      await sendStaffInviteEmail(createdUser.email, temporaryPassword);
+    } catch (error) {
+      console.error("Staff invite email failed to send:", error);
+      }
   }
 
   return {
     message: password
       ? "User created successfully."
-      : "User created successfully. Verification/invite code generated.",
+      : "User created successfully. A temporary password has been sent to their email.",
     user: sanitizeUser(createdUser),
-    verification: verification
-      ? {
-          verificationId: verification.id,
-          type: verification.type,
-          expiresAt: verification.expiresAt,
-          code:
-            meta.includeVerificationCode === true
-              ? verification.code
-              : undefined,
-          destination: email || phone,
-        }
-      : null,
+    tempPassword: meta.includeVerificationCode ? temporaryPassword : undefined,
   };
+};
+
+export const changePassword = async (userId, newPassword) => {
+  const { value: hashedPassword } = await hashPassword(newPassword);
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordHash: hashedPassword,
+      isVerified: true,
+      status: USER_STATUSES.ACTIVE,
+    },
+  });
+
+  return sanitizeUser(updatedUser);
 };
 
 export const inviteUser = async (actor, payload, meta = {}) => {
@@ -1123,10 +1156,58 @@ export const listCompanyUsers = async (actor, query = {}) => {
 };
 
 export const getUserById = async (actor, userId) => {
-  const user = await getManagedUserOrThrow(actor, userId);
+  const targetId = Number(userId);
+
+  const isOwner = actor.id === targetId;
+  const isAdmin = [ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN].includes(
+    actor.role,
+  );
+
+  if (!isOwner && !isAdmin) {
+    throw createError(
+      "Forbidden: You do not have permission to view this profile.",
+      403,
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: targetId },
+    include: {
+      company: true,
+      // You can include other relations here if the Admin needs more data
+    },
+  });
+
+  if (!user) {
+    throw createError("User not found", 404);
+  }
+
+  return sanitizeUser(user);
+};
+
+// user update his/her profile
+export const updateProfile = async (actor, userId, payload) => {
+  if (actor.id !== Number(userId)) {
+    throw createError("Forbidden: You can only update your own profile.", 403);
+  }
+
+  const { firstName, lastName, email, phone, bio } = payload;
+
+  const updated = await prisma.user.update({
+    where: {
+      id: actor.id,
+    },
+    data: {
+      ...payload,
+    },
+    include: {
+      company: true,
+    },
+  });
 
   return {
-    user: sanitizeUser(user),
+    message: "User profile updated successfully.",
+    user: sanitizeUser(updated),
   };
 };
 
@@ -1270,10 +1351,10 @@ export const revokeSession = async (userId, sessionId) => {
     message: "Session revoked successfully.",
   };
 };
-
 const authService = {
   registerCompany,
   verifyAccount,
+  changePassword,
   resendVerificationCode,
   loginUser,
   refreshUserToken,
@@ -1285,6 +1366,7 @@ const authService = {
   acceptInvite,
   listCompanyUsers,
   getUserById,
+  updateProfile,
   changeUserRole,
   updateUserStatus,
   deactivateUser,
