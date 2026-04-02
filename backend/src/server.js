@@ -53,9 +53,8 @@ app.get("/api-docs.json", (req, res) => {
   res.send(specs);
 });
 
-app.use(errorHandler);
 app.use(notFoundHandler);
-
+app.use(errorHandler);
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
