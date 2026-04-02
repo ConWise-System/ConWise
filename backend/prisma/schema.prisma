@@ -92,45 +92,46 @@ enum ChatType {
 }
 
 model Company {
-  id          Int           @id @default(autoincrement())
-  name        String
-  email       String?       @unique
-  phone       String?       @unique
-  address     String?
-  status      CompanyStatus @default(PENDING)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id        Int           @id @default(autoincrement())
+  name      String
+  email     String?       @unique
+  phone     String?       @unique
+  address   String?
+  status    CompanyStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
-  users       User[]
-  projects    Project[]
+  users    User[]
+  projects Project[]
 
   @@index([name])
   @@map("companies")
 }
 
 model User {
-  id             Int        @id @default(autoincrement())
-  companyId      Int?
-  role           UserRole
-  firstName      String
-  lastName       String
-  email          String?    @unique
-  phone          String?    @unique
-  passwordHash   String
-  isVerified     Boolean    @default(false)
-  status         UserStatus @default(PENDING_VERIFICATION)
-  lastLoginAt    DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id           Int        @id @default(autoincrement())
+  companyId    Int?
+  role         UserRole
+  firstName    String
+  lastName     String
+  email        String?    @unique
+  phone        String?    @unique
+  bio          String?
+  passwordHash String
+  isVerified   Boolean    @default(false)
+  status       UserStatus @default(PENDING_VERIFICATION)
+  lastLoginAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  company        Company?              @relation(fields: [companyId], references: [id])
-  ownedProjects  Project[]             @relation("ProjectOwner")
-  assignedTasks  Task[]                @relation("TaskAssignee")
+  company        Company?           @relation(fields: [companyId], references: [id])
+  ownedProjects  Project[]          @relation("ProjectOwner")
+  assignedTasks  Task[]             @relation("TaskAssignee")
   reports        Report[]
-  notifications  Notification[]        @relation("NotificationRecipient")
-  reportedIssues Issue[]               @relation("Reporter")
-  assignedIssues Issue[]               @relation("IssueAssignee")
-  sentMessages   Chat[]                @relation("ChatSender")
+  notifications  Notification[]     @relation("NotificationRecipient")
+  reportedIssues Issue[]            @relation("Reporter")
+  assignedIssues Issue[]            @relation("IssueAssignee")
+  sentMessages   Chat[]             @relation("ChatSender")
   sessions       Session[]
   verifications  VerificationCode[]
 
@@ -152,7 +153,7 @@ model Session {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
@@ -160,15 +161,15 @@ model Session {
 }
 
 model VerificationCode {
-  id         Int              @id @default(autoincrement())
-  userId     Int
-  code       String
-  type       VerificationType
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime         @default(now())
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  code      String
+  type      VerificationType
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime         @default(now())
 
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, type])
   @@index([expiresAt])
@@ -189,14 +190,14 @@ model Project {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  company       Company            @relation(fields: [companyId], references: [id])
-  owner         User               @relation("ProjectOwner", fields: [ownerUserId], references: [id])
-  tasks         Task[]
+  company         Company          @relation(fields: [companyId], references: [id])
+  owner           User             @relation("ProjectOwner", fields: [ownerUserId], references: [id])
+  tasks           Task[]
   projectProgress ProjectProgress?
-  reports       Report[]
-  costSummary   CostSummary?
-  issues        Issue[]
-  chats         Chat[]
+  reports         Report[]
+  costSummary     CostSummary?
+  issues          Issue[]
+  chats           Chat[]
 
   @@index([companyId])
   @@index([ownerUserId])
@@ -243,21 +244,21 @@ model Task {
 }
 
 model TaskProgress {
-  id             Int      @id @default(autoincrement())
-  taskId         Int      @unique
-  task           Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  id             Int        @id @default(autoincrement())
+  taskId         Int        @unique
+  task           Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
   daysRemaining  Int
   deadlineStatus String
   taskStatus     TaskStatus
-  lastUpdated    DateTime @default(now())
+  lastUpdated    DateTime   @default(now())
 
   @@map("task_progress")
 }
 
 model MaterialUsed {
-  id               Int      @id @default(autoincrement())
+  id               Int     @id @default(autoincrement())
   materialName     String
-  quantityUsed     Decimal  @db.Decimal(10, 2)
+  quantityUsed     Decimal @db.Decimal(10, 2)
   unit             String
   usageDescription String?
   materialStatus   String
@@ -290,8 +291,8 @@ model Report {
   progressPhotoUrl String?
   submittedAt      DateTime   @default(now())
 
-  user             User       @relation(fields: [userId], references: [id])
-  project          Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([projectId])
@@ -308,7 +309,7 @@ model Notification {
   relatedEntityType       NotificationEntityType
   relatedEntityId         Int
 
-  recipient               User                   @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipient User @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
 
   @@index([recipientUserId, isRead])
   @@map("notifications")
@@ -325,9 +326,9 @@ model Issue {
   issueAssigneeUserId Int?
   reportedAt          DateTime    @default(now())
 
-  reporter            User        @relation("Reporter", fields: [reporterUserId], references: [id])
-  project             Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  assignee            User?       @relation("IssueAssignee", fields: [issueAssigneeUserId], references: [id])
+  reporter User     @relation("Reporter", fields: [reporterUserId], references: [id])
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assignee User?    @relation("IssueAssignee", fields: [issueAssigneeUserId], references: [id])
 
   @@index([reporterUserId])
   @@index([projectId])
@@ -343,8 +344,8 @@ model Chat {
   timestamp      DateTime @default(now())
   chatType       ChatType @default(TEXT)
 
-  sender         User     @relation("ChatSender", fields: [senderUserId], references: [id])
-  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sender  User    @relation("ChatSender", fields: [senderUserId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([senderUserId])
   @@index([projectId])

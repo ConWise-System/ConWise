@@ -173,6 +173,14 @@ export const createUserSchema = z
     ensureEmailOrPhone(data, ctx);
   });
 
+export const updateProfileSchema = z.object({
+  firstName: nameSchema.optional(),
+  lastName: nameSchema.optional(),
+  email: optionalEmailSchema.optional(),
+  phone: optionalPhoneSchema.optional(),
+  bio: z.string().max(500, "Bio is too long").optional(),
+});
+
 export const inviteUserSchema = z
   .object({
     firstName: nameSchema,
