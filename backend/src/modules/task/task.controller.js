@@ -33,5 +33,49 @@ export const taskController = {
             console.error("Error in updateTaskStatus:", error);
             return res.status(500).json({ success: false, message: "Internal server error" });
         }
+    },
+
+    updateTask: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const task = await taskService.updateTask(id, req.body);
+            return res.status(200).json({ success: true, data: task });
+        } catch (error) {
+            console.error("Error in updateTask:", error);
+            return res.status(500).json({ success: false, message: "Internal server error" });
+        }
+    },
+
+    deleteTask: async (req, res) => {
+        try {
+            const { id } = req.params;
+            await taskService.deleteTask(id);
+            return res.status(200).json({ success: true, message: "Task deleted successfully" });
+        } catch (error) {
+            console.error("Error in deleteTask:", error);
+            return res.status(500).json({ success: false, message: "Internal server error" });
+        }
+    },
+
+    assignTask: async (req, res) => {
+        try {
+            const { id, userId } = req.params;
+            const task = await taskService.assignTask(id, userId);
+            return res.status(200).json({ success: true, data: task });
+        } catch (error) {
+            console.error("Error in assignTask:", error);
+            return res.status(500).json({ success: false, message: "Internal server error" });
+        }
+    },
+
+    submitTask: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const task = await taskService.submitTask(id);
+            return res.status(200).json({ success: true, data: task });
+        } catch (error) {
+            console.error("Error in submitTask:", error);
+            return res.status(500).json({ success: false, message: "Internal server error" });
+        }
     }
 };
