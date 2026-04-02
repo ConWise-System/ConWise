@@ -54,8 +54,11 @@ enum TaskPriority {
 enum TaskStatus {
   TODO
   IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
   BLOCKED
-  DONE
+  APPROVED
+  REJECTED
 }
 
 enum IssueStatus {
@@ -216,8 +219,8 @@ model ProjectProgress {
 model Task {
   id              Int          @id @default(autoincrement())
   projectId       Int
-  assigneeUserId  Int
-  materialUsedId  Int?
+  assigneeUserId  Int?
+
   taskTitle       String
   taskDescription String?
   startDate       DateTime?
@@ -228,10 +231,12 @@ model Task {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee     User          @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
-  taskProgress TaskProgress?
-  materialUsed MaterialUsed? @relation(fields: [materialUsedId], references: [id])
+  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee        User?         @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
+  taskProgress    TaskProgress?
+
+// 👇 A task can have many materials (list of material id)
+  materials        MaterialUsed[]
 
   @@index([projectId])
   @@index([assigneeUserId])
@@ -257,8 +262,9 @@ model MaterialUsed {
   unit             String
   usageDescription String?
   materialStatus   String
-  tasks            Task[]
 
+  taskId           Int
+  task             Task     @relation(fields: [taskId], references: [id])
   @@map("materials_used")
 }
 
