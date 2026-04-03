@@ -22,10 +22,18 @@ export const createProjectSchema = z
 
     startDate: z.coerce
       .date({ required_error: "Start date is required." })
-      .refine((d) => d >= new Date(new Date().setHours(0, 0, 0, 0)), {
-        message: "Start date cannot be in the past.",
-      }),
-
+      .refine(
+        (d) => {
+          const today = new Date();
+          today.setUTCHours(0, 0, 0, 0);
+          const inputDate = new Date(d);
+          inputDate.setUTCHours(0, 0, 0, 0);
+          return inputDate >= today;
+        },
+        {
+          message: "Start date cannot be in the past.",
+        },
+      ),
     endDate: z.coerce.date().optional(),
 
     clientName: z
