@@ -10,6 +10,7 @@ import errorHandler from "./middlewares/error.middleware.js";
 import taskRoutes from "./modules/task/task.routes.js";
 import projectRoutes from "./modules/project/project.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import reportRotues from "./modules/report/report.routes.js";
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.get("/api/health", (req, res) => {
 // Mount routes
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/reports", reportRotues);
 app.use("/api", taskRoutes);
 
 app.use(
