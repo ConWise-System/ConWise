@@ -401,7 +401,7 @@ Registers a new company and creates the first `COMPANY_ADMIN`.
 
 ### Access
 Public
-
+verifyAccount
 ### Request Body
 ```/dev/null/register-company.json#L1-11
 {

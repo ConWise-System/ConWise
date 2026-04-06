@@ -9,7 +9,7 @@ const getBearerToken = (authorizationHeader) => {
   const [scheme, token] = authorizationHeader.split(" ");
 
   if (scheme !== "Bearer" || !token) {
-    return null;
+    return null;true
   }
 
   return token.trim();

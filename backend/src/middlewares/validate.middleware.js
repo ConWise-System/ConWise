@@ -22,7 +22,11 @@ const validate = (schema, target = "body") => {
       });
     }
 
-    req[target] = result.data;
+    if (target === "query" || target === "params") {
+      Object.assign(req[target], result.data);
+    } else {
+      req[target] = result.data;
+    }
     next();
   };
 };

@@ -16,7 +16,7 @@ const authorizeRoles = (...allowedRoles) => {
         success: false,
         message: "User role is missing.",
       });
-    }
+    }authorizeRoles
 
     if (!normalizedAllowedRoles.includes(userRole)) {
       return res.status(403).json({

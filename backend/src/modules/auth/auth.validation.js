@@ -44,6 +44,26 @@ const companyNameSchema = z
     `Company name must not exceed ${MAX_COMPANY_NAME_LENGTH} characters.`,
   );
 
+export const changePasswordSchema = z
+  .object({
+    newPassword: z
+      .string({ required_error: "New password is required" })
+      .min(8, "Password must be at least 8 characters long"),
+    confirmPassword: z.string({
+      required_error: "Please confirm your password",
+    }),
+  })
+  // Apply refine to the main object, just like your working example
+  .superRefine((data, ctx) => {
+    if (data.newPassword !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: "Passwords do not match.",
+      });
+    }
+  });
+
 const verificationCodeSchema = z
   .string()
   .trim()
@@ -153,6 +173,14 @@ export const createUserSchema = z
     ensureEmailOrPhone(data, ctx);
   });
 
+export const updateProfileSchema = z.object({
+  firstName: nameSchema.optional(),
+  lastName: nameSchema.optional(),
+  email: optionalEmailSchema.optional(),
+  phone: optionalPhoneSchema.optional(),
+  bio: z.string().max(500, "Bio is too long").optional(),
+});
+
 export const inviteUserSchema = z
   .object({
     firstName: nameSchema,
@@ -201,7 +229,7 @@ export const companyUsersQuerySchema = z.object({
 });
 
 export const loginSchema = z.object({
-  identifier: z.string().trim().min(1, "Email or phone number is required."),
+  email: z.string().trim().min(1, "Email or phone number is required."),
   password: z.string().min(1, "Password is required."),
 });
 
@@ -240,6 +268,7 @@ export const resetPasswordSchema = z
 export default {
   registerCompanySchema,
   createUserSchema,
+  changePasswordSchema,
   inviteUserSchema,
   acceptInviteSchema,
   updateUserRoleSchema,

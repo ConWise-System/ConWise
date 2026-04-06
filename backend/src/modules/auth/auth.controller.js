@@ -2,47 +2,199 @@ import catchAsync from "../../utils/catchAsync.js";
 import authService from "./auth.service.js";
 
 const registerCompany = catchAsync(async (req, res) => {
-  const result = await authService.registerCompany(req.body);
+  try {
+    const result = await authService.registerCompany(req.body);
 
-  return res.status(201).json({
-    success: true,
-    message: result.message,
-    data: {
-      user: result.user,
-      company: result.company,
-      verification: result.verification,
-    },
-  });
+    return res.status(201).json({
+      success: true,
+      message: result.message,
+      data: {
+        user: result.user,
+        company: result.company,
+        verification: result.verification,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: null,
+    });
+  }
 });
 
 const login = catchAsync(async (req, res) => {
-  const result = await authService.loginUser(req.body, {
-    ipAddress: req.ip,
-    userAgent: req.get("user-agent"),
-  });
+  try {
+    const result = await authService.loginUser(req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        refreshTokenExpiresAt: result.refreshTokenExpiresAt,
+        user: result.user,
+        redirectTo: result.redirectTo,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: null,
+    });
+  }
+});
+
+const verifyAccount = catchAsync(async (req, res) => {
+  try {
+    const result = await authService.verifyAccount(req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: {
+        user: result.user,
+        redirectTo: result.redirectTo,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: null,
+    });
+  }
+});
+
+const getCurrentUser = catchAsync(async (req, res) => {
+  try {
+    const result = await authService.getMyProfile(req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: null,
+    });
+  }
+});
+
+const createStaffUser = catchAsync(async (req, res) => {
+  try {
+    const result = await authService.createStaffUser(req.user, req.body);
+
+    return res.status(201).json({
+      success: true,
+      message: result.message,
+      data: {
+        user: result.user,
+        verification: result.verification ?? null,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: null,
+    });
+  }
+});
+
+const changePassword = catchAsync(async (req, res) => {
+  try {
+    const result = await authService.changePassword(
+      req.user.id,
+      req.body.newPassword,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: null,
+    });
+  }
+});
+
+const listCompanyUsers = catchAsync(async (req, res) => {
+  try {
+    const result = await authService.listCompanyUsers(req.user, req.query);
+  
+    return res.status(200).json({
+      success: true,
+      message: "Users fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: null,
+    });
+  }
+});
+
+const getUserById = catchAsync(async (req, res) => {
+  try {
+    const result = await authService.getUserById(req.user, req.params.userId);
+  
+    return res.status(200).json({
+      success: true,
+      message: "User fetched successfully.",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      data: null,
+    });
+  }
+});
+
+const updateProfile = catchAsync(async (req, res) => {
+  const result = await authService.updateProfile(
+    req.user,
+    req.params.userId,
+    req.body,
+  );
 
   return res.status(200).json({
     success: true,
     message: result.message,
     data: {
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-      refreshTokenExpiresAt: result.refreshTokenExpiresAt,
       user: result.user,
-      redirectTo: result.redirectTo,
     },
   });
 });
 
-const verifyAccount = catchAsync(async (req, res) => {
-  const result = await authService.verifyAccount(req.body);
+const changeUserRole = catchAsync(async (req, res) => {
+  const result = await authService.changeUserRole(
+    req.user,
+    req.params.userId,
+    req.body,
+  );
 
   return res.status(200).json({
     success: true,
     message: result.message,
     data: {
       user: result.user,
-      redirectTo: result.redirectTo,
     },
   });
 });
@@ -88,29 +240,6 @@ const logout = catchAsync(async (req, res) => {
   });
 });
 
-const getCurrentUser = catchAsync(async (req, res) => {
-  const result = await authService.getMyProfile(req.user.id);
-
-  return res.status(200).json({
-    success: true,
-    message: "Profile fetched successfully.",
-    data: result,
-  });
-});
-
-const createStaffUser = catchAsync(async (req, res) => {
-  const result = await authService.createStaffUser(req.user, req.body);
-
-  return res.status(201).json({
-    success: true,
-    message: result.message,
-    data: {
-      user: result.user,
-      verification: result.verification ?? null,
-    },
-  });
-});
-
 const inviteUser = catchAsync(async (req, res) => {
   const result = await authService.inviteUser(req.user, req.body);
 
@@ -133,42 +262,6 @@ const acceptInvite = catchAsync(async (req, res) => {
     data: {
       user: result.user,
       redirectTo: result.redirectTo,
-    },
-  });
-});
-
-const listCompanyUsers = catchAsync(async (req, res) => {
-  const result = await authService.listCompanyUsers(req.user, req.query);
-
-  return res.status(200).json({
-    success: true,
-    message: "Users fetched successfully.",
-    data: result,
-  });
-});
-
-const getUserById = catchAsync(async (req, res) => {
-  const result = await authService.getUserById(req.user, req.params.userId);
-
-  return res.status(200).json({
-    success: true,
-    message: "User fetched successfully.",
-    data: result,
-  });
-});
-
-const changeUserRole = catchAsync(async (req, res) => {
-  const result = await authService.changeUserRole(
-    req.user,
-    req.params.userId,
-    req.body,
-  );
-
-  return res.status(200).json({
-    success: true,
-    message: result.message,
-    data: {
-      user: result.user,
     },
   });
 });
@@ -272,7 +365,9 @@ export default {
   listCompanyUsers,
   getUserById,
   changeUserRole,
+  changePassword,
   updateUserStatus,
+  updateProfile,
   deactivateUser,
   activateUser,
   suspendUser,
