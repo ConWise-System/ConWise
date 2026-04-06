@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Helper for Profile Menu Buttons
+  
   const ProfileMenuButton = ({ icon, label, onClick, isRed }) => (
     <button 
       onClick={onClick} 
@@ -26,17 +26,15 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc]">
       
-      {/* 1. PERSISTENT SIDEBAR */}
       <aside className="h-full shrink-0 z-[100] shadow-2xl shadow-slate-200">
         <Sidebar />
       </aside>
 
       <main className="flex-1 h-full overflow-y-auto p-8 scroll-smooth relative z-0">
         
-        {/* 2. PERSISTENT NAVBAR */}
+      
         <div className="flex justify-between items-center mb-10 relative z-[60]">
           <div className="flex items-center gap-6">
-            {/* Search Bar - Matching the "Sovereign Exec" style */}
             <div className="relative group hidden md:block">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
               <input 
@@ -48,19 +46,17 @@ export default function DashboardLayout({ children }) {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* System Status Badge */}
+        
             <div className="hidden lg:flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full border border-emerald-100 mr-2">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
               <span className="text-[10px] font-black uppercase tracking-widest">System Live</span>
             </div>
 
-            {/* Notification Bell */}
+           
             <button className="p-3 bg-white text-slate-500 hover:text-blue-600 rounded-2xl shadow-sm border border-slate-200 relative transition-all active:scale-95">
               <Bell size={20} />
               <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white" />
             </button>
-
-            {/* Profile Menu Dropdown */}
             <div className="relative">
               <div 
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
@@ -106,12 +102,12 @@ export default function DashboardLayout({ children }) {
           </div>
         </div>
 
-        {/* 3. DYNAMIC CONTENT AREA */}
+    
         <div className="relative z-0">
           {children}
         </div>
 
-        {/* Persistent Footer */}
+       
         <footer className="mt-20 flex flex-col md:flex-row justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] py-12 border-t border-slate-100">
           <p>© 2026 CONWISE // ARCHITECTURE.V3</p>
           <div className="flex gap-8 mt-4 md:mt-0">

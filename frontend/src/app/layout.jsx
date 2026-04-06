@@ -6,14 +6,13 @@ const inter = Inter({
   display: 'swap',
 });
 
-// --- NEW: METADATA (Mallattoo Next.js balleessuuf) ---
+
 export const metadata = {
   title: 'Horizon Executive Terminal',
   description: 'Sovereign Executive Dashboard',
   icons: {
-    icon: [], // Kun favicon Next.js akka hin mul'anne godha
-    // Yoo logo mataa kee qabaatte immoo bifa kanaan itti dabali:
-    // icon: '/favicon.ico', 
+    icon: [], 
+     
   },
 };
 
@@ -21,7 +20,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={inter.className}>
       <head>
-        {/* Sararri kun mallattoo default san dhiibee balleessa */}
+       
         <link rel="icon" href="data:," />
       </head>
       <body className="antialiased selection:bg-slate-900 selection:text-white">
@@ -29,4 +28,4 @@ export default function RootLayout({ children }) {
       </body>
     </html>
   );
-}
+} 
