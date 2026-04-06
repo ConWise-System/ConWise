@@ -139,8 +139,8 @@ function CreateUserPage({ onCancel }) {
     role: "PLATFORM_ADMIN",
     status: "PENDING_VERIFICATION",
     isVerified: false,
-    bio: "MERN Stack Developer",
-    companyId: 1,
+    
+   
     createdAt: "2026-04-01T22:57:55.925Z"
   });
 
@@ -167,7 +167,7 @@ function CreateUserPage({ onCancel }) {
             <InputGroup label="Last Name" value={formData.lastName} onChange={(v) => handleChange('lastName', v)} icon={<User size={12}/>} />
             <InputGroup label="Professional Email" value={formData.email} onChange={(v) => handleChange('email', v)} type="email" icon={<Mail size={12}/>} />
             <InputGroup label="Phone Number" value={formData.phone} onChange={(v) => handleChange('phone', v)} icon={<Phone size={12}/>} />
-            <InputGroup label="Company ID" value={formData.companyId} onChange={(v) => handleChange('companyId', v)} type="number" icon={<Building2 size={12}/>} />
+            
             
             <div className="space-y-1.5">
               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">System Role</label>
@@ -187,19 +187,7 @@ function CreateUserPage({ onCancel }) {
             </div>
           </div>
 
-          <div className="space-y-1.5 pt-2">
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Personnel Biography</label>
-            <div className="relative">
-              <AlignLeft size={12} className="absolute left-3 top-4 text-slate-400" />
-              <textarea 
-                rows="2"
-                value={formData.bio}
-                onChange={(e) => handleChange('bio', e.target.value)}
-                className="w-full pl-9 pr-3 py-3 bg-slate-50 border-none rounded-xl font-bold text-[11px] outline-none focus:bg-white transition-all resize-none"
-                placeholder="Brief professional description..."
-              />
-            </div>
-          </div>
+          
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
             <div className="flex items-center gap-6">

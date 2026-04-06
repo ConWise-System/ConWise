@@ -1,4 +1,4 @@
-import TaskManagement from "../../../features/dashboard/TaskManagement";
+import TaskManagement from "../../../../features/dashboard/admin/TaskManagement";
 
 export default function Task(){
     return (
