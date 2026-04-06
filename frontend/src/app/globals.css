@@ -14,12 +14,10 @@ body {
   color: var(--foreground);
   margin: 0;
   padding: 0;
-  /* overflow: hidden;  <-- KANA BALLEESSI YKN COMMENT GODHI */
+ 
 }
 
-/* ============================================================
-   SHIELD: HIDE NEXT.JS / COMPILING / VERCEL INDICATORS
-   ============================================================ */
+
 [data-vercel-toolbar],
 .vercel-toolbar,
 #nextjs-portal,
