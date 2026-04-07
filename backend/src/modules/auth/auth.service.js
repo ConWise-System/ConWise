@@ -980,6 +980,43 @@ export const changePassword = async (userId, newPassword) => {
   return sanitizeUser(updatedUser);
 };
 
+
+export const searchUser = async (query, companyId,  limit = 20) => {
+  if (!query || query.trim() === "") {
+    return [];
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      companyId: Number(companyId),
+      OR:( [
+        { firstName: { contains: query.trim(), mode: "insensitive" } },
+        { lastName:  { contains: query.trim(), mode: "insensitive" } },
+        { email:     { contains: query.trim(), mode: "insensitive" } },
+      ]),
+    },
+    orderBy: {
+      firstName: "asc",
+    },
+    take: limit,           // Prevent returning too many users
+  });
+
+  return users.map(sanitizeUser);
+};
+
+// filter user by rol 
+
+export const filterUserByRole = async (companyId, role) => {
+  const users = await prisma.user.findMany({
+    where: {
+      companyId: Number(companyId),
+      role,
+    },
+  });
+
+  return users.map(sanitizeUser);
+}
+
 export const inviteUser = async (actor, payload, meta = {}) => {
   ensureCompanyScopedActor(actor);
 
@@ -1362,6 +1399,7 @@ const authService = {
   logoutAllSessions,
   getMyProfile,
   createStaffUser,
+  searchUser,
   inviteUser,
   acceptInvite,
   listCompanyUsers,

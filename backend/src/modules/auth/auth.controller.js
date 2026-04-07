@@ -134,7 +134,7 @@ const changePassword = catchAsync(async (req, res) => {
 const listCompanyUsers = catchAsync(async (req, res) => {
   try {
     const result = await authService.listCompanyUsers(req.user, req.query);
-  
+
     return res.status(200).json({
       success: true,
       message: "Users fetched successfully.",
@@ -152,7 +152,7 @@ const listCompanyUsers = catchAsync(async (req, res) => {
 const getUserById = catchAsync(async (req, res) => {
   try {
     const result = await authService.getUserById(req.user, req.params.userId);
-  
+
     return res.status(200).json({
       success: true,
       message: "User fetched successfully.",
@@ -195,6 +195,38 @@ const changeUserRole = catchAsync(async (req, res) => {
     message: result.message,
     data: {
       user: result.user,
+    },
+  });
+});
+
+const searchUser = catchAsync(async (req, res) => {
+  const { q } = req.query;
+  const { companyId } = req.user.companyId;
+
+  const users = await userService.searchUser(q, companyId);
+
+  res.status(200).json({
+    success: true,
+    message: users.length > 0 ? "Users found successfully" : "No users found",
+    data: {
+      users,
+      count: users.length,
+    },
+  });
+});
+
+const filterUserByRole = catchAsync(async (req, res) => {
+  const { role } = req.query;
+  const { companyId } = req.user.companyId;
+
+  const users = await userService.filterUserByRole(companyId, role);
+
+  res.status(200).json({
+    success: true,
+    message: users.length > 0 ? "Users found successfully" : "No users found",
+    data: {
+      users,
+      count: users.length,
     },
   });
 });
@@ -364,6 +396,8 @@ export default {
   acceptInvite,
   listCompanyUsers,
   getUserById,
+  searchUser,
+  filterUserByRole,
   changeUserRole,
   changePassword,
   updateUserStatus,

@@ -193,6 +193,19 @@ export const inviteUserSchema = z
     ensureEmailOrPhone(data, ctx);
   });
 
+export const searchUserSchema = z.object({
+  q: z
+    .string()
+    .min(1, "Search query is required")
+    .max(100, "Search query is too long")
+    .trim(),
+});
+
+export const filterUserByRoleSchema = z.object({
+  role: managedUserRoleSchema,
+});
+
+
 export const acceptInviteSchema = z
   .object({
     identifier: z.string().trim().min(1, "Email or phone number is required."),
