@@ -1,12 +1,16 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  FileText, Settings, X, UserPlus, Edit3, ChevronRight, Target,
-  MapPin, Building2
+  X, Edit3, ChevronRight, MapPin, Building2, Plus, 
+  Trash2, Eye, Briefcase, Calendar, DollarSign, 
+  Search, ArrowLeft, Target, HardHat, TrendingUp
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export default function ProjectManagement() {
-  const [projectData, setProjectData] = useState({
+// --- INITIAL DATA ---
+const INITIAL_PROJECTS = [
+  {
+    id: 1,
     projectName: 'Adama Office Complex',
     location: 'Adama, Ethiopia',
     startDate: '2026-04-14',
@@ -14,230 +18,324 @@ export default function ProjectManagement() {
     clientName: 'ABC Construction PLC',
     projectBudget: 5000000,
     status: 'PLANNING',
-    priority: 'High',
-    visibility: true
-  });
+    priority: 'HIGH'
+  }
+];
 
-  const [teamMembers] = useState([
-    { id: 1, name: 'Jameson Duarte', role: 'Analyst', color: 'bg-blue-500' },
-    { id: 2, name: 'Lila Kozlov', role: 'Legal Counsel', color: 'bg-emerald-500' },
-    { id: 3, name: 'Marcus Knight', role: 'CTO', color: 'bg-amber-500' },
-  ]);
+export default function ProjectManagementSystem() {
+  const [view, setView] = useState('list'); 
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projects, setProjects] = useState(INITIAL_PROJECTS);
+  const [editingProject, setEditingProject] = useState(null);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setProjectData(prev => ({ ...prev, [name]: value }));
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => 
+      p.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.location.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, projects]);
+
+  const handleCreateNew = () => {
+    setEditingProject(null);
+    setView('form');
+  };
+
+  const handleEdit = (project) => {
+    setEditingProject(project);
+    setView('form');
+  };
+
+  const handleDelete = (id) => {
+    setProjects(projects.filter(p => p.id !== id));
+  };
+
+  const saveProject = (projectData) => {
+    if (editingProject) {
+      setProjects(projects.map(p => p.id === editingProject.id ? { ...projectData, id: p.id } : p));
+    } else {
+      setProjects([{ ...projectData, id: Date.now() }, ...projects]);
+    }
+    setView('list');
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 max-w-6xl mx-auto space-y-6 font-sans text-slate-900 animate-in fade-in duration-500">
-      
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-slate-200 pb-6">
-        <div className="space-y-1">
-          <nav className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-blue-600">
-            <span>Portfolio</span> <ChevronRight size={10} strokeWidth={3} /> <span className="text-slate-400">Strategic Initiation</span>
+    <div className="min-h-screen bg-[#F1F5F9] text-slate-900 font-sans antialiased p-4 md:p-8">
+      <AnimatePresence mode="wait">
+        {view === 'list' ? (
+          <motion.div key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }}>
+            <ProjectRegistry 
+              projects={filteredProjects} 
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              onCreate={handleCreateNew} 
+              onEdit={handleEdit} 
+              onDelete={handleDelete}
+              onView={setSelectedProject}
+            />
+          </motion.div>
+        ) : (
+          <motion.div key="form" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}>
+            <ProjectForm 
+              initialData={editingProject} 
+              onSave={saveProject} 
+              onCancel={() => setView('list')} 
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedProject && (
+          <ViewProjectModal project={selectedProject} onClose={() => setSelectedProject(null)} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// --- TABLE VIEW COMPONENT ---
+function ProjectRegistry({ projects, searchTerm, setSearchTerm, onCreate, onEdit, onDelete, onView }) {
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      <header className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-slate-200 pb-6">
+        <div>
+          <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-blue-600 mb-1">
+            <span>Portfolio</span> <ChevronRight size={10} strokeWidth={3} /> <span className="text-slate-400">Inventory Management</span>
           </nav>
-          <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Create <span className="text-slate-400 font-medium italic">Project</span></h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">
+            Project <span className="text-slate-400 italic font-medium tracking-normal">Vault</span>
+          </h1>
         </div>
         
-        <div className="flex items-center gap-2">
-          <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all">Draft</button>
-          <button 
-            className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-wider hover:bg-blue-600 transition-all shadow-lg active:scale-95"
-          >
-            Initiate System
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+            <input 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search registry (Name, Client, Site)..." 
+              className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-[11px] font-bold outline-none focus:ring-4 focus:ring-blue-50 transition-all shadow-sm" 
+            />
+          </div>
+          <button onClick={onCreate} className="bg-[#0F172A] text-white px-8 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600 transition-all active:scale-95 shadow-xl shadow-blue-900/10">
+            <Plus size={16} strokeWidth={3} /> New Deployment
           </button>
         </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm">
+        <div className="grid grid-cols-12 px-8 py-5 bg-slate-50/50 border-b border-slate-100">
+           <div className="col-span-4 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Asset & Identity</div>
+           <div className="col-span-3 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Stakeholder</div>
+           <div className="col-span-2 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Valuation</div>
+           <div className="col-span-3 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Operational Status</div>
+        </div>
         
+        <div className="divide-y divide-slate-50">
+          {projects.length > 0 ? projects.map((p) => (
+            <div key={p.id} className="grid grid-cols-12 px-8 py-6 items-center hover:bg-blue-50/30 transition-colors group">
+              <div className="col-span-4 space-y-1">
+                <h4 className="font-black text-slate-800 text-[14px] tracking-tight group-hover:text-blue-600 transition-colors uppercase">{p.projectName}</h4>
+                <div className="flex items-center gap-2 text-[9px] text-slate-400 font-bold tracking-tighter uppercase italic">
+                  <MapPin size={10} className="text-blue-500" /> {p.location}
+                </div>
+              </div>
+              <div className="col-span-3">
+                <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200/50">{p.clientName}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-[13px] font-black text-slate-900">ETB {Number(p.projectBudget).toLocaleString()}</span>
+                <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Capital Allocated</p>
+              </div>
+              <div className="col-span-3 flex justify-end items-center gap-4">
+                <StatusBadge status={p.status} />
+                <div className="flex gap-1">
+                  <button onClick={() => onView(p)} className="p-2.5 text-slate-300 hover:text-blue-600 hover:bg-white rounded-xl transition-all shadow-none hover:shadow-sm"><Eye size={16}/></button>
+                  <button onClick={() => onEdit(p)} className="p-2.5 text-slate-300 hover:text-amber-600 hover:bg-white rounded-xl transition-all shadow-none hover:shadow-sm"><Edit3 size={16}/></button>
+                  <button onClick={() => onDelete(p.id)} className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-white rounded-xl transition-all shadow-none hover:shadow-sm"><Trash2 size={16}/></button>
+                </div>
+              </div>
+            </div>
+          )) : (
+            <div className="py-20 text-center space-y-2">
+              <p className="text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">No project records detected</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- PROJECT FORM COMPONENT ---
+function ProjectForm({ initialData, onSave, onCancel }) {
+  const [formData, setFormData] = useState(initialData || {
+    projectName: '',
+    location: '',
+    startDate: '',
+    endDate: '',
+    clientName: '',
+    projectBudget: 0,
+    status: 'PLANNING',
+    priority: 'MEDIUM'
+  });
+
+  return (
+    <div className="max-w-5xl mx-auto py-4 space-y-8">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="space-y-1">
+          <button onClick={onCancel} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-blue-600 transition-all">
+            <ArrowLeft size={14} /> Back to Registry
+          </button>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">
+            {initialData ? 'Update' : 'New'} <span className="text-blue-600 italic underline decoration-slate-200 underline-offset-8">Record</span>
+          </h1>
+        </div>
+        <div className="flex gap-3">
+            <button onClick={onCancel} className="px-6 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50">Discard</button>
+            <button onClick={() => onSave(formData)} className="px-10 py-3.5 bg-[#0F172A] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-blue-900/20 hover:bg-blue-600 transition-all active:scale-95">
+              Commit Project
+            </button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-6">
-          
-          <section className="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-6 border-b border-slate-50 pb-4">
-              <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600"><Target size={14} /></div>
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-800">Project Parameters</h2>
+          <div className="bg-white p-10 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-8">
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Target size={12}/> Project Identity</label>
+              <input 
+                value={formData.projectName}
+                onChange={(e) => setFormData({...formData, projectName: e.target.value})}
+                placeholder="e.g. Bole Road Expansion" 
+                className="w-full bg-slate-50 rounded-2xl px-6 py-4 text-[14px] font-bold outline-none focus:ring-4 focus:ring-blue-50 transition-all border-none" 
+              />
             </div>
-            
-            <div className="grid grid-cols-1 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Project Name/Identity</label>
-                <div className="relative">
-                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-3">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Building2 size={12}/> Client Entity</label>
                   <input 
-                    name="projectName" value={projectData.projectName} onChange={handleInputChange}
-                    type="text" placeholder="Project Title" 
-                    className="w-full pl-10 pr-3 py-3 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none focus:bg-white focus:ring-2 focus:ring-blue-50 transition-all" 
+                    value={formData.clientName}
+                    onChange={(e) => setFormData({...formData, clientName: e.target.value})}
+                    placeholder="Company Name" 
+                    className="w-full bg-slate-50 rounded-2xl px-6 py-4 text-[13px] font-bold outline-none border-none" 
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Location Site</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                    <input 
-                      name="location" value={projectData.location} onChange={handleInputChange}
-                      type="text" placeholder="Location"
-                      className="w-full pl-10 pr-3 py-3 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none focus:bg-white transition-all" 
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Client Organization</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                    <input 
-                      name="clientName" value={projectData.clientName} onChange={handleInputChange}
-                      type="text" placeholder="Client Name"
-                      className="w-full pl-10 pr-3 py-3 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none focus:bg-white transition-all" 
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Start Date</label>
+               </div>
+               <div className="space-y-3">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={12}/> Site Location</label>
                   <input 
-                    name="startDate" value={projectData.startDate} onChange={handleInputChange}
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    placeholder="City, Region" 
+                    className="w-full bg-slate-50 rounded-2xl px-6 py-4 text-[13px] font-bold outline-none border-none" 
+                  />
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="space-y-3">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Calendar size={12}/> Start Date</label>
+                  <input 
                     type="date"
-                    className="w-full p-3 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none focus:bg-white" 
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                    className="w-full bg-slate-50 rounded-2xl px-6 py-4 text-[13px] font-bold outline-none border-none" 
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Completion Date</label>
+               </div>
+               <div className="space-y-3">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><Target size={12}/> Completion Deadline</label>
                   <input 
-                    name="endDate" value={projectData.endDate} onChange={handleInputChange}
                     type="date"
-                    className="w-full p-3 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none focus:bg-white" 
+                    value={formData.endDate}
+                    onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                    className="w-full bg-slate-50 rounded-2xl px-6 py-4 text-[13px] font-bold outline-none border-none" 
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Project Budget (ETB)</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400">ETB</div>
-                    <input 
-                      name="projectBudget" value={projectData.projectBudget} onChange={handleInputChange}
-                      type="number"
-                      className="w-full pl-10 pr-3 py-3 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none focus:bg-white transition-all" 
-                    />
-                  </div>
-                </div>
-              </div>
+               </div>
             </div>
-          </section>
-
-          <section className="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="p-1.5 bg-slate-100 rounded-lg text-slate-600"><Settings size={14} /></div>
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-800">Operational Logic</h2>
-            </div>
-            
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Operational Status</label>
-                  <select 
-                    name="status" value={projectData.status} onChange={handleInputChange}
-                    className="w-full p-3 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none focus:bg-white appearance-none cursor-pointer"
-                  >
-                    <option value="PLANNING">Planning</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="ON_HOLD">On Hold</option>
-                    <option value="COMPLETED">Completed</option>
-                  </select>
-                </div>
-                <div className="flex justify-between items-center bg-slate-50/50 px-4 py-2 rounded-xl border border-slate-100">
-                  <div>
-                    <p className="text-[10px] font-black text-slate-800 uppercase tracking-tight">Visibility</p>
-                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tighter italic">Public/Private</p>
-                  </div>
-                  <button 
-                    onClick={() => setProjectData(p => ({...p, visibility: !p.visibility}))}
-                    className={`w-10 h-5 rounded-full transition-all relative ${projectData.visibility ? 'bg-blue-600' : 'bg-slate-200'}`}
-                  >
-                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${projectData.visibility ? 'right-1' : 'left-1'}`} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-2">
-                {['Low', 'Medium', 'High', 'Critical'].map((level) => (
-                  <button 
-                    key={level}
-                    type="button"
-                    onClick={() => setProjectData(prev => ({ ...prev, priority: level }))}
-                    className={`py-2 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${projectData.priority === level ? 'bg-[#0F172A] text-white border-slate-900 shadow-md' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'}`}
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
+          </div>
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-[#0F172A] text-white p-6 rounded-[1.5rem] shadow-xl shadow-slate-200">
-            <div className="flex items-center gap-2 mb-6 opacity-50">
-              <UserPlus size={14} />
-              <h2 className="text-[9px] font-black uppercase tracking-[0.2em]">Team Allocation</h2>
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+            <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] border-b pb-4">Financial Protocol</h4>
+            <div className="space-y-3">
+               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><DollarSign size={12}/> Capital Budget (ETB)</label>
+               <input 
+                type="number"
+                value={formData.projectBudget}
+                onChange={(e) => setFormData({...formData, projectBudget: e.target.value})}
+                className="w-full bg-blue-50/50 rounded-2xl px-6 py-4 text-[18px] font-black text-blue-600 outline-none border-none" 
+              />
             </div>
+          </div>
 
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Project Lead</p>
-                <div className="bg-white/5 p-3 rounded-xl flex items-center justify-between border border-white/5 group hover:bg-white/10 transition-all cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-black text-[10px]">SC</div>
-                    <div>
-                      <p className="text-[10px] font-black">Sarah Chen</p>
-                      <p className="text-[8px] text-slate-500 font-bold uppercase">Lead Engineer</p>
-                    </div>
-                  </div>
-                  <Edit3 size={12} className="text-slate-600 group-hover:text-white" />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {teamMembers.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between group">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-7 h-7 ${member.color} rounded flex items-center justify-center text-[9px] font-black shadow-lg shadow-black/20`}>
-                        {member.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black tracking-tight">{member.name}</p>
-                        <p className="text-[8px] text-slate-500 font-bold uppercase">{member.role}</p>
-                      </div>
-                    </div>
-                    <X size={12} className="text-slate-700 hover:text-rose-400 cursor-pointer transition-colors" />
-                  </div>
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm space-y-6">
+            <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] border-b pb-4">Priority & Phase</h4>
+            <div className="space-y-4">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Operational Criticality</label>
+              <div className="flex flex-wrap gap-2">
+                {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => (
+                  <button 
+                    key={p}
+                    onClick={() => setFormData({...formData, priority: p})}
+                    className={`px-4 py-2 rounded-xl text-[9px] font-black transition-all ${formData.priority === p ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}
+                  >
+                    {p}
+                  </button>
                 ))}
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-          <div className="bg-white p-5 rounded-[1.5rem] border border-slate-200">
-             <div className="space-y-4">
-                <div className="flex justify-between items-end">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Financial Load</span>
-                  <span className="text-xs font-black text-slate-900">ETB</span>
-                </div>
-                <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="w-full h-full bg-emerald-500 rounded-full"></div>
-                </div>
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter text-slate-700">
-                  <span>Total: {Number(projectData.projectBudget).toLocaleString()}</span>
-                </div>
-             </div>
+// --- HELPER COMPONENTS ---
+function StatusBadge({ status }) {
+  const styles = {
+    'PLANNING': 'bg-blue-600 text-white border-blue-600',
+    'ACTIVE': 'bg-emerald-500 text-white border-emerald-500',
+    'COMPLETED': 'bg-[#0F172A] text-white border-slate-900',
+    'ON HOLD': 'bg-amber-100 text-amber-600 border-amber-200',
+  };
+  return <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black border uppercase italic tracking-tighter shadow-sm ${styles[status] || 'bg-slate-100'}`}>{status}</span>;
+}
+
+function ViewProjectModal({ project, onClose }) {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
+      <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden border border-white/20">
+        <div className="p-10 bg-[#0F172A] text-white flex justify-between items-center relative overflow-hidden">
+          <div className="relative z-10">
+            <h3 className="text-2xl font-black uppercase tracking-tight">{project.projectName}</h3>
+            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mt-1">Operational Data Sheet</p>
+          </div>
+          <button onClick={onClose} className="p-3 hover:bg-white/10 rounded-2xl transition-all relative z-10"><X size={24}/></button>
+          <div className="absolute -right-10 -bottom-10 opacity-10">
+            <Building2 size={200} />
           </div>
         </div>
+        <div className="p-12 grid grid-cols-2 gap-10">
+          <DetailBlock label="Principal Client" value={project.clientName} icon={<HardHat size={14}/>}/>
+          <DetailBlock label="Financial Allocation" value={`ETB ${Number(project.projectBudget).toLocaleString()}`} icon={<DollarSign size={14}/>}/>
+          <DetailBlock label="Geographic Site" value={project.location} icon={<MapPin size={14}/>}/>
+          <DetailBlock label="Status" value={project.status} icon={<TrendingUp size={14}/>}/>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
-      </div>
+function DetailBlock({ label, value, icon }) {
+  return (
+    <div className="space-y-2">
+      <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">{icon} {label}</span>
+      <p className="text-[16px] font-black text-slate-900 uppercase italic tracking-tight">{value}</p>
     </div>
   );
 }
