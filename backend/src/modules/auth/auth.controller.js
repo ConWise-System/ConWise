@@ -201,9 +201,8 @@ const changeUserRole = catchAsync(async (req, res) => {
 
 const searchUser = catchAsync(async (req, res) => {
   const { q } = req.query;
-  const { companyId } = req.user.companyId;
 
-  const users = await userService.searchUser(q, companyId);
+  const users = await authService.searchUser(q, req.user?.companyId);
 
   res.status(200).json({
     success: true,
@@ -217,9 +216,8 @@ const searchUser = catchAsync(async (req, res) => {
 
 const filterUserByRole = catchAsync(async (req, res) => {
   const { role } = req.query;
-  const { companyId } = req.user.companyId;
 
-  const users = await userService.filterUserByRole(companyId, role);
+  const users = await authService.filterUserByRole(req.user?.companyId, role);
 
   res.status(200).json({
     success: true,

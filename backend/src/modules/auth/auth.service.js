@@ -1004,7 +1004,7 @@ export const searchUser = async (query, companyId,  limit = 20) => {
   return users.map(sanitizeUser);
 };
 
-// filter user by rol 
+// filter user by rol
 
 export const filterUserByRole = async (companyId, role) => {
   const users = await prisma.user.findMany({
@@ -1400,6 +1400,7 @@ const authService = {
   getMyProfile,
   createStaffUser,
   searchUser,
+  filterUserByRole,
   inviteUser,
   acceptInvite,
   listCompanyUsers,

@@ -176,10 +176,16 @@ router.patch(
   authController.changePassword,
 );
 
-router.get("/search", validate(searchUserSchema), authController.searchUser);
+router.get(
+  "/search",
+  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN),
+  validate(searchUserSchema, "query"),
+  authController.searchUser,
+);
 router.get(
   "/filter-user-by-role",
-  validate(filterUserByRoleSchema),
+  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN),
+  validate(filterUserByRoleSchema, "query"),
   authController.filterUserByRole,
 );
 

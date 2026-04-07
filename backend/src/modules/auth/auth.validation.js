@@ -195,8 +195,11 @@ export const inviteUserSchema = z
 
 export const searchUserSchema = z.object({
   q: z
-    .string()
-    .min(1, "Search query is required")
+    .string({
+      required_error: "Search query is required",
+      invalid_type_error: "Search query must be a string",
+    })
+    .min(1, "Search query cannot be empty")
     .max(100, "Search query is too long")
     .trim(),
 });
@@ -204,7 +207,6 @@ export const searchUserSchema = z.object({
 export const filterUserByRoleSchema = z.object({
   role: managedUserRoleSchema,
 });
-
 
 export const acceptInviteSchema = z
   .object({
