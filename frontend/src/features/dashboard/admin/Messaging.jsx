@@ -1,13 +1,12 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Send, Smile, Paperclip, MoreVertical, Search, Phone, Video, 
-  CheckCheck, X, Info, Bell, Hash, Camera, User, Edit3, FileText, 
-  Image as ImageIcon, ChevronLeft
+  Send, Smile, Paperclip, Phone, Video, 
+  X, Info, Bell, Camera, User, Edit3, FileText, 
+  ChevronLeft, Search
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import EmojiPicker from 'emoji-picker-react';
-
 
 const CONTACTS = [
   { id: 1, name: 'Sarah Jenkins', role: 'Project Manager', online: true, avatar: 'SJ', bio: 'Design is intelligence made visible.', phone: '+251 911 22 33 44' },
@@ -39,9 +38,10 @@ export default function SovereignChat() {
 
   const activeContact = CONTACTS.find(c => c.id === activeId);
 
+  // Auto-scroll to bottom only when messages change
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [histories, activeId]);
 
@@ -78,10 +78,11 @@ export default function SovereignChat() {
   };
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans text-slate-900">
+    /* OUTERMOST CONTAINER: Fixed to viewport height, no scroll allowed here */
+    <div className="flex h-screen w-full bg-[#F8FAFC] overflow-hidden font-sans text-slate-900">
       
-      {/* --- LEFT SIDEBAR: CONTACTS & MY PROFILE --- */}
-      <aside className="w-80 bg-white flex flex-col relative z-30 shrink-0 border-r border-slate-200 shadow-sm">
+      {/* --- LEFT SIDEBAR --- */}
+      <aside className="w-80 bg-white flex flex-col shrink-0 border-r border-slate-200 h-full relative z-30">
         <AnimatePresence>
           {showMyProfile && (
             <motion.div 
@@ -95,10 +96,11 @@ export default function SovereignChat() {
                 <span className="font-bold text-lg text-slate-800">Profile Settings</span>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar text-center">
+              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                {/* Profile content stays as it was */}
                 <div className="py-8 flex flex-col items-center">
                    <div className="relative mb-4">
-                      <div className="w-24 h-24 rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-4xl font-black shadow-xl text-white overflow-hidden border-2 border-white">
+                      <div className="w-24 h-24 rounded-[2.5rem] bg-indigo-600 flex items-center justify-center text-4xl font-black text-white overflow-hidden border-2 border-white shadow-xl">
                         {myProfile.avatarUrl ? <img src={myProfile.avatarUrl} alt="Profile" className="w-full h-full object-cover" /> : myProfile.avatar}
                       </div>
                       <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 p-2 bg-indigo-600 rounded-full shadow-lg text-white border-2 border-white">
@@ -126,11 +128,11 @@ export default function SovereignChat() {
           )}
         </AnimatePresence>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 shrink-0">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setShowMyProfile(true)}>
               <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg overflow-hidden group-hover:scale-110 transition-transform">
-                {myProfile.avatarUrl ? <img src={myProfile.avatarUrl} className="w-full h-full object-cover" /> : myProfile.avatar}
+                {myProfile.avatarUrl ? <img src={myProfile.avatarUrl} className="w-full h-full object-cover" alt="avatar" /> : myProfile.avatar}
               </div>
               <div>
                 <h1 className="text-slate-800 font-black text-xl tracking-tight leading-none">Sovereign</h1>
@@ -158,8 +160,10 @@ export default function SovereignChat() {
         </div>
       </aside>
 
-      {/* --- MAIN CHAT AREA --- */}
-      <main className="flex-1 flex flex-col bg-white relative">
+      {/* --- MAIN CHAT AREA: This fills the remaining screen width and doesn't scroll itself --- */}
+      <main className="flex-1 flex flex-col h-screen bg-white overflow-hidden relative">
+        
+        {/* Header - Stays at the top */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 flex items-center justify-between shrink-0 z-10">
           <div className="flex items-center gap-4 cursor-pointer group" onClick={() => setShowContactProfile(true)}>
             <div className="w-11 h-11 rounded-2xl bg-slate-100 text-indigo-600 flex items-center justify-center font-black border border-slate-200 group-hover:bg-indigo-50 transition-colors">{activeContact.avatar}</div>
@@ -175,7 +179,11 @@ export default function SovereignChat() {
           </div>
         </header>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar bg-slate-50/20">
+        {/* MESSAGE AREA: The only scrollable part. min-h-0 is essential here. */}
+        <div 
+          ref={scrollRef} 
+          className="flex-1 overflow-y-auto min-h-0 p-8 space-y-6 custom-scrollbar bg-slate-50/20"
+        >
           {histories[activeId]?.map((msg) => (
             <div key={msg.id} className={`flex ${msg.isMe ? 'justify-end' : 'justify-start'}`}>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -199,7 +207,8 @@ export default function SovereignChat() {
           ))}
         </div>
 
-        <footer className="p-6 bg-white border-t border-slate-100 relative">
+        {/* Footer - Stays at the bottom */}
+        <footer className="p-6 bg-white border-t border-slate-100 shrink-0 relative">
           <AnimatePresence>
             {showEmoji && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
@@ -227,15 +236,15 @@ export default function SovereignChat() {
         </footer>
       </main>
 
-     
+      {/* --- RIGHT SIDEBAR: Contact Profile --- */}
       <AnimatePresence>
         {showContactProfile && (
           <motion.aside
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="w-80 bg-white border-l border-slate-200 flex flex-col z-40 shadow-2xl"
+            className="w-80 bg-white border-l border-slate-200 flex flex-col h-full z-40 shadow-2xl shrink-0"
           >
-            <div className="p-6 flex items-center justify-between border-b border-slate-50">
+            <div className="p-6 flex items-center justify-between border-b border-slate-50 shrink-0">
               <span className="font-black text-xs uppercase tracking-[0.2em] text-slate-400">Contact Details</span>
               <button onClick={() => setShowContactProfile(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400">
                 <X size={20}/>
@@ -274,13 +283,13 @@ export default function SovereignChat() {
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
       `}</style>
     </div>
   );
 }
 
-
-
+// Sub-components
 function EditableItem({ icon, label, value, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value);
