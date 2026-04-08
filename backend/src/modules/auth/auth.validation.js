@@ -249,7 +249,7 @@ export const loginSchema = z.object({
 });
 
 export const verifyAccountSchema = z.object({
-  identifier: z.string().trim().min(1, "Email or phone number is required."),
+  // identifier: z.string().trim().min(1, "Email or phone number is required."),
   code: verificationCodeSchema,
 });
 

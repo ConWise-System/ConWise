@@ -4,7 +4,6 @@ import authService from "./auth.service.js";
 const registerCompany = catchAsync(async (req, res) => {
   try {
     const result = await authService.registerCompany(req.body);
-
     return res.status(201).json({
       success: true,
       message: result.message,
