@@ -1,4 +1,4 @@
-import ProjectManagement from "../../../features/dashboard/ProjectManagement"
+import ProjectManagement from "../../../../features/dashboard/admin/ProjectManagement"
 export default function project(){
     return(
         <div>

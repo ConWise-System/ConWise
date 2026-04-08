@@ -1,4 +1,4 @@
-import Messaging from "../../../features/dashboard/Messaging";
+import Messaging from "../../../../features/dashboard/admin/Messaging";
 
 export default function Message(){
     return (
