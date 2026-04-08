@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Bell, UserCircle, Settings, LogOut } from 'lucide-react';
-import Sidebar from '../../components/sidebar' // Ensure this path matches your project
+import Sidebar from '../../../components/sidebar' // Ensure this path matches your project
 import { useRouter, usePathname } from 'next/navigation';
 
 export default function DashboardLayout({ children }) {

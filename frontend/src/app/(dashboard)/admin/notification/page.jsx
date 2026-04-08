@@ -1,4 +1,4 @@
-import UserNotification from "../../../features/dashboard/UserNotification";
+import UserNotification from "../../../../features/dashboard/admin/UserNotification";
 
 export default function Notification(){
     return (

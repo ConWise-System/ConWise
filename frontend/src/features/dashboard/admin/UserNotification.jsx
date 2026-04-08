@@ -49,7 +49,8 @@ export default function NotificationCenter() {
         
         <header className="flex justify-between items-end mb-12">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter italic">Notification Center</h1>
+            {/* Removed the 'italic' class here */}
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Notification Center</h1>
             <p className="text-[13px] text-slate-500 font-medium mt-1">Real-time system monitoring & alerts.</p>
           </div>
           {notifications.length > 0 && (
