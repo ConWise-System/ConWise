@@ -1,3 +1,4 @@
+import { UserProvider } from '../context/UserContext';
 import "./globals.css";
 import { Inter } from "next/font/google";
 
@@ -21,7 +22,9 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="data:," />
       </head>
       <body className="antialiased selection:bg-slate-900 selection:text-white">
-        {children}
+        <UserProvider>
+          {children}
+        </UserProvider>
       </body>
     </html>
   );

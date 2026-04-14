@@ -7,11 +7,14 @@ import { Mail, Lock, ArrowRight, Globe, ShieldCheck, UserPlus } from 'lucide-rea
 import Link from 'next/link';
 import Axios from '../../../utils/Axios'; 
 import summeryApi from '../../common/summeryApi';
+import { useUser } from '../../context/UserContext';
+
 
 export default function LoginForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const { fetchUserDetails } = useUser()
   
   // 1. Logic: Form State
   const [data, setData] = useState({
@@ -39,6 +42,7 @@ export default function LoginForm() {
       if (response.data.success) {
         localStorage.setItem('accessToken', response.data.data.accessToken);
         localStorage.setItem('refreshToken', response.data.data.refreshToken);
+        await fetchUserDetails();
         router.push('/admin/dashboardHome');
       }
     } catch (err) {

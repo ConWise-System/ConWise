@@ -16,6 +16,10 @@ const summeryApi = {
     changePassword:{
         url:"/api/auth/change-password",
         method:"patch"
+    },
+    userDetails:{
+        url:"/api/auth/me",
+        method:"get"
     }
 }
 
