@@ -20,6 +20,14 @@ const summeryApi = {
     userDetails:{
         url:"/api/auth/me",
         method:"get"
+    },
+    addPersonnel:{
+        url:"/api/auth/users",
+        method:"post"
+    },
+    getUsers:{
+        url:"/api/auth/users",
+        method:"get"
     }
 }
 

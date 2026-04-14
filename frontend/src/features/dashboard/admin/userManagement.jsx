@@ -1,5 +1,7 @@
 "use client";
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import Axios from '../../../../utils/Axios'; // Adjust path
+import summeryApi from '../../../common/summeryApi'
 import { 
   Search, UserPlus, Edit3, Trash2, Shield, User, 
   Upload, Mail, Briefcase, Phone, Lock, X, ShieldCheck,
@@ -12,15 +14,43 @@ const INITIAL_USERS = [
 ];
 
 export default function UserManagementSystem() {
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeRoleFilter, setActiveRoleFilter] = useState("All");
   const [isCreating, setIsCreating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true)
+
+  //function to fetch personnel from the backend
+  const fetchPersonnel = async () => {
+    setIsLoading(true);
+    try {
+      // Assuming you have a getPersonnel endpoint in summeryApi
+      const response = await Axios({...summeryApi.getUsers});
+      console.log(response.data.data)
+      if(response.data.success) {
+        setUsers(response.data.data.users);
+      }
+    } catch (error) {
+      console.error("Failed to load personnel", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPersonnel();
+  }, []);
+  
+  const handleCreateSuccess = () => {
+    setIsCreating(false);
+    fetchPersonnel(); // Refresh the list to show the new user
+  };
 
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
       const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
-      const matchesSearch = fullName.includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = fullName.includes(searchQuery.toLowerCase()) || 
+                     (user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
       const matchesRole = activeRoleFilter === "All" || user.role === activeRoleFilter;
       return matchesSearch && matchesRole;
     });
@@ -32,7 +62,12 @@ export default function UserManagementSystem() {
     deactivated: filteredUsers.filter(u => u.status === 'Deactivated').length
   }), [filteredUsers]);
 
-  if (isCreating) return <CreateUserPage onCancel={() => setIsCreating(false)} />;
+  if (isCreating) return (
+    <CreateUserPage 
+      onCancel={() => setIsCreating(false)} 
+      onSuccess={handleCreateSuccess} 
+    />
+  )
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
@@ -69,7 +104,7 @@ export default function UserManagementSystem() {
         </div>
         
         <div className="flex flex-wrap gap-1.5">
-          {['All', 'ADMIN', 'PROJECT MANAGER', 'SITE ENGINEER'].map(role => (
+          {['All', 'ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER'].map(role => (
             <button
               key={role}
               onClick={() => setActiveRoleFilter(role)}
@@ -127,25 +162,47 @@ export default function UserManagementSystem() {
   );
 }
 
-function CreateUserPage({ onCancel }) {
+function CreateUserPage({ onCancel,onSuccess }) {
   const [imagePreview, setImagePreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    firstName: "Firomsa",
-    lastName: "Hika",
-    email: "admin@abcconstruction.com",
-    phone: "+25191623456",
-    role: "PLATFORM_ADMIN",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    role: "SITE_ENGINEER",
     status: "PENDING_VERIFICATION",
     isVerified: false,
-    
-   
-    createdAt: "2026-04-01T22:57:55.925Z"
+    createdAt: new Date().toISOString()
   });
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    // Basic Validation
+    if(!formData.firstName || !formData.email) {
+      return console.log("Essential Identity Details Missing");
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await Axios({
+        ...summeryApi.addPersonnel,
+        data: formData
+      });
+
+      if (response.data.success) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.log("Authorization Protocol Failed");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -208,8 +265,20 @@ function CreateUserPage({ onCancel }) {
             </div>
             
             <div className="flex gap-3 w-full md:w-auto">
-              <button onClick={onCancel} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition-all">Discard</button>
-              <button className="flex-1 md:flex-none px-10 py-3 bg-[#0F172A] text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-blue-600 active:scale-95 transition-all">Finalize Auth</button>
+              <button 
+                onClick={onCancel} 
+                disabled={isSubmitting}
+                className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition-all disabled:opacity-50"
+              >
+                Discard
+              </button>
+              <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex-1 md:flex-none px-10 py-3 bg-[#0F172A] text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-blue-600 active:scale-95 transition-all disabled:bg-slate-400"
+              >
+                {isSubmitting ? "Processing..." : "Finalize Auth"}
+              </button>
             </div>
           </div>
         </div>
