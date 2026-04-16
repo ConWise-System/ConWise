@@ -50,7 +50,7 @@ export default function UserManagementSystem() {
     return users.filter(user => {
       const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
       const matchesSearch = fullName.includes(searchQuery.toLowerCase()) || 
-                     (user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+                    (user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
       const matchesRole = activeRoleFilter === "All" || user.role === activeRoleFilter;
       return matchesSearch && matchesRole;
     });

@@ -1,11 +1,13 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, Edit3, ChevronRight, MapPin, Building2, Plus, 
   Trash2, Eye, Briefcase, Calendar, DollarSign, 
   Search, ArrowLeft, Target, HardHat, TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Axios from '../../../../utils/Axios';
+import summeryApi from '@/common/summeryApi';
 
 // --- INITIAL DATA ---
 const INITIAL_PROJECTS = [
@@ -26,9 +28,66 @@ export default function ProjectManagementSystem() {
   const [view, setView] = useState('list'); 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProject, setSelectedProject] = useState(null);
-  const [projects, setProjects] = useState(INITIAL_PROJECTS);
+  const [projects, setProjects] = useState([]);
   const [editingProject, setEditingProject] = useState(null);
+  const [loading, setLoading] = useState(false);
 
+  const fetchProjects = async () => {
+    setLoading(true);
+    try {
+      const response = await Axios({
+        ...summeryApi.getProjects // Assuming this exists in your summeryApi
+      });
+      console.log(response.data.success)
+      if (response.data.success) {
+        setProjects(response.data.data);
+      }
+    } catch (error) {
+      console.error("Fetch Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  // --- 2. CREATE / UPDATE PROJECT ---
+  const saveProject = async (projectData) => {
+    try {
+      const isEditing = !!editingProject;
+      const sanitizedData = {
+        ...projectData,
+        // 1. Ensure budget is a number (or 0 if empty)
+        projectBudget: Number(projectData.projectBudget) || 0,
+        
+        // 2. Convert empty strings to null for PostgreSQL DATE compatibility
+        startDate: projectData.startDate === "" ? null : projectData.startDate,
+        endDate: projectData.endDate === "" ? null : projectData.endDate,
+      };
+      // Select the correct API configuration
+      const config = isEditing 
+        ? summeryApi.updateProject // Make sure to define this in summeryApi
+        : summeryApi.createProject;
+
+      const response = await Axios({
+        ...config,
+        url: isEditing ? `${config.url}/${editingProject._id}` : config.url,
+        data: projectData,
+      });
+
+      if (response.data.success) {
+        // Refresh list from server for accuracy
+        await fetchProjects();
+        setView('list');
+        setEditingProject(null);
+      }
+    } catch (error) {
+      const msg = error.response?.data?.message || "Operation failed";
+      alert(msg);
+    }
+  };
   const filteredProjects = useMemo(() => {
     return projects.filter(p => 
       p.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -51,15 +110,7 @@ export default function ProjectManagementSystem() {
     setProjects(projects.filter(p => p.id !== id));
   };
 
-  const saveProject = (projectData) => {
-    if (editingProject) {
-      setProjects(projects.map(p => p.id === editingProject.id ? { ...projectData, id: p.id } : p));
-    } else {
-      setProjects([{ ...projectData, id: Date.now() }, ...projects]);
-    }
-    setView('list');
-  };
-
+  
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-slate-900 font-sans antialiased p-4 md:p-8">
       <AnimatePresence mode="wait">
@@ -171,6 +222,7 @@ function ProjectRegistry({ projects, searchTerm, setSearchTerm, onCreate, onEdit
 
 // --- PROJECT FORM COMPONENT ---
 function ProjectForm({ initialData, onSave, onCancel }) {
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState(initialData || {
     projectName: '',
     location: '',
@@ -181,6 +233,12 @@ function ProjectForm({ initialData, onSave, onCancel }) {
     status: 'PLANNING',
     priority: 'MEDIUM'
   });
+
+  const handleCommit = async () => {
+    setSubmitting(true);
+    await onSave(formData);
+    setSubmitting(false);
+  };
 
   return (
     <div className="max-w-5xl mx-auto py-4 space-y-8">
@@ -195,9 +253,27 @@ function ProjectForm({ initialData, onSave, onCancel }) {
         </div>
         <div className="flex gap-3">
             <button onClick={onCancel} className="px-6 py-3.5 bg-white border border-slate-200 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50">Discard</button>
-            <button onClick={() => onSave(formData)} className="px-10 py-3.5 bg-[#0F172A] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-blue-900/20 hover:bg-blue-600 transition-all active:scale-95">
-              Commit Project
-            </button>
+            <button 
+  // 1. Prevents duplicate API calls while the request is in flight
+  disabled={submitting}
+  
+  // 2. Calls the async wrapper that handles the Axios request
+  onClick={handleCommit} 
+  
+  // 3. Added 'disabled:bg-slate-400' and 'disabled:cursor-not-allowed' for better UX
+  className="px-10 py-3.5 bg-[#0F172A] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-blue-600 transition-all active:scale-95 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+>
+  {/* 4. Dynamic feedback: Shows "Processing..." and optionally a spinner icon */}
+  {submitting ? (
+    <>
+      <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+      Processing...
+    </>
+  ) : (
+    "Commit Project"
+  )}
+</button>
+          
         </div>
       </header>
 
@@ -266,7 +342,7 @@ function ProjectForm({ initialData, onSave, onCancel }) {
                <input 
                 type="number"
                 value={formData.projectBudget}
-                onChange={(e) => setFormData({...formData, projectBudget: e.target.value})}
+                onChange={(e) => setFormData({...formData, projectBudget: Number(e.target.value)})}
                 className="w-full bg-blue-50/50 rounded-2xl px-6 py-4 text-[18px] font-black text-blue-600 outline-none border-none" 
               />
             </div>

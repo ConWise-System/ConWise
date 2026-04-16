@@ -28,6 +28,18 @@ const summeryApi = {
     getUsers:{
         url:"/api/auth/users",
         method:"get"
+    },
+    createProject:{
+        url:"/api/projects",
+        method:"post"
+    },
+    getProjects:{
+        url:"/api/projects",
+        method:"get"
+    },
+    deleteProject:{
+        url:"/api/projects",
+        method:"delete"
     }
 }
 
