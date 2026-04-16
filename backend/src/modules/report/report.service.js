@@ -46,7 +46,25 @@ const getReportsByProject = async (projectId) => {
   });
 };
 
+const downloadReport = async (reportId) => {
+  return await prisma.report.findUnique({
+    where: { id: Number(reportId) },
+    include: {
+      user: {
+        select: { firstName: true, lastName: true, email: true },
+      },
+      project: {
+        select: { projectName: true, location: true, projectBudget: true },
+      },
+      company: {
+        select: { name: true, address: true },
+      },
+    },
+  });
+};
+
 export default {
   createReport,
   getReportsByProject,
+  downloadReport,
 };

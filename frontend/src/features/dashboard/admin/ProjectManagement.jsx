@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, Edit3, ChevronRight, MapPin, Building2, Plus, 
   Trash2, Eye, Briefcase, Calendar, DollarSign, 
-  Search, ArrowLeft, Target, HardHat, TrendingUp
+  Search, ArrowLeft, Target, HardHat, TrendingUp,AlertCircle,ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Axios from '../../../../utils/Axios';
@@ -31,6 +31,7 @@ export default function ProjectManagementSystem() {
   const [projects, setProjects] = useState([]);
   const [editingProject, setEditingProject] = useState(null);
   const [loading, setLoading] = useState(false);
+
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -106,10 +107,24 @@ export default function ProjectManagementSystem() {
     setView('form');
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async(id) => {
     setProjects(projects.filter(p => p.id !== id));
+    try{
+      const response = await Axios({
+        ...summeryApi.deleteProject,
+        url: `${summeryApi.deleteProject.url}/${id}`
+      });
+      if (response.data.success) {
+        // 3. Update UI State (Remove from the list)
+        console.log('successfully deleted!')
+        setProjects(prevProjects => prevProjects.filter(p => p.id !== id));
+      }
+    }catch(error){
+      console.error("Deletion Protocol Failed:", error);
+    }
   };
 
+  
   
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-slate-900 font-sans antialiased p-4 md:p-8">
@@ -142,12 +157,45 @@ export default function ProjectManagementSystem() {
           <ViewProjectModal project={selectedProject} onClose={() => setSelectedProject(null)} />
         )}
       </AnimatePresence>
+       
     </div>
   );
 }
 
 // --- TABLE VIEW COMPONENT ---
 function ProjectRegistry({ projects, searchTerm, setSearchTerm, onCreate, onEdit, onDelete, onView }) {
+  const [deleteTarget, setDeleteTarget] = useState(null); // Stores the project object
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const confirmDeletion = async () => {
+    if (!deleteTarget) return;
+  
+    const idToPurge = deleteTarget.id; // Capture ID immediately
+    setIsDeleting(true);
+  
+    try {
+      const response = await Axios({
+        method: summeryApi.deleteProject.method,
+        url: `${summeryApi.deleteProject.url}/${idToPurge}`,
+      });
+  
+      if (response.data.success) {
+        // 1. CLEAR THE MODAL FIRST
+        setDeleteTarget(null); 
+        
+        // 2. THEN UPDATE THE LIST
+        setProjects(prev => prev.filter(p => p.id !== idToPurge));
+        
+        console.log("Registry updated: Project purged.");
+      }
+    } catch (error) {
+      console.error("Purge Protocol Failed", error);
+      // If it fails, we still want to close the modal and stop the loading state
+      setDeleteTarget(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <header className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-slate-200 pb-6">
@@ -205,7 +253,12 @@ function ProjectRegistry({ projects, searchTerm, setSearchTerm, onCreate, onEdit
                 <div className="flex gap-1">
                   <button onClick={() => onView(p)} className="p-2.5 text-slate-300 hover:text-blue-600 hover:bg-white rounded-xl transition-all shadow-none hover:shadow-sm"><Eye size={16}/></button>
                   <button onClick={() => onEdit(p)} className="p-2.5 text-slate-300 hover:text-amber-600 hover:bg-white rounded-xl transition-all shadow-none hover:shadow-sm"><Edit3 size={16}/></button>
-                  <button onClick={() => onDelete(p.id)} className="p-2.5 text-slate-300 hover:text-rose-600 hover:bg-white rounded-xl transition-all shadow-none hover:shadow-sm"><Trash2 size={16}/></button>
+                  <button 
+                    onClick={() => setDeleteTarget(p)} // Pass the whole project object
+                    className="p-1.5 hover:bg-rose-50 rounded text-slate-400 hover:text-rose-600 transition-colors"
+                  >
+                    <Trash2 size={12}/>
+                  </button>
                 </div>
               </div>
             </div>
@@ -216,6 +269,59 @@ function ProjectRegistry({ projects, searchTerm, setSearchTerm, onCreate, onEdit
           )}
         </div>
       </div>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" 
+            onClick={() => setDeleteTarget(null)} 
+          />
+          
+              {/* Modal Content */}
+              <div className="relative bg-white w-full max-w-md rounded-[2rem] border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-8 text-center">
+                  <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-rose-100">
+                    <AlertCircle size={32} />
+                  </div>
+                  
+                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter">
+                    Confirm <span className="text-rose-500">Deletion</span>
+                  </h3>
+                  
+                  <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-2 px-4">
+                    You are about to deleting <span className="font-black text-slate-900">"{deleteTarget.projectName}"</span> from the registry. This action will revoke all associated access nodes and cannot be undone.
+                  </p>
+
+                  <div className="mt-8 flex gap-3">
+                    <button 
+                      onClick={() => setDeleteTarget(null)}
+                      className="flex-1 px-6 py-3 bg-slate-50 text-slate-500 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+                    >
+                      Abort
+                    </button>
+                    <button 
+                      onClick={confirmDeletion}
+                      disabled={isDeleting}
+                      className="flex-1 px-6 py-3 bg-rose-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-rose-200 hover:bg-rose-700 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isDeleting ? "Deleting..." : "Confirm Delete"}
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Visual Branding Footer */}
+                <div className="bg-slate-50 px-8 py-3 border-t border-slate-100 flex justify-between items-center">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Sovereign Auth Control</span>
+                  <div className="flex gap-1">
+                    <div className="w-1 h-1 rounded-full bg-rose-500" />
+                    <div className="w-1 h-1 rounded-full bg-slate-200" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
     </div>
   );
 }
