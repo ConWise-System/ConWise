@@ -44,6 +44,10 @@ const summeryApi = {
     reports:{
         url:"/api/reports",
         method:"post"
+    },
+    updateProfile:{
+        url:`/api/auth/users`,
+        method:"patch"
     }
 }
 

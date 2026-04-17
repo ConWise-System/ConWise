@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Horizon Executive Terminal",
+  title: "ConWise Admin Dashboard",
   description: "Sovereign Executive Dashboard",
   icons: {
     icon: [],

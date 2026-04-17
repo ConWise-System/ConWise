@@ -92,7 +92,7 @@ export default function DashboardLayout({ children }) {
                 className="flex items-center gap-3 cursor-pointer p-1.5 pr-5 bg-[#0a1120] rounded-2xl shadow-xl border border-slate-800 transition-transform active:scale-95"
               >
                 <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-indigo-400 rounded-xl flex items-center justify-center text-white font-black text-sm overflow-hidden">
-                  {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : getInitials(user?.firstName)}
+                  
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black text-white leading-none">
