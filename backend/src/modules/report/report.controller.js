@@ -120,8 +120,25 @@ const downloadReport = catchAsync(async (req, res) => {
   doc.end();
 });
 
+const reportFilter = catchAsync(async (req, res) => {
+  const { reportType } = req.query;
+
+  const report = await reportService.reportFilter(reportType);
+
+  res.status(200).json({
+    success: true,
+    message:
+      report.length > 0 ? "Report found successfully" : "No report found",
+    data: {
+      report,
+      count: report.length,
+    },
+  });
+});
+
 export default {
   submitReport,
   getProjectReports,
   downloadReport,
+  reportFilter,
 };

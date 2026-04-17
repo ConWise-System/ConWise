@@ -63,8 +63,18 @@ const downloadReport = async (reportId) => {
   });
 };
 
+// filter report by reportType DAILY OR WEEKLY
+const filterReport = async (reportType) => {
+  return await prisma.report.findMany({
+    where: {
+      reportType: reportType,
+    },
+  });
+};
+
 export default {
   createReport,
   getReportsByProject,
   downloadReport,
+  filterReport,
 };

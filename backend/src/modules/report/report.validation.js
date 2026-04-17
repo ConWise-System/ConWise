@@ -23,3 +23,14 @@ export const reportIdParamSchema = z.object({
     reportId: z.string().regex(/^\d+$/, "Invalid ID").transform(Number),
   }),
 });
+
+const managedReportTypeSchema = z.enum([
+  REPORT_TYPE.DAILY_SITE_REPORT,
+  REPORT_TYPE.PROGRESS_REPORT,
+  REPORT_TYPE.INCIDENT_REPORT,
+  REPORT_TYPE.QUALITY_REPORT,
+]);
+
+export const filerReportByTypeSchema = z.object({
+  reportType: managedReportTypeSchema,
+});
