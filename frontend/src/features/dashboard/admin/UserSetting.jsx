@@ -70,7 +70,7 @@ export default function SovereignExecutiveSettings() {
             }`}
           >
             {isSyncing ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-            {isSyncing ? "Syncing..." : "Update Vault"}
+            {isSyncing ? "Syncing..." : "Update Profile"}
           </button>
         </div>
       </nav>

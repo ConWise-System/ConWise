@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Download, FileText, ChevronLeft, Plus, 
   Send, CheckCircle2, BarChart3, Activity, Trash2, 
@@ -7,6 +7,8 @@ import {
   Calendar, Layers, MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Axios from '../../../../utils/Axios';
+import summeryApi from '@/common/summeryApi';
 
 // --- DATA INITIALIZATION ---
 const INITIAL_REPORTS = [
@@ -101,6 +103,7 @@ function AnalyticsDashboard({ onCreateReport, reports, onDelete }) {
 
 // --- FULL FORM (FIXED VISIBILITY) ---
 function DailySiteReportForm({ onBack, onSubmit }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     reportTitle: '',
     reportType: 'DAILY_SITE_REPORT',
@@ -124,11 +127,47 @@ function DailySiteReportForm({ onBack, onSubmit }) {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Pass the file object up to your submission handler
-    onSubmit({ ...formData, id: Date.now() });
+    
+    // 1. Prepare FormData for multipart/form-data transmission
+    const dataToSend = new FormData();
+    
+    // Append all text fields from state
+    Object.keys(formData).forEach(key => {
+      if (key !== 'progressPhoto') {
+        dataToSend.append(key, formData[key]);
+      }
+    });
+
+    // Append the file if it exists
+    if (formData.progressPhoto) {
+      dataToSend.append('progressPhoto', formData.progressPhoto);
+    }
+
+    try {
+      const response = await Axios({
+        ...summeryApi.reports,
+        data:dataToSend
+      })
+
+      if (response.data.success) {
+        const savedReport = await response.json();
+        // Pass the saved data back to the parent to update the dashboard
+        onSubmit(savedReport);
+      } else {
+        alert("Failed to submit report. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error submitting report:", error);
+    }
   };
+  useEffect(() => {
+    // Cleanup the preview URL to prevent memory leaks
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview])
 
   return (
     <div className="max-w-[800px] mx-auto p-6 md:py-12">
@@ -215,9 +254,14 @@ function DailySiteReportForm({ onBack, onSubmit }) {
 
         <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
           <button type="button" onClick={onBack} className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">Cancel Draft</button>
-          <button type="submit" className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold flex items-center gap-3 hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
-            <Send size={18} /> Submit Report
-          </button>
+          <button 
+          type="submit" 
+            disabled={isSubmitting}
+            className={`px-10 py-4 bg-blue-600 text-white rounded-xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-blue-200 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 active:scale-95'}`}
+          >
+            <Send size={18} /> 
+            {isSubmitting ? "Uploading..." : "Submit Report"}
+        </button>
         </div>
       </form>
     </div>

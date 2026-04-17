@@ -40,6 +40,10 @@ const summeryApi = {
     deleteProject:{
         url:"/api/projects",
         method:"delete"
+    },
+    reports:{
+        url:"/api/reports",
+        method:"post"
     }
 }
 

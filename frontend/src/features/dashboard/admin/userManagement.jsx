@@ -77,7 +77,7 @@ export default function UserManagementSystem() {
             <span className="bg-blue-600 h-1 w-4 rounded-full"></span>
             <span className="text-[8px] font-black tracking-[0.25em] text-blue-600 uppercase">Identity Access</span>
           </div>
-          <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">Personnel <span className="text-slate-400 italic font-medium">Directory</span></h1>
+          <h1 className="text-xl  tracking-tight text-slate-900 uppercase">Personnel Directory</h1>
         </div>
         <button 
           onClick={() => setIsCreating(true)} 
@@ -148,7 +148,7 @@ export default function UserManagementSystem() {
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
+                  <div className="flex justify-end gap-2 opacity-100 transition-opacity text-slate-400">
                     <button className="p-1.5 hover:bg-slate-100 rounded hover:text-slate-900 transition-colors"><Edit3 size={12}/></button>
                     <button className="p-1.5 hover:bg-rose-50 rounded hover:text-rose-600 transition-colors"><Trash2 size={12}/></button>
                   </div>
