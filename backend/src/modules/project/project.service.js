@@ -1,8 +1,5 @@
-import { PrismaClient } from "../../generated/prisma/index.js";
+import prisma from "../../config/prisma.js";
 import { ROLES } from "../../config/constants.js";
-
-const prisma = new PrismaClient();
-
 // Helper to parse and validate dates
 const parseDate = (value) => {
   if (!value) return null;
@@ -191,9 +188,17 @@ export const projectService = {
     }
 
     // Delete the project — cascade handles all related records
-    await prisma.project.delete({
-      where: { id: projectId },
-    });
+    try {
+      await prisma.project.delete({
+        where: { id: projectId },
+      });
+    } catch (error) {
+      if (error.code === "P2025") {
+        // Record was deleted concurrently, treat as not found
+        return null;
+      }
+      throw error;
+    }
 
     return {
       id: projectId,
