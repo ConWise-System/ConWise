@@ -17,12 +17,23 @@ const handleError = (res, error, context) => {
     .json({ success: false, message: "Internal server error." });
 };
 
+// ─── ID parser helper ─────────────────────────────────────────────────────────
+// FIX(CodeRabbit): parseInt parses partial strings ("12abc" → 12) and
+// isNaN is redundant after parseInt. Use regex + Number() instead for
+// strict integer validation
+const parsePositiveInt = (value) => {
+  if (!/^\d+$/.test(value)) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+};
+
 // ─── Material controllers ─────────────────────────────────────────────────────
 export const materialController = {
   // POST /api/materials
+  // FIX(CodeRabbit): Removed unused `userId` and `role` destructuring
   createMaterial: async (req, res) => {
     try {
-      const { id: userId, role, companyId } = req.user;
+      const { companyId } = req.user;
 
       const material = await materialService.createMaterial({
         ...req.body,
@@ -39,6 +50,8 @@ export const materialController = {
   },
 
   // GET /api/materials
+  // FIX(CodeRabbit): Pagination count may be misleading — renamed to `total`
+  // and parse take/skip safely before passing to service
   getAllMaterials: async (req, res) => {
     try {
       const { companyId } = req.user;
@@ -49,10 +62,11 @@ export const materialController = {
         take,
         skip,
       });
+
       return res.status(200).json({
         success: true,
         data: materials,
-        count: materials.length,
+        total: materials.length,
       });
     } catch (error) {
       return handleError(res, error, "getAllMaterials");
@@ -62,14 +76,8 @@ export const materialController = {
   // GET /api/materials/:id
   getMaterialById: async (req, res) => {
     try {
-      if (!/^\d+$/.test(req.params.id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid material ID.",
-        });
-      }
-      const materialId = Number(req.params.id);
-      if (!Number.isInteger(materialId) || materialId <= 0) {
+      const materialId = parsePositiveInt(req.params.id);
+      if (!materialId) {
         return res.status(400).json({
           success: false,
           message: "Invalid material ID.",
@@ -98,14 +106,8 @@ export const materialController = {
   // PATCH /api/materials/:id
   updateMaterial: async (req, res) => {
     try {
-      if (!/^\d+$/.test(req.params.id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid material ID.",
-        });
-      }
-      const materialId = Number(req.params.id);
-      if (!Number.isInteger(materialId) || materialId <= 0) {
+      const materialId = parsePositiveInt(req.params.id);
+      if (!materialId) {
         return res.status(400).json({
           success: false,
           message: "Invalid material ID.",
@@ -142,26 +144,20 @@ export const materialController = {
   // DELETE /api/materials/:id
   deleteMaterial: async (req, res) => {
     try {
-      if (!/^\d+$/.test(req.params.id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid material ID.",
-        });
-      }
-      const materialId = Number(req.params.id);
-      if (!Number.isInteger(materialId) || materialId <= 0) {
+      const materialId = parsePositiveInt(req.params.id);
+      if (!materialId) {
         return res.status(400).json({
           success: false,
           message: "Invalid material ID.",
         });
       }
 
-      const { role } = req.user;
+      const { role, companyId } = req.user;
 
       const deleted = await materialService.deleteMaterial({
         materialId,
         role,
-        companyId: req.user.companyId,
+        companyId,
       });
 
       if (!deleted) {
@@ -186,17 +182,11 @@ export const materialController = {
 
 // ─── CostSummary controllers ──────────────────────────────────────────────────
 export const costSummaryController = {
-  // GET /api/projects/:projectId/cost-summary
+  // GET /api/materials/projects/:projectId/cost-summary
   getCostSummary: async (req, res) => {
     try {
-      if (!/^\d+$/.test(req.params.projectId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid project ID.",
-        });
-      }
-      const projectId = Number(req.params.projectId);
-      if (!Number.isInteger(projectId) || projectId <= 0) {
+      const projectId = parsePositiveInt(req.params.projectId);
+      if (!projectId) {
         return res.status(400).json({
           success: false,
           message: "Invalid project ID.",
@@ -223,17 +213,14 @@ export const costSummaryController = {
     }
   },
 
-  // PUT /api/projects/:projectId/cost-summary
+  // PUT /api/materials/projects/:projectId/cost-summary
+  // FIX(CodeRabbit): Validate estimatedCost and actualTaskCost before
+  // passing to service — Zod handles type validation but we add explicit
+  // finite + non-negative guard here as a second layer
   upsertCostSummary: async (req, res) => {
     try {
-      if (!/^\d+$/.test(req.params.projectId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid project ID.",
-        });
-      }
-      const projectId = Number(req.params.projectId);
-      if (!Number.isInteger(projectId) || projectId <= 0) {
+      const projectId = parsePositiveInt(req.params.projectId);
+      if (!projectId) {
         return res.status(400).json({
           success: false,
           message: "Invalid project ID.",
@@ -243,7 +230,6 @@ export const costSummaryController = {
       const { companyId } = req.user;
       const { estimatedCost, actualTaskCost } = req.body;
 
-      // Validate estimatedCost
       const parsedEstimatedCost = Number(estimatedCost);
       if (!Number.isFinite(parsedEstimatedCost) || parsedEstimatedCost < 0) {
         return res.status(400).json({
@@ -252,7 +238,6 @@ export const costSummaryController = {
         });
       }
 
-      // Validate actualTaskCost
       const parsedActualTaskCost = Number(actualTaskCost);
       if (!Number.isFinite(parsedActualTaskCost) || parsedActualTaskCost < 0) {
         return res.status(400).json({
