@@ -22,7 +22,12 @@ export const materialController = {
   // POST /api/materials
   createMaterial: async (req, res) => {
     try {
-      const material = await materialService.createMaterial(req.body);
+      const { id: userId, role, companyId } = req.user;
+
+      const material = await materialService.createMaterial({
+        ...req.body,
+        companyId,
+      });
       return res.status(201).json({
         success: true,
         message: "Material created successfully.",
@@ -36,7 +41,14 @@ export const materialController = {
   // GET /api/materials
   getAllMaterials: async (req, res) => {
     try {
-      const materials = await materialService.getAllMaterials();
+      const { companyId } = req.user;
+      const { take, skip } = req.query;
+
+      const materials = await materialService.getAllMaterials({
+        companyId,
+        take,
+        skip,
+      });
       return res.status(200).json({
         success: true,
         data: materials,
@@ -50,15 +62,26 @@ export const materialController = {
   // GET /api/materials/:id
   getMaterialById: async (req, res) => {
     try {
-      const materialId = parseInt(req.params.id);
-      if (!materialId || isNaN(materialId) || materialId <= 0) {
+      if (!/^\d+$/.test(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid material ID.",
+        });
+      }
+      const materialId = Number(req.params.id);
+      if (!Number.isInteger(materialId) || materialId <= 0) {
         return res.status(400).json({
           success: false,
           message: "Invalid material ID.",
         });
       }
 
-      const material = await materialService.getMaterialById(materialId);
+      const { companyId } = req.user;
+
+      const material = await materialService.getMaterialById(
+        materialId,
+        companyId,
+      );
       if (!material) {
         return res.status(404).json({
           success: false,
@@ -75,8 +98,14 @@ export const materialController = {
   // PATCH /api/materials/:id
   updateMaterial: async (req, res) => {
     try {
-      const materialId = parseInt(req.params.id);
-      if (!materialId || isNaN(materialId) || materialId <= 0) {
+      if (!/^\d+$/.test(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid material ID.",
+        });
+      }
+      const materialId = Number(req.params.id);
+      if (!Number.isInteger(materialId) || materialId <= 0) {
         return res.status(400).json({
           success: false,
           message: "Invalid material ID.",
@@ -113,8 +142,14 @@ export const materialController = {
   // DELETE /api/materials/:id
   deleteMaterial: async (req, res) => {
     try {
-      const materialId = parseInt(req.params.id);
-      if (!materialId || isNaN(materialId) || materialId <= 0) {
+      if (!/^\d+$/.test(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid material ID.",
+        });
+      }
+      const materialId = Number(req.params.id);
+      if (!Number.isInteger(materialId) || materialId <= 0) {
         return res.status(400).json({
           success: false,
           message: "Invalid material ID.",
@@ -126,6 +161,7 @@ export const materialController = {
       const deleted = await materialService.deleteMaterial({
         materialId,
         role,
+        companyId: req.user.companyId,
       });
 
       if (!deleted) {
@@ -153,8 +189,14 @@ export const costSummaryController = {
   // GET /api/projects/:projectId/cost-summary
   getCostSummary: async (req, res) => {
     try {
-      const projectId = parseInt(req.params.projectId);
-      if (!projectId || isNaN(projectId) || projectId <= 0) {
+      if (!/^\d+$/.test(req.params.projectId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid project ID.",
+        });
+      }
+      const projectId = Number(req.params.projectId);
+      if (!Number.isInteger(projectId) || projectId <= 0) {
         return res.status(400).json({
           success: false,
           message: "Invalid project ID.",
@@ -184,8 +226,14 @@ export const costSummaryController = {
   // PUT /api/projects/:projectId/cost-summary
   upsertCostSummary: async (req, res) => {
     try {
-      const projectId = parseInt(req.params.projectId);
-      if (!projectId || isNaN(projectId) || projectId <= 0) {
+      if (!/^\d+$/.test(req.params.projectId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid project ID.",
+        });
+      }
+      const projectId = Number(req.params.projectId);
+      if (!Number.isInteger(projectId) || projectId <= 0) {
         return res.status(400).json({
           success: false,
           message: "Invalid project ID.",
@@ -195,11 +243,29 @@ export const costSummaryController = {
       const { companyId } = req.user;
       const { estimatedCost, actualTaskCost } = req.body;
 
+      // Validate estimatedCost
+      const parsedEstimatedCost = Number(estimatedCost);
+      if (!Number.isFinite(parsedEstimatedCost) || parsedEstimatedCost < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Estimated cost must be a non-negative number.",
+        });
+      }
+
+      // Validate actualTaskCost
+      const parsedActualTaskCost = Number(actualTaskCost);
+      if (!Number.isFinite(parsedActualTaskCost) || parsedActualTaskCost < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Actual task cost must be a non-negative number.",
+        });
+      }
+
       const summary = await costSummaryService.upsertCostSummary({
         projectId,
         companyId,
-        estimatedCost,
-        actualTaskCost,
+        estimatedCost: parsedEstimatedCost,
+        actualTaskCost: parsedActualTaskCost,
       });
 
       return res.status(200).json({
