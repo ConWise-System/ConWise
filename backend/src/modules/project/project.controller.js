@@ -26,6 +26,12 @@ export const projectController = {
         data: project,
       });
     } catch (error) {
+      if (error.statusCode === 403) {
+        return res.status(403).json({
+          success: false,
+          message: error.message,
+        });
+      }
       console.error("Error in createProject:", error);
       return res.status(500).json({
         success: false,
@@ -58,6 +64,12 @@ export const projectController = {
         data: projects,
       });
     } catch (error) {
+      if (error.statusCode === 403) {
+        return res.status(403).json({
+          success: false,
+          message: error.message,
+        });
+      }
       console.error("Error in getAllProjects:", error);
       return res.status(500).json({
         success: false,
