@@ -1,5 +1,6 @@
 import { PrismaClient } from "../../generated/prisma/index.js";
 import { ROLES } from "../../config/constants.js";
+import { Decimal } from "decimal.js";
 
 const prisma = new PrismaClient();
 
@@ -22,6 +23,7 @@ export const materialService = {
   createMaterial: async (data) => {
     const material = await prisma.materialUsed.create({
       data: {
+        companyId: data.companyId,
         materialName: data.materialName,
         quantityUsed: data.quantityUsed,
         unit: data.unit,
@@ -34,17 +36,24 @@ export const materialService = {
 
   // List all materials
   // All roles can view materials
-  getAllMaterials: async () => {
+  getAllMaterials: async ({ companyId, take, skip }) => {
+    if (!companyId) {
+      throw new Error("Company ID is required for material access.");
+    }
+
     const materials = await prisma.materialUsed.findMany({
+      where: { companyId },
       orderBy: { id: "desc" },
+      take: take ? parseInt(take) : undefined,
+      skip: skip ? parseInt(skip) : undefined,
     });
     return materials.map(serializeMaterial);
   },
 
   // Get a single material by ID
-  getMaterialById: async (materialId) => {
-    const material = await prisma.materialUsed.findUnique({
-      where: { id: materialId },
+  getMaterialById: async (materialId, companyId) => {
+    const material = await prisma.materialUsed.findFirst({
+      where: { id: materialId, companyId },
       include: {
         // Show which tasks this material is linked to
         tasks: {
@@ -76,9 +85,9 @@ export const materialService = {
     role,
     companyId,
   }) => {
-    // First confirm the material exists
-    const existing = await prisma.materialUsed.findUnique({
-      where: { id: materialId },
+    // First confirm the material exists and belongs to the company
+    const existing = await prisma.materialUsed.findFirst({
+      where: { id: materialId, companyId },
       include: {
         tasks: {
           select: {
@@ -118,9 +127,9 @@ export const materialService = {
   // Delete a material
   // COMPANY_ADMIN: can delete any material
   // PROJECT_MANAGER: can delete materials not linked to any task
-  deleteMaterial: async ({ materialId, role }) => {
-    const existing = await prisma.materialUsed.findUnique({
-      where: { id: materialId },
+  deleteMaterial: async ({ materialId, role, companyId }) => {
+    const existing = await prisma.materialUsed.findFirst({
+      where: { id: materialId, companyId },
       include: { tasks: { select: { id: true } } },
     });
 
@@ -193,7 +202,11 @@ export const costSummaryService = {
     }
 
     // costVariance computed server-side — never from client
-    const costVariance = parseFloat(estimatedCost) - parseFloat(actualTaskCost);
+    const safeEstimatedCost = estimatedCost ?? 0;
+    const safeActualTaskCost = actualTaskCost ?? 0;
+    const costVariance = new Decimal(safeEstimatedCost).minus(
+      new Decimal(safeActualTaskCost),
+    );
 
     const summary = await prisma.costSummary.upsert({
       where: { projectId },
@@ -208,6 +221,7 @@ export const costSummaryService = {
         estimatedCost,
         actualTaskCost,
         costVariance,
+        lastUpdated: new Date(),
       },
     });
 
