@@ -61,10 +61,21 @@ router.post(
  * @swagger
  * /api/materials:
  *   get:
- *     summary: List all materials
+ *     summary: List all materials for the authenticated company
  *     tags: [Materials]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: take
+ *         schema:
+ *           type: integer
+ *         description: Number of records to return
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *         description: Number of records to skip
  *     responses:
  *       200:
  *         description: List of materials
@@ -84,6 +95,83 @@ router.get(
   materialController.getAllMaterials,
 );
 
+// ─── CostSummary routes ───────────────────────────────────────────────────────
+// FIX(CodeRabbit): Route path mismatch — cost summary routes were defined
+// as /projects/:projectId/cost-summary inside the material router which is
+// mounted at /api/materials, making the actual path:
+//   /api/materials/projects/:projectId/cost-summary
+// Swagger docs now match this actual path exactly.
+// IMPORTANT: these must be defined BEFORE /:id to avoid Express matching
+// "projects" as a material ID param
+
+/**
+ * @swagger
+ * /api/materials/projects/{projectId}/cost-summary:
+ *   get:
+ *     summary: Get cost summary for a project
+ *     tags: [Cost Summary]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Cost summary data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CostSummaryResponse'
+ *       404:
+ *         description: Cost summary or project not found
+ */
+router.get(
+  "/projects/:projectId/cost-summary",
+  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PROJECT_MANAGER),
+  costSummaryController.getCostSummary,
+);
+
+/**
+ * @swagger
+ * /api/materials/projects/{projectId}/cost-summary:
+ *   put:
+ *     summary: Create or update cost summary for a project
+ *     tags: [Cost Summary]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpsertCostSummaryRequest'
+ *     responses:
+ *       200:
+ *         description: Cost summary updated. costVariance is computed server-side.
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Project not found
+ */
+router.put(
+  "/projects/:projectId/cost-summary",
+  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PROJECT_MANAGER),
+  validateBody(upsertCostSummarySchema),
+  costSummaryController.upsertCostSummary,
+);
+
+// ─── These routes must come AFTER /projects/:projectId/cost-summary ──────────
+// to prevent Express from matching "projects" as a material :id param
+
 /**
  * @swagger
  * /api/materials/{id}:
@@ -98,14 +186,9 @@ router.get(
  *         required: true
  *         schema:
  *           type: integer
- *         description: Material ID
  *     responses:
  *       200:
  *         description: Material detail with linked tasks
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/MaterialResponse'
  *       404:
  *         description: Material not found
  */
@@ -144,7 +227,7 @@ router.get(
  *       200:
  *         description: Material updated successfully
  *       403:
- *         description: Forbidden - SITE_ENGINEER not assigned to this material's tasks
+ *         description: Forbidden
  *       404:
  *         description: Material not found
  */
@@ -187,71 +270,6 @@ router.delete(
   "/:id",
   authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PROJECT_MANAGER),
   materialController.deleteMaterial,
-);
-
-// ─── CostSummary routes ───────────────────────────────────────────────────────
-
-/**
- * @swagger
- * /api/projects/{projectId}/cost-summary:
- *   get:
- *     summary: Get cost summary for a project
- *     tags: [Cost Summary]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: projectId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Cost summary data
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/CostSummaryResponse'
- *       404:
- *         description: Cost summary or project not found
- */
-router.get(
-  "/projects/:projectId/cost-summary",
-  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PROJECT_MANAGER),
-  costSummaryController.getCostSummary,
-);
-
-/**
- * @swagger
- * /api/projects/{projectId}/cost-summary:
- *   put:
- *     summary: Create or update cost summary for a project
- *     tags: [Cost Summary]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: projectId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/UpsertCostSummaryRequest'
- *     responses:
- *       200:
- *         description: Cost summary updated. costVariance is computed server-side.
- *       404:
- *         description: Project not found
- */
-router.put(
-  "/projects/:projectId/cost-summary",
-  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PROJECT_MANAGER),
-  validateBody(upsertCostSummarySchema),
-  costSummaryController.upsertCostSummary,
 );
 
 export default router;
