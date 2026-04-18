@@ -1,13 +1,19 @@
 import { z } from "zod";
 
 // ─── Shared middleware ────────────────────────────────────────────────────────
+// FIX(CodeRabbit): Include field paths in validation error responses
+// Each error now returns { field, message } so the client knows exactly
+// which field failed — not just the message text
 export const validateBody = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({
       success: false,
       message: "Validation error",
-      errors: result.error.errors.map((e) => e.message),
+      errors: result.error.errors.map((e) => ({
+        field: e.path.join(".") || "unknown",
+        message: e.message,
+      })),
     });
   }
   req.body = result.data;
