@@ -1,0 +1,336 @@
+openapi: 3.0.3
+info:
+  title: ConWise Task API
+  version: 1.0.0
+  description: Task module endpoints.
+servers:
+  - url: /api
+tags:
+  - name: Tasks
+paths:
+  /tasks:
+    post:
+      tags: [Tasks]
+      summary: Create a task
+      description: |
+        Creates a task under a project.
+        Runtime note: passing `materials` currently fails until the database has the `materials_used.taskId` column.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskInput'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Validation error
+        '500':
+          description: Internal server error
+  /projects/{projectId}/tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks for a project
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+        '500':
+          description: Internal server error
+  /tasks/{id}/status:
+    patch:
+      tags: [Tasks]
+      summary: Update a task's status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskStatusInput'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Validation error
+        '500':
+          description: Internal server error
+  /tasks/{id}:
+    patch:
+      tags: [Tasks]
+      summary: Update a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskInput'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Validation error
+        '500':
+          description: Internal server error
+    delete:
+      tags: [Tasks]
+      summary: Delete a task
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '500':
+          description: Internal server error
+  /tasks/{id}/assign/{userId}:
+    patch:
+      tags: [Tasks]
+      summary: Assign a task to a user
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '500':
+          description: Internal server error
+  /tasks/{id}/submit:
+    patch:
+      tags: [Tasks]
+      summary: Submit a task (sets status to SUBMITTED)
+      description: |
+        Sets task status to `SUBMITTED`.
+        Runtime note: this endpoint currently returns 500 if the database enum `TaskStatus` does not include `SUBMITTED`.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '500':
+          description: Internal server error
+components:
+  schemas:
+    TaskPriority:
+      type: string
+      enum: [HIGH, MEDIUM, LOW, CRITICAL]
+    TaskStatus:
+      type: string
+      enum: [TODO, IN_PROGRESS, SUBMITTED, UNDER_REVIEW, BLOCKED, APPROVED, REJECTED]
+    MaterialInput:
+      type: object
+      additionalProperties: false
+      description: |
+        Material usage entry.
+        Runtime note: nested material writes are blocked until DB schema matches Prisma relation (`materials_used.taskId`).
+      properties:
+        materialName:
+          type: string
+        quantityUsed:
+          type: number
+        unit:
+          type: string
+        usageDescription:
+          type: string
+          nullable: true
+        materialStatus:
+          type: string
+      required: [materialName, quantityUsed, unit, materialStatus]
+    CreateTaskInput:
+      type: object
+      additionalProperties: false
+      properties:
+        projectId:
+          type: integer
+        assigneeUserId:
+          type: integer
+          nullable: true
+        taskAssigneeID:
+          type: integer
+          nullable: true
+          description: Legacy alias accepted by validation; normalized to `assigneeUserId`.
+        taskTitle:
+          type: string
+        taskDescription:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        dueDate:
+          type: string
+          format: date-time
+        taskBudget:
+          type: number
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialInput'
+        taskPriority:
+          $ref: '#/components/schemas/TaskPriority'
+        taskStatus:
+          $ref: '#/components/schemas/TaskStatus'
+      required: [projectId, taskTitle, dueDate, taskBudget, taskPriority]
+    UpdateTaskInput:
+      type: object
+      additionalProperties: false
+      properties:
+        projectId:
+          type: integer
+        assigneeUserId:
+          type: integer
+          nullable: true
+        taskAssigneeID:
+          type: integer
+          nullable: true
+          description: Legacy alias accepted by validation; normalized to `assigneeUserId`.
+        taskTitle:
+          type: string
+        taskDescription:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        dueDate:
+          type: string
+          format: date-time
+        taskBudget:
+          type: number
+        materials:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialInput'
+        taskPriority:
+          $ref: '#/components/schemas/TaskPriority'
+        taskStatus:
+          $ref: '#/components/schemas/TaskStatus'
+    UpdateTaskStatusInput:
+      type: object
+      additionalProperties: false
+      properties:
+        taskStatus:
+          $ref: '#/components/schemas/TaskStatus'
+      required: [taskStatus]
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        assigneeUserId:
+          type: integer
+          nullable: true
+        taskTitle:
+          type: string
+        taskDescription:
+          type: string
+          nullable: true
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        taskBudget:
+          type: number
+          nullable: true
+        taskPriority:
+          $ref: '#/components/schemas/TaskPriority'
+        taskStatus:
+          $ref: '#/components/schemas/TaskStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        daysRemaining:
+          type: integer
+          description: Computed field returned by the service.
+      required: [id, projectId, taskTitle, taskPriority, taskStatus, createdAt, updatedAt]
+    TaskResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Task'
+      required: [success, data]

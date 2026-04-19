@@ -10,12 +10,16 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import projectRoutes from "./modules/project/project.routes.js";
 import taskRoutes from "./modules/task/task.routes.js";
 import materialRoutes from "./modules/material/material.routes.js";
+import reportRotues from "./modules/report/report.routes.js";
 
 dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => callback(null, true), // Allows any origin
+  credentials: true
+}));
 app.use(morgan("dev"));
 app.use(express.json());
 
@@ -28,6 +32,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/materials", materialRoutes);
+app.use("/api/reports", reportRotues);
 app.use("/api", taskRoutes);
 
 // Swagger docs

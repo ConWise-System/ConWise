@@ -592,62 +592,49 @@ export const registerCompany = async (payload, meta = {}) => {
 };
 
 export const verifyAccount = async (payload) => {
-  const identifier = resolveIdentifierPayload(payload);
-  const code = String(payload.code || "").trim();
-  const conditions = buildIdentifierConditions(identifier);
+  const { code } = payload;
 
-  if (!conditions.length) {
-    throw createError("Email or phone number is required.", 400);
+  if (!code || String(code).trim().length < 4) {
+    throw createError("Verification code is required", 400);
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: conditions,
-    },
-    include: {
-      company: true,
-    },
-  });
+  const verificationCode = String(code).trim();
 
-  if (!user) {
-    throw createError(AUTH_MESSAGES.INVALID_VERIFICATION_CODE, 404);
-  }
-
+  // Find the latest unused verification code
   const verification = await prisma.verificationCode.findFirst({
     where: {
-      userId: user.id,
-      code,
+      code: verificationCode,
       usedAt: null,
-      expiresAt: {
-        gt: new Date(),
-      },
-      type: identifier.email
-        ? VERIFICATION_TYPES.EMAIL_VERIFICATION
-        : VERIFICATION_TYPES.PHONE_VERIFICATION,
+      expiresAt: { gt: new Date() },
+      type: VERIFICATION_TYPES.EMAIL_VERIFICATION,   // since it's company admin email verification
     },
-    orderBy: {
-      createdAt: "desc",
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: {
+        include: {
+          company: true,
+        },
+      },
     },
   });
 
-  if (!verification) {
+  if (!verification || !verification.user) {
     throw createError(AUTH_MESSAGES.INVALID_VERIFICATION_CODE, 400);
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const user = verification.user;
+
+  // Start transaction
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    // Mark code as used
     await tx.verificationCode.update({
-      where: {
-        id: verification.id,
-      },
-      data: {
-        usedAt: new Date(),
-      },
+      where: { id: verification.id },
+      data: { usedAt: new Date() },
     });
 
-    const updatedUser = await tx.user.update({
-      where: {
-        id: user.id,
-      },
+    // Activate user
+    const updated = await tx.user.update({
+      where: { id: user.id },
       data: {
         isVerified: true,
         status: USER_STATUSES.ACTIVE,
@@ -657,26 +644,24 @@ export const verifyAccount = async (payload) => {
       },
     });
 
-    if (updatedUser.companyId) {
+    // Activate company if exists
+    if (updated.companyId) {
       await tx.company.update({
-        where: {
-          id: updatedUser.companyId,
-        },
-        data: {
-          status: COMPANY_STATUSES.ACTIVE,
-        },
+        where: { id: updated.companyId },
+        data: { status: COMPANY_STATUSES.ACTIVE },
       });
     }
 
-    return updatedUser;
+    return updated;
   });
 
   return {
     message: AUTH_MESSAGES.VERIFICATION_SUCCESS,
-    user: sanitizeUser(updated),
+    user: sanitizeUser(updatedUser),
     redirectTo: "/login",
   };
 };
+
 
 export const resendVerificationCode = async (payload, meta = {}) => {
   const identifier = resolveIdentifierPayload(payload);
@@ -979,6 +964,43 @@ export const changePassword = async (userId, newPassword) => {
 
   return sanitizeUser(updatedUser);
 };
+
+
+export const searchUser = async (query, companyId,  limit = 20) => {
+  if (!query || query.trim() === "") {
+    return [];
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      companyId: Number(companyId),
+      OR:( [
+        { firstName: { contains: query.trim(), mode: "insensitive" } },
+        { lastName:  { contains: query.trim(), mode: "insensitive" } },
+        { email:     { contains: query.trim(), mode: "insensitive" } },
+      ]),
+    },
+    orderBy: {
+      firstName: "asc",
+    },
+    take: limit,           // Prevent returning too many users
+  });
+
+  return users.map(sanitizeUser);
+};
+
+// filter user by rol
+
+export const filterUserByRole = async (companyId, role) => {
+  const users = await prisma.user.findMany({
+    where: {
+      companyId: Number(companyId),
+      role,
+    },
+  });
+
+  return users.map(sanitizeUser);
+}
 
 export const inviteUser = async (actor, payload, meta = {}) => {
   ensureCompanyScopedActor(actor);
@@ -1362,6 +1384,8 @@ const authService = {
   logoutAllSessions,
   getMyProfile,
   createStaffUser,
+  searchUser,
+  filterUserByRole,
   inviteUser,
   acceptInvite,
   listCompanyUsers,

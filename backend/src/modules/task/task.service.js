@@ -10,57 +10,84 @@ const calculateDaysRemaining = (dueDate) => {
     return Math.max(0, diffDays);
 };
 
+const withDaysRemaining = (task) => ({
+    ...task,
+    daysRemaining: calculateDaysRemaining(task?.dueDate),
+});
+
 export const taskService = {
     createTask: async (data) => {
-        const task = await prisma.task.create({ data });
-        return {
-            ...task,
-            daysRemaining: calculateDaysRemaining(task.dueDate)
-        };
+        const { materials, ...taskData } = data ?? {};
+        const task = await prisma.task.create({
+            data: {
+                ...taskData,
+                ...(materials?.length
+                    ? {
+                        materials: {
+                            create: materials,
+                        },
+                    }
+                    : {}),
+            },
+        });
+        return withDaysRemaining(task);
     },
 
     getTasksByProject: async (projectId) => {
+        const projectIdInt = Number(projectId);
         const tasks = await prisma.task.findMany({
-            where: { projectId }
+            where: { projectId: projectIdInt }
         });
-        return tasks.map(task => ({
-            ...task,
-            daysRemaining: calculateDaysRemaining(task.dueDate)
-        }));
+        return tasks.map(withDaysRemaining);
     },
 
     updateTaskStatus: async (id, status) => {
         const task = await prisma.task.update({
-            where: { id },
+            where: { id: Number(id) },
             data: { taskStatus: status }
         });
-        return {
-            ...task,
-            daysRemaining: calculateDaysRemaining(task.dueDate)
-        };
+        return withDaysRemaining(task);
+    },
+
+    updateTask: async (id, data) => {
+        const { materials, ...taskData } = data ?? {};
+        const task = await prisma.task.update({
+            where: { id: Number(id) },
+            data: {
+                ...taskData,
+                ...(materials
+                    ? {
+                        // Replace materials list if provided.
+                        materials: {
+                            deleteMany: {},
+                            create: materials,
+                        },
+                    }
+                    : {}),
+            }
+        });
+        return withDaysRemaining(task);
     },
 
     deleteTask: async (id) => {
-        throw new Error('Not implemented');
+        return await prisma.task.delete({
+            where: { id: Number(id) }
+        });
     },
 
     assignTask: async (taskId, userId) => {
-        throw new Error('Not implemented');
+        const task = await prisma.task.update({
+            where: { id: Number(taskId) },
+            data: { assigneeUserId: Number(userId) }
+        });
+        return withDaysRemaining(task);
     },
 
     submitTask: async (taskId) => {
-        throw new Error('Not implemented');
+        const task = await prisma.task.update({
+            where: { id: Number(taskId) },
+            data: { taskStatus: 'SUBMITTED' }
+        });
+        return withDaysRemaining(task);
     },
-
-    approveTaskSubmission: async (taskId) => {
-        throw new Error('Not implemented');
-    },
-
-    reviewSubmittedTask: async (taskId) => {
-        throw new Error('Not implemented');
-    },
-
-    rejectSubmittedTask: async (taskId) => {
-        throw new Error('Not implemented');
-    }
 };
