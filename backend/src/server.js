@@ -6,10 +6,10 @@ import swaggerUi from "swagger-ui-express";
 import { specs } from "./config/swagger.js";
 import notFoundHandler from "./middlewares/notFound.middleware.js";
 import errorHandler from "./middlewares/error.middleware.js";
-
-import taskRoutes from "./modules/task/task.routes.js";
-import projectRoutes from "./modules/project/project.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import projectRoutes from "./modules/project/project.routes.js";
+import taskRoutes from "./modules/task/task.routes.js";
+import materialRoutes from "./modules/material/material.routes.js";
 import reportRotues from "./modules/report/report.routes.js";
 
 dotenv.config();
@@ -25,25 +25,27 @@ app.use(express.json());
 
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({ success: true, message: "API is running" });
+  res.json({ success: true, message: "API is running 🚀" });
 });
 
-// Mount routes
+// Mount routes — specific before broad
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/materials", materialRoutes);
 app.use("/api/reports", reportRotues);
 app.use("/api", taskRoutes);
 
+// Swagger docs
 app.use(
   "/api-docs",
   swaggerUi.serve,
   swaggerUi.setup(specs, {
-    explorer: true, // Enable search and explore
+    explorer: true,
     swaggerOptions: {
-      persistAuthorization: true, // Keep token after page refresh
+      persistAuthorization: true,
       displayRequestDuration: true,
       filter: true,
-      tryItOutEnabled: true, // Enable "Try it out" by default
+      tryItOutEnabled: true,
     },
     customSiteTitle: "ConWise API Documentation",
     customCss: `
@@ -60,6 +62,7 @@ app.get("/api-docs.json", (req, res) => {
 
 app.use(notFoundHandler);
 app.use(errorHandler);
+
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
