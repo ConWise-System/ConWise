@@ -23,7 +23,7 @@ const INITIAL_REPORTS = [
     weatherCondition: "Sunny/Dry",
     challenges: "Minor delay in concrete truck arrival (20 mins).",
     progressPhotoUrl: ""
-  }
+  },
 ];
 
 const PROGRESS_DATA = [
