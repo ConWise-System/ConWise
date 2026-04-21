@@ -1,7 +1,5 @@
-import { PrismaClient } from "../../generated/prisma/index.js";
+import prisma from "../../config/prisma.js";
 import { ROLES } from "../../config/constants.js";
-
-const prisma = new PrismaClient();
 
 // Helper to parse and validate dates
 const parseDate = (value) => {
@@ -38,7 +36,6 @@ export const projectService = {
   // Create project + initialize ProjectProgress in a single transaction
   createProject: async ({ ownerUserId, companyId, projectData }) => {
     const result = await prisma.$transaction(async (tx) => {
-      // Step 1: Create the project
       const project = await tx.project.create({
         data: {
           ownerUserId,
@@ -53,8 +50,8 @@ export const projectService = {
         },
       });
 
-      // Step 2: Automatically initialize ProjectProgress at 0
-      // This guarantees the analytics dashboard always has a record to read
+      // Automatically initialize ProjectProgress at 0
+      // Guarantees the analytics dashboard always has a record to read
       const progress = await tx.projectProgress.create({
         data: {
           projectId: project.id,
@@ -71,19 +68,13 @@ export const projectService = {
   },
 
   // List projects — filtered by role
-  // SITE_ENGINEER and SITE_SUPERVISOR only see projects
-  // they are assigned to via tasks
   getAllProjects: async ({ companyId, userId, role }) => {
     let where = { companyId };
 
     if (role === ROLES.SITE_ENGINEER || role === ROLES.SITE_SUPERVISOR) {
       where = {
         companyId,
-        tasks: {
-          some: {
-            assigneeUserId: userId,
-          },
-        },
+        tasks: { some: { assigneeUserId: userId } },
       };
     }
 
@@ -115,11 +106,7 @@ export const projectService = {
       where = {
         id: projectId,
         companyId,
-        tasks: {
-          some: {
-            assigneeUserId: userId,
-          },
-        },
+        tasks: { some: { assigneeUserId: userId } },
       };
     }
 
@@ -138,66 +125,66 @@ export const projectService = {
         },
         costSummary: true,
         _count: {
-          select: {
-            tasks: true,
-            issues: true,
-            reports: true,
-          },
+          select: { tasks: true, issues: true, reports: true },
         },
       },
     });
 
     if (!project) return null;
-
     return serializeProject(project);
   },
 
-  // Delete_project
-  // COMPANY_ADMIN can delete any project in their company
-  // PROJECT_MANAGER can only delete projects they own
-  // Cascade deletes: tasks, reports, issues, chats,
-  // projectProgress, costSummary are all removed automatically
+  // Delete project
+  // COMPANY_ADMIN: delete any project in their company
+  // PROJECT_MANAGER: only projects they own
+  // Cascade deletes: tasks, reports, issues, chats, projectProgress,
+  // costSummary all removed automatically by Prisma schema rules
+  //
+  // FIX(CodeRabbit): TOCTOU race condition between findFirst and delete
+  // Old approach: findFirst → check ownership → delete (3 separate ops)
+  // Problem: another request could delete the project between findFirst
+  //          and the delete call, causing P2025 or wrong authorization
+  // Fix: use prisma.$transaction() to make the read + authorization +
+  //      delete atomic — no other operation can interleave
   deleteProject: async ({ projectId, companyId, userId, role }) => {
-    // First verify the project exists and belongs to the company
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        companyId,
-      },
-    });
+    try {
+      const deletedProject = await prisma.$transaction(async (tx) => {
+        // Read and authorize inside the transaction — atomic
+        const project = await tx.project.findFirst({
+          where: { id: projectId, companyId },
+        });
 
-    if (!project) return null;
+        if (!project) return null;
 
-    // Project Manager can only delete their own projects
-    // AFTER — whitelist approach (gap closed)
-    if (role === ROLES.COMPANY_ADMIN) {
-      // COMPANY_ADMIN can delete any project in their company
-      // no additional check needed — proceed to delete
-    } else if (role === ROLES.PROJECT_MANAGER) {
-      // PROJECT_MANAGER can only delete projects they own
-      if (project.ownerUserId !== userId) {
-        const error = new Error("You can only delete projects you own.");
-        error.statusCode = 403;
-        throw error;
-      }
-    } else {
-      // Any other role that somehow bypasses route middleware
-      // is explicitly denied here at the service level
-      const error = new Error(
-        "You do not have permission to delete this project.",
-      );
-      error.statusCode = 403;
+        // Whitelist authorization check
+        if (role === ROLES.COMPANY_ADMIN) {
+          // Full access — no ownership check needed
+        } else if (role === ROLES.PROJECT_MANAGER) {
+          if (project.ownerUserId !== userId) {
+            const error = new Error("You can only delete projects you own.");
+            error.statusCode = 403;
+            throw error;
+          }
+        } else {
+          const error = new Error(
+            "You do not have permission to delete this project.",
+          );
+          error.statusCode = 403;
+          throw error;
+        }
+
+        // Delete inside the same transaction — atomic with the read above
+        await tx.project.delete({ where: { id: projectId } });
+
+        return { id: projectId, projectName: project.projectName };
+      });
+
+      return deletedProject;
+    } catch (error) {
+      // P2025: record not found during delete (concurrent deletion)
+      // Treat as not found rather than crashing
+      if (error.code === "P2025") return null;
       throw error;
     }
-
-    // Delete the project — cascade handles all related records
-    await prisma.project.delete({
-      where: { id: projectId },
-    });
-
-    return {
-      id: projectId,
-      projectName: project.projectName,
-    };
   },
 };
