@@ -353,15 +353,17 @@ model Issue {
 model Chat {
   id             Int      @id @default(autoincrement())
   senderUserId   Int
-  projectId      Int
-  messageContent String
+  receiverUserId Int? // Nullable for group chats
+  projectId      Int? // Nullable for private chats
+  messageContent String   @db.Text
   timestamp      DateTime @default(now())
   chatType       ChatType @default(TEXT)
 
-  sender  User    @relation("ChatSender", fields: [senderUserId], references: [id])
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sender  User     @relation("ChatSender", fields: [senderUserId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([senderUserId])
+  @@index([receiverUserId])
   @@index([projectId])
   @@map("chats")
 }
