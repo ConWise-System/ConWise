@@ -22,7 +22,7 @@ const Sidebar = () => {
     { icon: <Users size={18} />, label: 'Team Intel', path: '/projectmanagement/team' },
     { icon: <BarChart3 size={18} />, label: 'Analytics & Reports', path: '/projectmanagement/analytics' },
     { icon: <MessageSquare size={18} />, label: 'Messaging', path: '/projectmanagement/messages' },
-    { icon: <ShieldCheck size={18} />, label: 'Security', path: '#' },
+    { icon: <ShieldCheck size={18} />, label: 'Setting', path: '/projectmanagement/setting' },
   ];
 
   return (
