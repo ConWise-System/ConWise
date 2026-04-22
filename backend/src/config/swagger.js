@@ -35,6 +35,7 @@ const options = {
     tags: [
       { name: "Authentication", description: "Auth related endpoints" },
       { name: "User Management", description: "User and role management" },
+      { name: "Tasks", description: "Task management endpoints" },
     ],
   },
   apis: ["./src/modules/**/*.routes.js", "./src/docs/swagger.schemas.js"],
