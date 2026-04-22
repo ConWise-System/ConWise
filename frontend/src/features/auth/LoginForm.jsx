@@ -40,8 +40,11 @@ export default function LoginForm() {
       });
       
       if (response.data.success) {
+        const token = response.data.accessToken
+        console.log(response.data.success)
         localStorage.setItem('accessToken', response.data.data.accessToken);
         localStorage.setItem('refreshToken', response.data.data.refreshToken);
+        document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
         await fetchUserDetails();
         router.push('/admin/dashboardHome');
       }

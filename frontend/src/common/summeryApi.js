@@ -42,7 +42,7 @@ const summeryApi = {
         method:"delete"
     },
     reports:{
-        url:"/api/reports",
+        url:"/api/reports/all",
         method:"post"
     },
     updateProfile:{

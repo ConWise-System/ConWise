@@ -32,4 +32,11 @@ router.get(
   reportController.downloadReport,
 );
 
+router.get(
+  "/all",
+  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
+  reportController.getAllReports,
+);
+
+
 export default router;

@@ -120,8 +120,19 @@ const downloadReport = catchAsync(async (req, res) => {
   doc.end();
 });
 
+const getAllReports = catchAsync(async (req, res) => {
+  const reports = await reportService.getAllReports();
+
+  res.status(200).json({
+    success: true,
+    data: reports,
+  });
+});
+
+
 export default {
   submitReport,
   getProjectReports,
   downloadReport,
+  getAllReports
 };

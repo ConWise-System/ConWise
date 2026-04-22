@@ -1,300 +1,287 @@
 "use client";
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Download, FileText, ChevronLeft, Plus, 
-  Send, CheckCircle2, BarChart3, Activity, Trash2, 
-  CloudSun, HardHat, Construction, AlertTriangle, Image as ImageIcon,
-  Calendar, Layers, MapPin
+  Trash2, AlertTriangle, Calendar, ShieldCheck, Search, Loader2, 
+  X, MapPin, Users, HardHat, CloudSun, Info, Building, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Axios from '../../../../utils/Axios';
 import summeryApi from '@/common/summeryApi';
 
-// --- DATA INITIALIZATION ---
-const INITIAL_REPORTS = [
-  {
-    id: 1,
-    reportTitle: "Concrete Pouring - Block A Foundation",
-    reportType: "DAILY_SITE_REPORT",
-    reportDate: "2026-04-05T08:30:00.000Z",
-    workCompleted: "Successfully poured 20 cubic meters of C-25 concrete for the main foundation.",
-    workersPresent: 18,
-    materialsUsed: "20m3 Concrete, 12kg Curing agent",
-    weatherCondition: "Sunny/Dry",
-    challenges: "Minor delay in concrete truck arrival (20 mins).",
-    progressPhotoUrl: ""
-  },
-];
+export default function AdminIssueDashboard() {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedReport, setSelectedReport] = useState(null);
 
-const PROGRESS_DATA = [
-  { month: 'JAN', value: 35, color: '#2563eb' }, { month: 'FEB', value: 48, color: '#2563eb' },
-  { month: 'MAR', value: 92, color: '#2563eb' }, { month: 'APR', value: 65, color: '#2563eb' },
-  { month: 'MAY', value: 42, color: '#2563eb' }, { month: 'JUN', value: 98, color: '#2563eb' }
-];
-
-export default function IntegratedAnalyticsSystem() {
-  const [view, setView] = useState('analytics'); 
-  const [reports, setReports] = useState(INITIAL_REPORTS);
-
-  const addReport = (newReport) => {
-    setReports([newReport, ...reports]);
-    setView('analytics');
+  // --- FETCH REPORTS ---
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      const response = await Axios({
+        ...summeryApi.reports, 
+        method: 'GET'
+      });
+      if (response.data.success) {
+        setReports(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  // --- DELETE FUNCTION ---
+  const deleteReport = async (e, id) => {
+    e.stopPropagation(); // Prevent opening modal
+    if (window.confirm("Are you sure you want to permanently delete this issue?")) {
+      try {
+        setReports(reports.filter(r => (r.id || r._id) !== id));
+        await Axios({
+          url: `${summeryApi.reports.url}/${id}`,
+          method: 'DELETE'
+        });
+      } catch (error) {
+        console.error("Delete failed:", error);
+        fetchReports();
+      }
+    }
+  };
+
+  const filteredReports = reports.filter(r => 
+    r.reportTitle?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    r.challenges?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
-      <AnimatePresence mode="wait">
-        {view === 'analytics' ? (
-          <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <AnalyticsDashboard onCreateReport={() => setView('report-form')} reports={reports} onDelete={(id) => setReports(reports.filter(r => r.id !== id))} />
-          </motion.div>
-        ) : (
-          <motion.div key="form" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-            <DailySiteReportForm onBack={() => setView('analytics')} onSubmit={addReport} />
-          </motion.div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+      <div className="max-w-[1000px] mx-auto p-6 space-y-6">
+        
+        {/* --- PAGE HEADER --- */}
+        <header className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <div className="flex items-center gap-2 text-blue-600 mb-1">
+              <ShieldCheck size={18} />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Administrative Access</span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">Reported Issues Ledger</h1>
+            <p className="text-slate-500 text-sm">
+              {loading ? "Syncing data..." : `Reviewing ${reports.length} site challenges.`}
+            </p>
+          </div>
+
+          <div className="relative w-full md:w-72">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input 
+              type="text"
+              placeholder="Search challenges..."
+              className="w-full bg-slate-100 border-none rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </header>
+
+        {/* --- ISSUES LIST --- */}
+        <div className="grid grid-cols-1 gap-4">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+              <Loader2 className="animate-spin mb-4" size={32} />
+              <p className="font-medium">Loading ledger records...</p>
+            </div>
+          ) : (
+            <AnimatePresence>
+              {filteredReports.map((report) => (
+                <motion.div 
+                  layout
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  key={report.id || report._id} 
+                  onClick={() => setSelectedReport(report)}
+                  className="group cursor-pointer bg-white p-6 rounded-2xl border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-blue-200 transition-all shadow-sm hover:shadow-md"
+                >
+                  <div className="flex gap-4">
+                    <div className="mt-1 p-3 bg-red-50 text-red-600 rounded-xl h-fit">
+                      <AlertTriangle size={20}/>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">
+                        {report.reportTitle}
+                      </h4>
+                      <p className="text-slate-600 text-sm leading-relaxed mb-3 max-w-2xl line-clamp-2">
+                        {report.challenges}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black bg-slate-100 px-2.5 py-1 rounded-md text-slate-500 uppercase flex items-center gap-1.5">
+                          <Calendar size={12} /> {new Date(report.reportDate).toLocaleDateString()}
+                        </span>
+                        <span className="text-[10px] font-black bg-blue-50 px-2.5 py-1 rounded-md text-blue-600 uppercase flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Eye size={12} /> View Details
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={(e) => deleteReport(e, report.id || report._id)} 
+                    className="p-3 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                  >
+                    <Trash2 size={20} />
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+        </div>
+      </div>
+
+      {/* --- REPORT DETAIL MODAL --- */}
+      <AnimatePresence>
+        {selectedReport && (
+          <ReportDetailModal 
+            report={selectedReport} 
+            onClose={() => setSelectedReport(null)} 
+          />
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-// --- DASHBOARD ---
-function AnalyticsDashboard({ onCreateReport, reports, onDelete }) {
+// --- SUB-COMPONENT: MODAL ---
+function ReportDetailModal({ report, onClose }) {
   return (
-    <div className="max-w-[1200px] mx-auto p-6 space-y-8">
-      <header className="flex justify-between items-center bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Site Intelligence Dashboard</h1>
-          <p className="text-slate-500 text-sm">Monitoring {reports.length} active site logs</p>
-        </div>
-        <button onClick={onCreateReport} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
-          <Plus size={20} /> New Site Report
-        </button>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <KPICard title="Total Reports" value={reports.length + 124} icon={<FileText className="text-blue-600" />} />
-        <KPICard title="Staff on Site" value="42" icon={<HardHat className="text-orange-600" />} />
-        <KPICard title="Progress Sync" value="94%" icon={<Activity className="text-emerald-600" />} />
-        <KPICard title="Safety Status" value="Optimal" icon={<CheckCircle2 className="text-blue-600" />} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {reports.map((report) => (
-          <div key={report.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-400 transition-all">
-            <div className="flex justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Construction size={18}/></div>
-                <h4 className="font-bold">{report.reportTitle}</h4>
-              </div>
-              <button onClick={() => onDelete(report.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }} 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-slate-900/80 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }} 
+        animate={{ scale: 1, y: 0 }} 
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white w-full max-w-4xl h-full max-h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* --- FIXED HEADER --- */}
+        <div className="shrink-0 p-8 bg-[#0F172A] text-white flex justify-between items-start relative border-b border-slate-800">
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 text-blue-400 mb-2">
+              <ShieldCheck size={14} />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                {report.reportType?.replace('_', ' ') || "Site Report"}
+              </span>
             </div>
-            <p className="text-sm text-slate-600 line-clamp-2 mb-4">"{report.workCompleted}"</p>
-            <div className="flex flex-wrap gap-2">
-              <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-500 uppercase">{new Date(report.reportDate).toDateString()}</span>
-              <span className="text-[10px] font-bold bg-blue-50 px-2 py-1 rounded text-blue-600 uppercase">{report.workersPresent} Workers</span>
-            </div>
+            <h3 className="text-3xl font-bold tracking-tight leading-tight">{report.reportTitle}</h3>
+            <p className="text-slate-400 text-sm mt-2 flex items-center gap-2">
+              <Building size={14} /> {report.project?.projectName} • {report.company?.name}
+            </p>
           </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// --- FULL FORM (FIXED VISIBILITY) ---
-function DailySiteReportForm({ onBack, onSubmit }) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    reportTitle: '',
-    reportType: 'DAILY_SITE_REPORT',
-    reportDate: new Date().toISOString().split('T')[0],
-    workCompleted: '',
-    workersPresent: '',
-    materialsUsed: '',
-    weatherCondition: 'Sunny/Dry',
-    challenges: '',
-    progressPhoto: null // Changed from progressPhotoUrl string to null
-  });
-
-  const [preview, setPreview] = useState(null);
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({ ...formData, progressPhoto: file });
-      // Generate a local preview URL
-      setPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // 1. Prepare FormData for multipart/form-data transmission
-    const dataToSend = new FormData();
-    
-    // Append all text fields from state
-    Object.keys(formData).forEach(key => {
-      if (key !== 'progressPhoto') {
-        dataToSend.append(key, formData[key]);
-      }
-    });
-
-    // Append the file if it exists
-    if (formData.progressPhoto) {
-      dataToSend.append('progressPhoto', formData.progressPhoto);
-    }
-
-    try {
-      const response = await Axios({
-        ...summeryApi.reports,
-        data:dataToSend
-      })
-
-      if (response.data.success) {
-        const savedReport = await response.json();
-        // Pass the saved data back to the parent to update the dashboard
-        onSubmit(savedReport);
-      } else {
-        alert("Failed to submit report. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error submitting report:", error);
-    }
-  };
-  useEffect(() => {
-    // Cleanup the preview URL to prevent memory leaks
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-    };
-  }, [preview])
-
-  return (
-    <div className="max-w-[800px] mx-auto p-6 md:py-12">
-      <button onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 mb-6 transition-all">
-        <ChevronLeft size={18} /> Back to Dashboard
-      </button>
-
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="p-8 border-b border-slate-100 bg-slate-50 flex items-center gap-4">
-          <div className="p-3 bg-blue-600 text-white rounded-2xl"><FileText size={24}/></div>
-          <div>
-            <h2 className="text-xl font-bold">New Daily Site Report</h2>
-            <p className="text-slate-500 text-sm">Please provide accurate field data for the ledger.</p>
-          </div>
-        </div>
-
-        <div className="p-8 space-y-8">
-          {/* Section 1: Title & Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormInput label="Report Title" icon={<FileText size={16}/>} placeholder="e.g. Foundation Pouring" value={formData.reportTitle} onChange={v => setFormData({...formData, reportTitle: v})} />
-            <FormInput label="Date of Work" icon={<Calendar size={16}/>} type="date" value={formData.reportDate} onChange={v => setFormData({...formData, reportDate: v})} />
-          </div>
-
-          {/* Section 2: Details */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <CheckCircle2 size={14} className="text-blue-600"/> Work Execution Details
-            </label>
-            <textarea 
-              required 
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 text-sm focus:border-blue-500 focus:bg-white outline-none transition-all min-h-[120px]"
-              placeholder="What tasks were completed today?"
-              value={formData.workCompleted}
-              onChange={e => setFormData({...formData, workCompleted: e.target.value})}
-            />
-          </div>
-
-          {/* Section 3: Personnel, Weather, Materials */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <FormInput label="Personnel" icon={<HardHat size={16}/>} type="number" placeholder="0" value={formData.workersPresent} onChange={v => setFormData({...formData, workersPresent: v})} />
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2"><CloudSun size={14}/> Weather</label>
-              <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white" value={formData.weatherCondition} onChange={e => setFormData({...formData, weatherCondition: e.target.value})}>
-                <option>Sunny/Dry</option><option>Rainy/Wet</option><option>Overcast</option><option>Windy</option>
-              </select>
-            </div>
-            <FormInput label="Materials" icon={<MapPin size={16}/>} placeholder="e.g. 10m3 Concrete" value={formData.materialsUsed} onChange={v => setFormData({...formData, materialsUsed: v})} />
-          </div>
-
-          {/* Section 4: Challenges */}
-          <div className="p-6 bg-red-50 rounded-2xl border border-red-100 space-y-3">
-             <label className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-2"><AlertTriangle size={14}/> Challenges & Blockers</label>
-             <input className="w-full bg-white border-2 border-red-200 rounded-xl p-4 text-sm outline-none focus:border-red-500" placeholder="List any safety issues or delays..." value={formData.challenges} onChange={e => setFormData({...formData, challenges: e.target.value})} />
-          </div>
-
-          {/* Section 5: LOCAL PHOTO UPLOAD */}
-          <div className="space-y-4">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <ImageIcon size={16}/> Progress Photo (Local Upload)
-            </label>
-            
-            <div className="flex flex-col md:flex-row items-start gap-6">
-              {/* Upload Trigger */}
-              <label className="w-full md:w-1/2 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl p-6 hover:border-blue-500 hover:bg-blue-50/30 cursor-pointer transition-all">
-                <div className="p-3 bg-slate-100 text-slate-400 rounded-full mb-2">
-                  <ImageIcon size={24} />
-                </div>
-                <span className="text-sm font-bold text-slate-600">Click to upload photo</span>
-                <span className="text-[10px] text-slate-400 mt-1 uppercase">JPG, PNG or WEBP (Max 5MB)</span>
-                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-              </label>
-
-              {/* Preview Area */}
-              <div className="w-full md:w-1/2 h-[140px] border-2 border-slate-100 rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
-                {preview ? (
-                  <img src={preview} alt="Upload preview" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold text-slate-300 uppercase italic">No photo selected</span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-          <button type="button" onClick={onBack} className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">Cancel Draft</button>
           <button 
-          type="submit" 
-            disabled={isSubmitting}
-            className={`px-10 py-4 bg-blue-600 text-white rounded-xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-blue-200 ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700 active:scale-95'}`}
+            onClick={onClose} 
+            className="p-3 bg-white/5 hover:bg-white/10 text-white rounded-2xl transition-all border border-white/10 shadow-lg"
           >
-            <Send size={18} /> 
-            {isSubmitting ? "Uploading..." : "Submit Report"}
-        </button>
+            <X size={20}/>
+          </button>
         </div>
-      </form>
-    </div>
+
+        {/* --- SCROLLABLE CONTENT --- */}
+        <div className="flex-1 overflow-y-auto p-8 bg-white custom-scrollbar">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            <InfoBox icon={<Users size={16}/>} label="Supervisor" value={`${report.user?.firstName} ${report.user?.lastName}`} color="blue" />
+            <InfoBox icon={<Calendar size={16}/>} label="Date" value={new Date(report.reportDate).toLocaleDateString()} color="slate" />
+            <InfoBox icon={<CloudSun size={16}/>} label="Weather" value={report.weatherCondition} color="orange" />
+            <InfoBox icon={<HardHat size={16}/>} label="Manpower" value={`${report.workersPresent} Workers`} color="emerald" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+            <div className="lg:col-span-3 space-y-8">
+              <section>
+                <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Work Completed
+                </h5>
+                <div className="text-[15px] text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-[1.5rem] border border-slate-100 italic">
+                  "{report.workCompleted}"
+                </div>
+              </section>
+
+              <section>
+                <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Challenges & Resolutions
+                </h5>
+                <div className="text-[14px] text-slate-700 leading-relaxed bg-amber-50/40 p-6 rounded-[1.5rem] border border-amber-100">
+                  {report.challenges}
+                </div>
+              </section>
+            </div>
+
+            <div className="lg:col-span-2 space-y-8">
+              <section>
+                <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">Materials Utilized</h5>
+                <div className="flex flex-wrap gap-2">
+                  {report.materialsUsed?.split(',').map((mat, i) => (
+                    <span key={i} className="text-[12px] font-bold px-4 py-2 bg-white text-slate-700 rounded-xl border border-slate-200 shadow-sm">
+                      {mat.trim()}
+                    </span>
+                  ))}
+                </div>
+              </section>
+
+              {report.progressPhotoUrl && (
+                <section>
+                  <h5 className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">Site Documentation</h5>
+                  <div className="rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-slate-100 aspect-video">
+                    <img 
+                      src={report.progressPhotoUrl} 
+                      alt="Progress" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </section>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* --- FIXED FOOTER --- */}
+        <div className="shrink-0 px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">System Entry ID: {report.id}</span>
+            <span className="text-[11px] font-medium text-slate-500 italic">Logged on {new Date(report.submittedAt).toLocaleString()}</span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] font-black text-blue-600 bg-blue-50 px-4 py-2 rounded-full uppercase tracking-widest">
+            <MapPin size={14} /> {report.project?.location}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
-// --- ATOMS ---
-function FormInput({ label, icon, type = "text", placeholder, value, onChange }) {
-  return (
-    <div className="space-y-2 flex-1">
-      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-        {icon} {label}
-      </label>
-      <input 
-        type={type} 
-        required 
-        placeholder={placeholder} 
-        value={value} 
-        onChange={e => onChange(e.target.value)} 
-        className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all"
-      />
-    </div>
-  );
-}
+// --- SUB-COMPONENT: INFOBOX ---
+function InfoBox({ icon, label, value, color }) {
+  const colors = {
+    blue: "bg-blue-50 text-blue-600 border-blue-100",
+    orange: "bg-orange-50 text-orange-600 border-orange-100",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    slate: "bg-slate-50 text-slate-600 border-slate-100",
+  };
 
-function KPICard({ title, value, icon }) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-      <div className="p-3 bg-slate-50 rounded-xl">{icon}</div>
-      <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
+    <div className={`p-5 rounded-3xl border ${colors[color] || colors.slate} transition-all hover:shadow-md`}>
+      <div className="flex items-center gap-2 opacity-60 mb-1.5">
+        {icon}
+        <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
       </div>
+      <p className="text-[13px] font-black truncate">{value}</p>
     </div>
   );
 }
