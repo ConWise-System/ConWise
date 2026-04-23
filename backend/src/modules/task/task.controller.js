@@ -60,6 +60,9 @@ export const taskController = {
     assignTask: async (req, res) => {
         try {
             const { id, userId } = req.params;
+
+            console.log(`Assigning task ${id} to user ${userId} in controller layer`);
+
             const task = await taskService.assignTask(id, userId);
             return res.status(200).json({ success: true, data: task });
         } catch (error) {

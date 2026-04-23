@@ -551,4 +551,139 @@ export const swaggerSchemas = {
       },
     },
   },
+
+  TaskPriority: {
+    type: "string",
+    enum: ["HIGH", "MEDIUM", "LOW", "CRITICAL"],
+  },
+
+  TaskStatus: {
+    type: "string",
+    enum: [
+      "TODO",
+      "IN_PROGRESS",
+      "SUBMITTED",
+      "UNDER_REVIEW",
+      "BLOCKED",
+      "APPROVED",
+      "REJECTED",
+    ],
+  },
+
+  MaterialInput: {
+    type: "object",
+    additionalProperties: false,
+    description:
+      "Material usage entry. Runtime note: nested material writes are blocked until DB schema matches Prisma relation (`materials_used.taskId`).",
+    properties: {
+      materialName: { type: "string" },
+      quantityUsed: { type: "number" },
+      unit: { type: "string" },
+      usageDescription: { type: "string", nullable: true },
+      materialStatus: { type: "string" },
+    },
+    required: ["materialName", "quantityUsed", "unit", "materialStatus"],
+  },
+
+  CreateTaskInput: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      projectId: { type: "integer" },
+      assigneeUserId: { type: "integer", nullable: true },
+      taskAssigneeID: {
+        type: "integer",
+        nullable: true,
+        description:
+          "Legacy alias accepted by validation; normalized to `assigneeUserId`.",
+      },
+      taskTitle: { type: "string" },
+      taskDescription: { type: "string", nullable: true },
+      startDate: { type: "string", format: "date-time", nullable: true },
+      dueDate: { type: "string", format: "date-time" },
+      taskBudget: { type: "number" },
+      materials: {
+        type: "array",
+        items: { $ref: "#/components/schemas/MaterialInput" },
+      },
+      taskPriority: { $ref: "#/components/schemas/TaskPriority" },
+      taskStatus: { $ref: "#/components/schemas/TaskStatus" },
+    },
+    required: ["projectId", "taskTitle", "dueDate", "taskBudget", "taskPriority"],
+  },
+
+  UpdateTaskInput: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      projectId: { type: "integer" },
+      assigneeUserId: { type: "integer", nullable: true },
+      taskAssigneeID: {
+        type: "integer",
+        nullable: true,
+        description:
+          "Legacy alias accepted by validation; normalized to `assigneeUserId`.",
+      },
+      taskTitle: { type: "string" },
+      taskDescription: { type: "string", nullable: true },
+      startDate: { type: "string", format: "date-time", nullable: true },
+      dueDate: { type: "string", format: "date-time" },
+      taskBudget: { type: "number" },
+      materials: {
+        type: "array",
+        items: { $ref: "#/components/schemas/MaterialInput" },
+      },
+      taskPriority: { $ref: "#/components/schemas/TaskPriority" },
+      taskStatus: { $ref: "#/components/schemas/TaskStatus" },
+    },
+  },
+
+  UpdateTaskStatusInput: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      taskStatus: { $ref: "#/components/schemas/TaskStatus" },
+    },
+    required: ["taskStatus"],
+  },
+
+  Task: {
+    type: "object",
+    properties: {
+      id: { type: "integer" },
+      projectId: { type: "integer" },
+      assigneeUserId: { type: "integer", nullable: true },
+      taskTitle: { type: "string" },
+      taskDescription: { type: "string", nullable: true },
+      startDate: { type: "string", format: "date-time", nullable: true },
+      dueDate: { type: "string", format: "date-time", nullable: true },
+      taskBudget: { type: "number", nullable: true },
+      taskPriority: { $ref: "#/components/schemas/TaskPriority" },
+      taskStatus: { $ref: "#/components/schemas/TaskStatus" },
+      createdAt: { type: "string", format: "date-time" },
+      updatedAt: { type: "string", format: "date-time" },
+      daysRemaining: {
+        type: "integer",
+        description: "Computed field returned by the service.",
+      },
+    },
+    required: [
+      "id",
+      "projectId",
+      "taskTitle",
+      "taskPriority",
+      "taskStatus",
+      "createdAt",
+      "updatedAt",
+    ],
+  },
+
+  TaskResponse: {
+    type: "object",
+    properties: {
+      success: { type: "boolean" },
+      data: { $ref: "#/components/schemas/Task" },
+    },
+    required: ["success", "data"],
+  },
 };
