@@ -29,6 +29,15 @@ const getProjectReports = catchAsync(async (req, res) => {
   });
 });
 
+const getAllReports = catchAsync(async (req, res) => {
+  const reports = await reportService.getAllReports();
+
+  res.status(200).json({
+    success: true,
+    data: reports,
+  });
+});
+
 const downloadReport = catchAsync(async (req, res) => {
   const { reportId } = req.params;
 
@@ -139,6 +148,7 @@ const reportFilter = catchAsync(async (req, res) => {
 export default {
   submitReport,
   getProjectReports,
+  getAllReports,
   downloadReport,
   reportFilter,
 };

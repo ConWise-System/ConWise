@@ -28,6 +28,13 @@ router.get(
   reportController.getProjectReports,
 );
 
+//get all reports
+router.get(
+  "/all",
+  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
+  reportController.getAllReports,
+);
+
 //download report
 router.get(
   "/:reportId/download",
