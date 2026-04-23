@@ -111,10 +111,19 @@ const filterReport = async (reportType) => {
   });
 };
 
+// delete report 
+
+const deleteReport = async (reportId) => {
+  return await prisma.report.delete({
+    where: { id: Number(reportId) },
+  });
+};
+
 export default {
   createReport,
   getReportsByProject,
   getAllReports,
   downloadReport,
   filterReport,
+  deleteReport,
 };

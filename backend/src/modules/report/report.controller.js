@@ -145,6 +145,17 @@ const reportFilter = catchAsync(async (req, res) => {
   });
 });
 
+const deleteReport = catchAsync(async (req, res) => {
+  const { reportId } = req.params;
+
+  await reportService.deleteReport(reportId);
+
+  res.status(200).json({
+    success: true,
+    message: "Report deleted successfully",
+  });
+});
+
 export default {
   submitReport,
   getProjectReports,
