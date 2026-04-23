@@ -81,9 +81,17 @@ const downloadReport = async (reportId) => {
   });
 };
 
+const deleteReport = async (reportId) => {
+  return await prisma.report.delete({
+    where: { id: Number(reportId) },
+  });
+};
+
+
 export default {
   createReport,
   getReportsByProject,
   downloadReport,
-  getAllReports
+  getAllReports,
+  deleteReport
 };

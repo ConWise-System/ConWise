@@ -38,5 +38,12 @@ router.get(
   reportController.getAllReports,
 );
 
+// delete report
+router.delete(
+  "/:reportId",
+  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
+  reportController.deleteReport,
+);
+
 
 export default router;
