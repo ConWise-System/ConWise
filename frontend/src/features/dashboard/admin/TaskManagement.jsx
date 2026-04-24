@@ -35,7 +35,7 @@ export default function IntegratedTaskSystem() {
                 <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-blue-600">
                   <span>Operations</span> <ChevronRight size={10} strokeWidth={3} /> <span className="text-slate-400">Activity Control</span>
                 </nav>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Task <span className="text-slate-400 font-medium italic">Repository</span></h1>
+                <h1 className="text-xl text-slate-900 tracking-tight uppercase">Task Repository</h1>
               </div>
               <div className="flex gap-2">
                 <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all">Archive</button>
@@ -198,7 +198,7 @@ function StatCard({ label, value, icon, color }) {
       <div className={`p-2.5 rounded-xl ${color === 'black' ? 'bg-white/10' : 'bg-white shadow-sm'}`}>{icon}</div>
       <div>
         <p className={`text-[8px] font-black uppercase tracking-widest leading-none mb-1.5 ${color === 'black' ? 'text-slate-400' : 'text-blue-400'}`}>{label}</p>
-        <p className="text-xl font-black leading-none italic">{value}</p>
+        <p className="text-xl font-black leading-none ">{value}</p>
       </div>
     </div>
   );

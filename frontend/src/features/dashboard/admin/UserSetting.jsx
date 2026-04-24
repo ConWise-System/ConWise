@@ -1,25 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Shield, User, Save, Bell, Smartphone, 
   ShieldCheck, LogOut, Globe, Fingerprint,
   RefreshCw, Lock, Eye, EyeOff, KeyRound
 } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
+import summeryApi from '@/common/summeryApi';
+import Axios from '../../../../utils/Axios';
 
 export default function SovereignExecutiveSettings() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [saveStatus, setSaveStatus] = useState('idle');
   const [showPassword, setShowPassword] = useState(false);
+  const {user,setUser} = useUser();
   
-  const [profile, setProfile] = useState({
-    firstName: "Alexander",
-    lastName: "Sterling",
-    email: "a.sterling@sovereign.exec",
-    position: "Senior Systems Architect",
-    timezone: "GMT +03:00 (East Africa Time)",
-    twoFactor: true,
-    biometricLogin: false,
+
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    twoFactor: false,
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -28,18 +29,64 @@ export default function SovereignExecutiveSettings() {
     confirm: ""
   });
 
+  // Sync global user data to local form when page loads
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        twoFactor: user.twoFactor || false,
+      });
+    }
+  }, [user]);
+
   const handleUpdate = (field, value) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
-    setSaveStatus('idle');
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const commitChanges = async () => {
+    // Basic Validation
+    if (passwordData.new && passwordData.new !== passwordData.confirm) {
+      console.log("New passwords do not match");
+      return;
+    }
+
     setIsSyncing(true);
-    setSaveStatus('loading');
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsSyncing(false);
-    setSaveStatus('success');
-    setTimeout(() => setSaveStatus('idle'), 3000);
+
+    try {
+      // 1. Construct dynamic URL from your SummaryApi
+      const url = `/api/auth/users/${user.id}/profile`;
+      // 2. Prepare Payload
+      const payload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        twoFactor: formData.twoFactor,
+        ...(passwordData.new && { 
+          currentPassword: passwordData.current, 
+          newPassword: passwordData.new 
+        })
+      };
+      // 3. API Call
+      const response = await Axios({
+        method:summeryApi.updateProfile.method,
+        url:url,
+        data: payload,
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        console.log("Profile synchronized successfully");
+        // Update the global context so the Navbar initials etc. update immediately
+        setUser(response.data.data); 
+        // Clear sensitive fields
+        setPasswordData({ current: "", new: "", confirm: "" });
+      }
+    } catch (error) {
+      console.error(error);
+      console.log(error.response?.data?.message || "Sync failed");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const getStrength = () => {
@@ -49,6 +96,11 @@ export default function SovereignExecutiveSettings() {
     return 100;
   };
 
+  const getInitials = (firstName) => {
+    if (!firstName) return "??";
+    return firstName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  };
+  
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased selection:bg-slate-900 selection:text-white">
       
@@ -70,7 +122,7 @@ export default function SovereignExecutiveSettings() {
             }`}
           >
             {isSyncing ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
-            {isSyncing ? "Syncing..." : "Update Vault"}
+            {isSyncing ? "Syncing..." : "Update Profile"}
           </button>
         </div>
       </nav>
@@ -80,9 +132,11 @@ export default function SovereignExecutiveSettings() {
        
         <div className="lg:col-span-4 space-y-5">
           <div className="bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm text-center">
-            <div className="w-20 h-20 bg-gradient-to-tr from-slate-900 to-slate-700 rounded-[1.8rem] mx-auto mb-4 flex items-center justify-center text-2xl font-black text-white shadow-xl">AS</div>
-            <h3 className="text-lg font-black text-slate-800 tracking-tight">{profile.firstName} {profile.lastName}</h3>
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{profile.position}</p>
+            <div className="w-20 h-20 bg-gradient-to-tr from-slate-900 to-slate-700 rounded-[1.8rem] mx-auto mb-4 flex items-center justify-center text-2xl font-black text-white shadow-xl">
+              {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : `${getInitials(user?.firstName)}${getInitials(user?.lastName)}`}
+            </div>
+            <h3 className="text-lg font-black text-slate-800 tracking-tight">{user.firstName} {user.lastName}</h3>
+            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{user.position}</p>
           </div>
 
           <div className="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
@@ -98,7 +152,7 @@ export default function SovereignExecutiveSettings() {
           </div>
         </div>
 
-       
+       {/** Input form */}
         <div className="lg:col-span-8 space-y-6">
           
           <section className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
@@ -107,10 +161,19 @@ export default function SovereignExecutiveSettings() {
               <h3 className="font-black text-[11px] uppercase tracking-widest text-slate-400">Identity Details</h3>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-              <InputGroup label="First Name" value={profile.firstName} onChange={(v) => handleUpdate('firstName', v)} />
-              <InputGroup label="Last Name" value={profile.lastName} onChange={(v) => handleUpdate('lastName', v)} />
+              {/* Change user.firstName to profile.firstName (or formData.firstName) */}
+              <InputGroup 
+                label="First Name" 
+                value={formData.firstName} 
+                onChange={(v) => handleUpdate('firstName', v)} 
+              />
+              <InputGroup 
+                label="Last Name" 
+                value={formData.lastName} 
+                onChange={(v) => handleUpdate('lastName', v)} 
+              />
             </div>
-          </section>
+         </section>
 
           <section className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
@@ -170,14 +233,13 @@ export default function SovereignExecutiveSettings() {
             </div>
           </section>
 
-         
           <section className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
               <ProtocolToggle 
                 icon={<Smartphone size={18}/>} 
                 title="Multi-Factor Auth" 
                 desc="Extra verification layer for system access."
-                active={profile.twoFactor}
-                onToggle={() => handleUpdate('twoFactor', !profile.twoFactor)}
+                active={formData.twoFactor}
+                onToggle={() => handleUpdate('twoFactor', !formData.twoFactor)}
               />
           </section>
 

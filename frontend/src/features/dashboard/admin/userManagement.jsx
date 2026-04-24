@@ -1,48 +1,85 @@
 "use client";
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import Axios from '../../../../utils/Axios'; 
+import summeryApi from '../../../common/summeryApi'
 import { 
   Search, UserPlus, Edit3, Trash2, Shield, User, 
   Upload, Mail, Briefcase, Phone, Lock, X, ShieldCheck,
-  Building2, AlignLeft, Calendar
+  Loader2
 } from 'lucide-react';
 
-const INITIAL_USERS = [
-  { id: 1, firstName: 'Julian', lastName: 'Sterling', email: 'j.sterling@sovereign.exec', role: 'PROJECT MANAGER', status: 'Active' },
-  { id: 2, firstName: 'Elena', lastName: 'Novak', email: 'novak.e@sovereign.exec', role: 'SITE ENGINEER', status: 'Active' },
-];
-
 export default function UserManagementSystem() {
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeRoleFilter, setActiveRoleFilter] = useState("All");
   const [isCreating, setIsCreating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // --- FETCH PERSONNEL ---
+  const fetchPersonnel = async () => {
+    setIsLoading(true);
+    try {
+      const response = await Axios({...summeryApi.getUsers});
+      if(response.data.success) {
+        // Updated to handle the specific data structure from your console.log
+        setUsers(response.data.data.users || []);
+      }
+    } catch (error) {
+      console.error("Authorization Protocol: Failed to load personnel", error);
+    } finally {
+      // Small delay to ensure smooth transition of skeleton states
+      setTimeout(() => setIsLoading(false), 600);
+    }
+  };
+
+  useEffect(() => {
+    fetchPersonnel();
+  }, []);
+  
+  const handleCreateSuccess = () => {
+    setIsCreating(false);
+    fetchPersonnel();
+  };
+
+  // --- FILTER LOGIC ---
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
-      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
-      const matchesSearch = fullName.includes(searchQuery.toLowerCase()) || user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      const firstName = user.firstName || "";
+      const lastName = user.lastName || "";
+      const email = user.email || "";
+      
+      const fullName = `${firstName} ${lastName}`.toLowerCase();
+      const matchesSearch = fullName.includes(searchQuery.toLowerCase()) || 
+                            email.toLowerCase().includes(searchQuery.toLowerCase());
+      
       const matchesRole = activeRoleFilter === "All" || user.role === activeRoleFilter;
       return matchesSearch && matchesRole;
     });
   }, [users, searchQuery, activeRoleFilter]);
 
   const stats = useMemo(() => ({
-    total: filteredUsers.length,
-    active: filteredUsers.filter(u => u.status === 'Active').length,
-    deactivated: filteredUsers.filter(u => u.status === 'Deactivated').length
-  }), [filteredUsers]);
+    total: users.length,
+    active: users.filter(u => u.status === 'Active').length,
+    deactivated: users.filter(u => u.status === 'Deactivated' || u.status === 'Revoked').length
+  }), [users]);
 
-  if (isCreating) return <CreateUserPage onCancel={() => setIsCreating(false)} />;
+  if (isCreating) return (
+    <CreateUserPage 
+      onCancel={() => setIsCreating(false)} 
+      onSuccess={handleCreateSuccess} 
+    />
+  )
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
+      {/* --- HEADER --- */}
       <header className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-blue-600 h-1 w-4 rounded-full"></span>
             <span className="text-[8px] font-black tracking-[0.25em] text-blue-600 uppercase">Identity Access</span>
           </div>
-          <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">Personnel <span className="text-slate-400 italic font-medium">Directory</span></h1>
+          <h1 className="text-xl tracking-tight text-slate-900 uppercase font-bold">Personnel Directory</h1>
         </div>
         <button 
           onClick={() => setIsCreating(true)} 
@@ -52,12 +89,14 @@ export default function UserManagementSystem() {
         </button>
       </header>
 
+      {/* --- METRICS --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <MetricCard label="Total Workforce" value={stats.total} icon={<User size={14}/>} />
         <MetricCard label="Authenticated" value={stats.active} hasPulse icon={<ShieldCheck size={14}/>} />
-        <MetricCard label="Revoked" value={stats.deactivated} isWarning icon={<Lock size={14}/>} />
+        <MetricCard label="Revoked / Pending" value={stats.deactivated} isWarning icon={<Lock size={14}/>} />
       </div>
 
+      {/* --- CONTROLS --- */}
       <div className="bg-white p-2 rounded-xl border border-slate-200 flex flex-col xl:flex-row gap-4 items-center justify-between shadow-sm">
         <div className="relative w-full xl:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -69,7 +108,7 @@ export default function UserManagementSystem() {
         </div>
         
         <div className="flex flex-wrap gap-1.5">
-          {['All', 'ADMIN', 'PROJECT MANAGER', 'SITE ENGINEER'].map(role => (
+          {['All', 'ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER'].map(role => (
             <button
               key={role}
               onClick={() => setActiveRoleFilter(role)}
@@ -77,12 +116,13 @@ export default function UserManagementSystem() {
                 activeRoleFilter === role ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-50'
               }`}
             >
-              {role}
+              {role.replace('_', ' ')}
             </button>
           ))}
         </div>
       </div>
 
+      {/* --- DATA TABLE --- */}
       <div className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden text-[11px]">
         <table className="w-full text-left">
           <thead>
@@ -93,33 +133,74 @@ export default function UserManagementSystem() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="group hover:bg-slate-50/30 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-[10px] text-slate-500 uppercase">{user.firstName[0]}{user.lastName[0]}</div>
-                    <div>
-                      <p className="font-bold text-slate-800 text-xs">{user.firstName} {user.lastName}</p>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{user.role}</p>
+            {isLoading ? (
+              // --- SKELETON LOADING STATE ---
+              [1, 2, 3, 4, 5].map((n) => (
+                <tr key={n} className="animate-pulse">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100" />
+                      <div className="space-y-2">
+                        <div className="h-3 w-32 bg-slate-100 rounded" />
+                        <div className="h-2 w-20 bg-slate-50 rounded" />
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-center">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[8px] font-black uppercase tracking-tighter ${
-                    user.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-500 border-rose-100'
-                  }`}>
-                    <div className={`w-1 h-1 rounded-full ${user.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400">
-                    <button className="p-1.5 hover:bg-slate-100 rounded hover:text-slate-900 transition-colors"><Edit3 size={12}/></button>
-                    <button className="p-1.5 hover:bg-rose-50 rounded hover:text-rose-600 transition-colors"><Trash2 size={12}/></button>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="h-4 w-16 bg-slate-50 rounded-md mx-auto" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex justify-end gap-2">
+                      <div className="h-6 w-6 bg-slate-50 rounded" />
+                      <div className="h-6 w-6 bg-slate-50 rounded" />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : filteredUsers.length === 0 ? (
+              // --- EMPTY STATE ---
+              <tr>
+                <td colSpan="3" className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center opacity-40">
+                    <Shield size={32} className="text-slate-300 mb-3" />
+                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400">
+                      No matching records in database
+                    </p>
                   </div>
                 </td>
               </tr>
-            ))}
+            ) : (
+              // --- ACTUAL DATA ---
+              filteredUsers.map((user) => (
+                <tr key={user.id || user._id} className="group hover:bg-slate-50/30 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-[10px] text-slate-500 uppercase">
+                        {user.firstName?.[0] || '?'}{user.lastName?.[0] || '?'}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 text-xs">{user.firstName} {user.lastName}</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{user.role}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[8px] font-black uppercase tracking-tighter ${
+                      user.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-500 border-rose-100'
+                    }`}>
+                      <div className={`w-1 h-1 rounded-full ${user.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                      {user.status || 'Pending'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2 text-slate-400">
+                      <button className="p-1.5 hover:bg-slate-100 rounded hover:text-slate-900 transition-colors"><Edit3 size={12}/></button>
+                      <button className="p-1.5 hover:bg-rose-50 rounded hover:text-rose-600 transition-colors"><Trash2 size={12}/></button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -127,32 +208,54 @@ export default function UserManagementSystem() {
   );
 }
 
-function CreateUserPage({ onCancel }) {
+// --- SUB-COMPONENTS ---
+
+function CreateUserPage({ onCancel, onSuccess }) {
   const [imagePreview, setImagePreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
-    firstName: "Firomsa",
-    lastName: "Hika",
-    email: "admin@abcconstruction.com",
-    phone: "+25191623456",
-    role: "PLATFORM_ADMIN",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    role: "SITE_ENGINEER",
     status: "PENDING_VERIFICATION",
     isVerified: false,
-    
-   
-    createdAt: "2026-04-01T22:57:55.925Z"
+    createdAt: new Date().toISOString()
   });
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleSubmit = async () => {
+    if(!formData.firstName || !formData.email) {
+      alert("Essential Identity Details Missing");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await Axios({
+        ...summeryApi.addPersonnel,
+        data: formData
+      });
+
+      if (response.data.success) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error("Authorization Protocol Failed", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen p-6 bg-[#F8FAFC] flex items-center justify-center animate-in zoom-in-98 selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen p-6 bg-[#F8FAFC] flex items-center justify-center animate-in zoom-in-98">
       <div className="w-full max-w-5xl bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden flex flex-col lg:flex-row">
-        
-      
         <div className="flex-1 p-8 space-y-6">
           <div className="flex justify-between items-center border-b border-slate-50 pb-4">
             <div>
@@ -168,7 +271,6 @@ function CreateUserPage({ onCancel }) {
             <InputGroup label="Professional Email" value={formData.email} onChange={(v) => handleChange('email', v)} type="email" icon={<Mail size={12}/>} />
             <InputGroup label="Phone Number" value={formData.phone} onChange={(v) => handleChange('phone', v)} icon={<Phone size={12}/>} />
             
-            
             <div className="space-y-1.5">
               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">System Role</label>
               <div className="relative group">
@@ -178,7 +280,7 @@ function CreateUserPage({ onCancel }) {
                   onChange={(e) => handleChange('role', e.target.value)}
                   className="w-full pl-9 pr-3 py-3 bg-slate-50 border-none rounded-xl font-bold text-[11px] outline-none focus:ring-2 focus:ring-blue-100 appearance-none cursor-pointer"
                 >
-                  <option value="PLATFORM_ADMIN">Platform Admin</option>
+                  <option value="ADMIN">Platform Admin</option>
                   <option value="PROJECT_MANAGER">Project Manager</option>
                   <option value="SITE_ENGINEER">Site Engineer</option>
                   <option value="SITE_SUPERVISOR">Site Supervisor</option>
@@ -186,8 +288,6 @@ function CreateUserPage({ onCancel }) {
               </div>
             </div>
           </div>
-
-          
 
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
             <div className="flex items-center gap-6">
@@ -199,62 +299,41 @@ function CreateUserPage({ onCancel }) {
                   onChange={(e) => handleChange('isVerified', e.target.checked)}
                   className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
                 />
-                <label htmlFor="isVerified" className="text-[10px] font-black text-slate-600 uppercase tracking-tighter cursor-pointer">Verification Status</label>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${formData.status.includes('PENDING') ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{formData.status.replace('_', ' ')}</span>
+                <label htmlFor="isVerified" className="text-[10px] font-black text-slate-600 uppercase tracking-tighter cursor-pointer">Verify Immediately</label>
               </div>
             </div>
             
             <div className="flex gap-3 w-full md:w-auto">
-              <button onClick={onCancel} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition-all">Discard</button>
-              <button className="flex-1 md:flex-none px-10 py-3 bg-[#0F172A] text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-blue-600 active:scale-95 transition-all">Finalize Auth</button>
+              <button onClick={onCancel} disabled={isSubmitting} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition-all disabled:opacity-50">Discard</button>
+              <button 
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex-1 md:flex-none px-10 py-3 bg-[#0F172A] text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-blue-600 active:scale-95 transition-all disabled:bg-slate-400"
+              >
+                {isSubmitting ? "Finalizing..." : "Finalize Auth"}
+              </button>
             </div>
           </div>
         </div>
 
-        
         <div className="w-full lg:w-72 bg-[#0F172A] p-8 flex flex-col justify-between items-center text-center text-white">
           <div className="space-y-4 w-full">
             <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center border border-white/10 mx-auto overflow-hidden relative group">
               {imagePreview ? (
-                <img src={imagePreview} className="w-full h-full object-cover transition-opacity group-hover:opacity-50" />
+                <img src={imagePreview} className="w-full h-full object-cover" />
               ) : (
                 <Shield size={32} className="text-blue-500" />
               )}
-              <div 
-                onClick={() => fileInputRef.current.click()}
-                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
-              >
+              <div onClick={() => fileInputRef.current.click()} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity bg-black/40">
                 <Upload size={20} />
               </div>
             </div>
             <div>
-              <p className="font-black text-sm tracking-tight">{formData.firstName} {formData.lastName}</p>
-              <p className="text-blue-500 font-black text-[8px] uppercase tracking-[0.2em] mt-1">Personnel Identity</p>
-            </div>
-            
-            <div className="pt-6 space-y-3 text-left">
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Access Node</p>
-                <p className="text-[10px] font-bold mt-1">ConWise Central Terminal</p>
-              </div>
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5">
-                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Security Clearance</p>
-                <p className="text-[10px] font-bold mt-1 text-emerald-400">Level 4-Executive</p>
-              </div>
+              <p className="font-black text-sm tracking-tight truncate">{formData.firstName || 'New'} {formData.lastName || 'Personnel'}</p>
+              <p className="text-blue-500 font-black text-[8px] uppercase tracking-[0.2em] mt-1">Identity Node</p>
             </div>
           </div>
-
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={(e) => setImagePreview(URL.createObjectURL(e.target.files[0]))} 
-            className="hidden" 
-            accept="image/*" 
-          />
-          
+          <input type="file" ref={fileInputRef} onChange={(e) => setImagePreview(URL.createObjectURL(e.target.files[0]))} className="hidden" accept="image/*" />
           <div className="mt-8 pt-6 border-t border-white/5 w-full">
              <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em]">© 2026 Sovereign Auth</p>
           </div>
@@ -274,7 +353,7 @@ function InputGroup({ label, value, onChange, type = "text", icon }) {
           type={type} 
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full ${icon ? 'pl-9' : 'px-4'} pr-3 py-3 bg-slate-50 border-none rounded-xl font-bold text-[11px] outline-none focus:bg-white focus:ring-2 focus:ring-blue-50 transition-all placeholder:text-slate-300 text-slate-800`} 
+          className={`w-full ${icon ? 'pl-9' : 'px-4'} pr-3 py-3 bg-slate-50 border-none rounded-xl font-bold text-[11px] outline-none focus:bg-white focus:ring-2 focus:ring-blue-50 transition-all text-slate-800`} 
         />
       </div>
     </div>

@@ -1,256 +1,281 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Download, FileText, ChevronLeft, Plus, 
-  Send, CheckCircle2, BarChart3, Activity, Trash2, 
-  CloudSun, HardHat, Construction, AlertTriangle, Image as ImageIcon,
-  Calendar, Layers, MapPin
+  Trash2, AlertTriangle, Calendar, ShieldCheck, Search, Loader2, 
+  X, MapPin, Users, HardHat, CloudSun, Building, Download, Filter
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Axios from '../../../../utils/Axios';
+import summeryApi from '@/common/summeryApi';
 
-// --- DATA INITIALIZATION ---
-const INITIAL_REPORTS = [
-  {
-    id: 1,
-    reportTitle: "Concrete Pouring - Block A Foundation",
-    reportType: "DAILY_SITE_REPORT",
-    reportDate: "2026-04-05T08:30:00.000Z",
-    workCompleted: "Successfully poured 20 cubic meters of C-25 concrete for the main foundation.",
-    workersPresent: 18,
-    materialsUsed: "20m3 Concrete, 12kg Curing agent",
-    weatherCondition: "Sunny/Dry",
-    challenges: "Minor delay in concrete truck arrival (20 mins).",
-    progressPhotoUrl: ""
-  }
-];
+export default function AdminIssueDashboard() {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null); 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("ALL");
+  const [selectedReport, setSelectedReport] = useState(null);
+  
+  // State for the custom delete confirmation modal
+  const [reportToDelete, setReportToDelete] = useState(null);
 
-const PROGRESS_DATA = [
-  { month: 'JAN', value: 35, color: '#2563eb' }, { month: 'FEB', value: 48, color: '#2563eb' },
-  { month: 'MAR', value: 92, color: '#2563eb' }, { month: 'APR', value: 65, color: '#2563eb' },
-  { month: 'MAY', value: 42, color: '#2563eb' }, { month: 'JUN', value: 98, color: '#2563eb' }
-];
-
-export default function IntegratedAnalyticsSystem() {
-  const [view, setView] = useState('analytics'); 
-  const [reports, setReports] = useState(INITIAL_REPORTS);
-
-  const addReport = (newReport) => {
-    setReports([newReport, ...reports]);
-    setView('analytics');
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+      const response = await Axios({ ...summeryApi.reports, method: 'GET' });
+      if (response.data.success) setReports(response.data.data);
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => { fetchReports(); }, []);
+
+  const handleConfirmDelete = async () => {
+    const id = reportToDelete._id || reportToDelete.id;
+    try {
+      setDeletingId(id);
+      setReportToDelete(null); // Close the confirm modal immediately
+      await Axios({
+        url: summeryApi.deleteReport.url(id),
+        method: summeryApi.deleteReport.method
+      });
+      setReports(prev => prev.filter(r => (r.id || r._id) !== id));
+    } catch (error) {
+      console.error("Delete failed:", error);
+      fetchReports();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const filteredReports = reports.filter(r => {
+    const matchesSearch = r.reportTitle?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          r.challenges?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterType === "ALL" || r.reportType === filterType;
+    return matchesSearch && matchesFilter;
+  });
+
+  const reportTypes = ["ALL", ...new Set(reports.map(r => r.reportType).filter(Boolean))];
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased">
-      <AnimatePresence mode="wait">
-        {view === 'analytics' ? (
-          <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <AnalyticsDashboard onCreateReport={() => setView('report-form')} reports={reports} onDelete={(id) => setReports(reports.filter(r => r.id !== id))} />
-          </motion.div>
-        ) : (
-          <motion.div key="form" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}>
-            <DailySiteReportForm onBack={() => setView('analytics')} onSubmit={addReport} />
-          </motion.div>
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
+      <div className="max-w-[1000px] mx-auto p-6 space-y-6">
+        
+        {/* --- HEADER --- */}
+        <header className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <div className="flex items-center gap-2 text-blue-600 mb-1">
+              <ShieldCheck size={18} />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Administrative Access</span>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight">Reported Issues Ledger</h1>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <div className="relative md:w-64">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input 
+                type="text" placeholder="Search..." 
+                className="w-full bg-slate-100 border-none rounded-xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <select 
+                className="bg-slate-100 border-none rounded-xl py-3 pl-10 pr-8 text-xs font-bold uppercase appearance-none outline-none cursor-pointer"
+                value={filterType} onChange={(e) => setFilterType(e.target.value)}
+              >
+                {reportTypes.map(type => <option key={type} value={type}>{type.replace('_', ' ')}</option>)}
+              </select>
+            </div>
+          </div>
+        </header>
+
+        {/* --- LIST --- */}
+        <div className="grid grid-cols-1 gap-4 pb-20">
+          {loading ? (
+            <div className="flex justify-center py-20 text-slate-400"><Loader2 className="animate-spin" size={32} /></div>
+          ) : (
+            <AnimatePresence>
+              {filteredReports.map((report) => (
+                <motion.div 
+                  layout key={report.id || report._id} 
+                  onClick={() => deletingId !== (report.id || report._id) && setSelectedReport(report)}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="group cursor-pointer bg-white p-6 rounded-2xl border border-slate-200 flex justify-between items-center hover:border-blue-200 transition-all shadow-sm"
+                >
+                  <div className="flex gap-4">
+                    <div className="p-3 bg-red-50 text-red-600 rounded-xl"><AlertTriangle size={20}/></div>
+                    <div>
+                      <h4 className="font-bold text-slate-800">{report.reportTitle}</h4>
+                      <p className="text-slate-500 text-sm line-clamp-1">{report.challenges}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setReportToDelete(report); }} 
+                    className="p-3 text-slate-300 hover:text-red-600 transition-colors"
+                  >
+                    {deletingId === (report.id || report._id) ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
+                  </button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+        </div>
+      </div>
+
+      {/* --- DELETE CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {reportToDelete && (
+          <DeleteConfirmModal 
+            title={reportToDelete.reportTitle} 
+            onConfirm={handleConfirmDelete} 
+            onCancel={() => setReportToDelete(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      {/* --- REPORT DETAIL MODAL --- */}
+      <AnimatePresence>
+        {selectedReport && (
+          <ReportDetailModal report={selectedReport} onClose={() => setSelectedReport(null)} />
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-// --- DASHBOARD ---
-function AnalyticsDashboard({ onCreateReport, reports, onDelete }) {
+// --- NEW COMPONENT: DELETE CONFIRMATION MODAL ---
+function DeleteConfirmModal({ title, onConfirm, onCancel }) {
   return (
-    <div className="max-w-[1200px] mx-auto p-6 space-y-8">
-      <header className="flex justify-between items-center bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Site Intelligence Dashboard</h1>
-          <p className="text-slate-500 text-sm">Monitoring {reports.length} active site logs</p>
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-white w-full max-w-md p-8 rounded-[2rem] shadow-2xl border border-slate-100 text-center"
+      >
+        <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <AlertTriangle size={32} />
         </div>
-        <button onClick={onCreateReport} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
-          <Plus size={20} /> New Site Report
-        </button>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <KPICard title="Total Reports" value={reports.length + 124} icon={<FileText className="text-blue-600" />} />
-        <KPICard title="Staff on Site" value="42" icon={<HardHat className="text-orange-600" />} />
-        <KPICard title="Progress Sync" value="94%" icon={<Activity className="text-emerald-600" />} />
-        <KPICard title="Safety Status" value="Optimal" icon={<CheckCircle2 className="text-blue-600" />} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {reports.map((report) => (
-          <div key={report.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-400 transition-all">
-            <div className="flex justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Construction size={18}/></div>
-                <h4 className="font-bold">{report.reportTitle}</h4>
-              </div>
-              <button onClick={() => onDelete(report.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
-            </div>
-            <p className="text-sm text-slate-600 line-clamp-2 mb-4">"{report.workCompleted}"</p>
-            <div className="flex flex-wrap gap-2">
-              <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded text-slate-500 uppercase">{new Date(report.reportDate).toDateString()}</span>
-              <span className="text-[10px] font-bold bg-blue-50 px-2 py-1 rounded text-blue-600 uppercase">{report.workersPresent} Workers</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Report?</h3>
+        <p className="text-slate-500 text-sm mb-8 leading-relaxed">
+          You are about to permanently remove <span className="font-bold text-slate-700">"{title}"</span>. This action cannot be undone.
+        </p>
+        <div className="flex gap-3">
+          <button 
+            onClick={onCancel}
+            className="flex-1 py-4 px-6 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={onConfirm}
+            className="flex-1 py-4 px-6 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-red-200"
+          >
+            Delete
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
-// --- FULL FORM (FIXED VISIBILITY) ---
-function DailySiteReportForm({ onBack, onSubmit }) {
-  const [formData, setFormData] = useState({
-    reportTitle: '',
-    reportType: 'DAILY_SITE_REPORT',
-    reportDate: new Date().toISOString().split('T')[0],
-    workCompleted: '',
-    workersPresent: '',
-    materialsUsed: '',
-    weatherCondition: 'Sunny/Dry',
-    challenges: '',
-    progressPhoto: null // Changed from progressPhotoUrl string to null
-  });
+// --- MODAL COMPONENT (Detail View) ---
+function ReportDetailModal({ report, onClose }) {
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const [preview, setPreview] = useState(null);
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({ ...formData, progressPhoto: file });
-      // Generate a local preview URL
-      setPreview(URL.createObjectURL(file));
+  const downloadReport = async () => {
+    try {
+      setIsDownloading(true);
+      const reportId = report._id || report.id;
+      const response = await Axios({
+        url: summeryApi.downloadReport.url(reportId),
+        method: summeryApi.downloadReport.method,
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Report_${report.reportTitle.replace(/\s+/g, '_')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert("Download failed.");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Pass the file object up to your submission handler
-    onSubmit({ ...formData, id: Date.now() });
-  };
-
   return (
-    <div className="max-w-[800px] mx-auto p-6 md:py-12">
-      <button onClick={onBack} className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-600 mb-6 transition-all">
-        <ChevronLeft size={18} /> Back to Dashboard
-      </button>
-
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="p-8 border-b border-slate-100 bg-slate-50 flex items-center gap-4">
-          <div className="p-3 bg-blue-600 text-white rounded-2xl"><FileText size={24}/></div>
+    <motion.div 
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+        className="bg-white w-full max-w-4xl h-full max-h-[85vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="shrink-0 p-8 bg-[#0F172A] text-white flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold">New Daily Site Report</h2>
-            <p className="text-slate-500 text-sm">Please provide accurate field data for the ledger.</p>
+            <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 block mb-1">{report.reportType?.replace('_', ' ')}</span>
+            <h3 className="text-2xl font-bold">{report.reportTitle}</h3>
+          </div>
+          <div className="flex gap-3">
+            <button 
+              onClick={downloadReport} disabled={isDownloading}
+              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase transition-all disabled:opacity-50"
+            >
+              {isDownloading ? <Loader2 className="animate-spin" size={14}/> : <Download size={14} />}
+              {isDownloading ? "Generating..." : "Download PDF"}
+            </button>
+            <button onClick={onClose} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/10"><X size={20}/></button>
           </div>
         </div>
-
-        <div className="p-8 space-y-8">
-          {/* Section 1: Title & Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormInput label="Report Title" icon={<FileText size={16}/>} placeholder="e.g. Foundation Pouring" value={formData.reportTitle} onChange={v => setFormData({...formData, reportTitle: v})} />
-            <FormInput label="Date of Work" icon={<Calendar size={16}/>} type="date" value={formData.reportDate} onChange={v => setFormData({...formData, reportDate: v})} />
+        <div className="flex-1 overflow-y-auto p-10 bg-white">
+          {/* ... modal body content same as before ... */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+             <InfoBox label="Supervisor" value={`${report.user?.firstName} ${report.user?.lastName}`} color="blue" icon={<Users size={16}/>} />
+             <InfoBox label="Date" value={new Date(report.reportDate).toLocaleDateString()} color="slate" icon={<Calendar size={16}/>} />
+             <InfoBox label="Weather" value={report.weatherCondition} color="orange" icon={<CloudSun size={16}/>} />
+             <InfoBox label="Workers" value={`${report.workersPresent}`} color="emerald" icon={<HardHat size={16}/>} />
           </div>
-
-          {/* Section 2: Details */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <CheckCircle2 size={14} className="text-blue-600"/> Work Execution Details
-            </label>
-            <textarea 
-              required 
-              className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 text-sm focus:border-blue-500 focus:bg-white outline-none transition-all min-h-[120px]"
-              placeholder="What tasks were completed today?"
-              value={formData.workCompleted}
-              onChange={e => setFormData({...formData, workCompleted: e.target.value})}
-            />
-          </div>
-
-          {/* Section 3: Personnel, Weather, Materials */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <FormInput label="Personnel" icon={<HardHat size={16}/>} type="number" placeholder="0" value={formData.workersPresent} onChange={v => setFormData({...formData, workersPresent: v})} />
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2"><CloudSun size={14}/> Weather</label>
-              <select className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white" value={formData.weatherCondition} onChange={e => setFormData({...formData, weatherCondition: e.target.value})}>
-                <option>Sunny/Dry</option><option>Rainy/Wet</option><option>Overcast</option><option>Windy</option>
-              </select>
-            </div>
-            <FormInput label="Materials" icon={<MapPin size={16}/>} placeholder="e.g. 10m3 Concrete" value={formData.materialsUsed} onChange={v => setFormData({...formData, materialsUsed: v})} />
-          </div>
-
-          {/* Section 4: Challenges */}
-          <div className="p-6 bg-red-50 rounded-2xl border border-red-100 space-y-3">
-             <label className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-2"><AlertTriangle size={14}/> Challenges & Blockers</label>
-             <input className="w-full bg-white border-2 border-red-200 rounded-xl p-4 text-sm outline-none focus:border-red-500" placeholder="List any safety issues or delays..." value={formData.challenges} onChange={e => setFormData({...formData, challenges: e.target.value})} />
-          </div>
-
-          {/* Section 5: LOCAL PHOTO UPLOAD */}
-          <div className="space-y-4">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <ImageIcon size={16}/> Progress Photo (Local Upload)
-            </label>
-            
-            <div className="flex flex-col md:flex-row items-start gap-6">
-              {/* Upload Trigger */}
-              <label className="w-full md:w-1/2 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl p-6 hover:border-blue-500 hover:bg-blue-50/30 cursor-pointer transition-all">
-                <div className="p-3 bg-slate-100 text-slate-400 rounded-full mb-2">
-                  <ImageIcon size={24} />
-                </div>
-                <span className="text-sm font-bold text-slate-600">Click to upload photo</span>
-                <span className="text-[10px] text-slate-400 mt-1 uppercase">JPG, PNG or WEBP (Max 5MB)</span>
-                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-              </label>
-
-              {/* Preview Area */}
-              <div className="w-full md:w-1/2 h-[140px] border-2 border-slate-100 rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
-                {preview ? (
-                  <img src={preview} alt="Upload preview" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold text-slate-300 uppercase italic">No photo selected</span>
-                )}
-              </div>
-            </div>
+          <div className="space-y-8">
+            <section>
+               <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Work Completed</h5>
+               <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-6 rounded-2xl border border-slate-100 italic">"{report.workCompleted}"</p>
+            </section>
+            <section>
+               <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Challenges</h5>
+               <p className="text-sm text-slate-700 leading-relaxed bg-amber-50/40 p-6 rounded-2xl border border-amber-100">{report.challenges}</p>
+            </section>
           </div>
         </div>
-
-        <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-          <button type="button" onClick={onBack} className="text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">Cancel Draft</button>
-          <button type="submit" className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold flex items-center gap-3 hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
-            <Send size={18} /> Submit Report
-          </button>
-        </div>
-      </form>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
-// --- ATOMS ---
-function FormInput({ label, icon, type = "text", placeholder, value, onChange }) {
+function InfoBox({ label, value, color, icon }) {
+  const colors = {
+    blue: "bg-blue-50 text-blue-600 border-blue-100",
+    orange: "bg-orange-50 text-orange-600 border-orange-100",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    slate: "bg-slate-50 text-slate-600 border-slate-100",
+  };
   return (
-    <div className="space-y-2 flex-1">
-      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-        {icon} {label}
-      </label>
-      <input 
-        type={type} 
-        required 
-        placeholder={placeholder} 
-        value={value} 
-        onChange={e => onChange(e.target.value)} 
-        className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all"
-      />
-    </div>
-  );
-}
-
-function KPICard({ title, value, icon }) {
-  return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-      <div className="p-3 bg-slate-50 rounded-xl">{icon}</div>
-      <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
-      </div>
+    <div className={`p-5 rounded-3xl border ${colors[color]}`}>
+      <div className="flex items-center gap-2 opacity-60 mb-1">{icon} <span className="text-[8px] font-black uppercase tracking-widest">{label}</span></div>
+      <p className="text-[11px] font-black truncate">{value}</p>
     </div>
   );
 }

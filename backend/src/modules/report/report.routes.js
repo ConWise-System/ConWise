@@ -25,4 +25,25 @@ router.get(
   reportController.getProjectReports,
 );
 
+//download report
+router.get(
+  "/:reportId/download",
+  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
+  reportController.downloadReport,
+);
+
+router.get(
+  "/all",
+  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
+  reportController.getAllReports,
+);
+
+// delete report
+router.delete(
+  "/:reportId",
+  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
+  reportController.deleteReport,
+);
+
+
 export default router;
