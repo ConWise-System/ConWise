@@ -1,5 +1,5 @@
-import prisma from "../../config/prisma.js"
-
+import { PrismaClient } from "../../generated/prisma/index.js";
+const prisma = new PrismaClient();
 
 const calculateDaysRemaining = (dueDate) => {
     if (!dueDate) return 0;
@@ -76,6 +76,9 @@ export const taskService = {
     },
 
     assignTask: async (taskId, userId) => {
+        
+        console.log(`Assigning task ${taskId} to user ${userId} in service layer`);
+
         const task = await prisma.task.update({
             where: { id: Number(taskId) },
             data: { assigneeUserId: Number(userId) }

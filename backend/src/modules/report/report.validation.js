@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { REPORT_TYPE } from "../../config/constants.js";
 
 export const createReportSchema = z.object({
   projectId: z.number().int().positive(),
@@ -22,4 +23,15 @@ export const reportIdParamSchema = z.object({
   params: z.object({
     reportId: z.string().regex(/^\d+$/, "Invalid ID").transform(Number),
   }),
+});
+
+const managedReportTypeSchema = z.enum([
+  REPORT_TYPE.DAILY_SITE_REPORT,
+  REPORT_TYPE.PROGRESS_REPORT,
+  REPORT_TYPE.INCIDENT_REPORT,
+  REPORT_TYPE.QUALITY_REPORT,
+]);
+
+export const filerReportByTypeSchema = z.object({
+  reportType: managedReportTypeSchema,
 });

@@ -3,7 +3,10 @@ import reportController from "./report.controller.js";
 import validate from "../../middlewares/validate.middleware.js";
 import authenticate from "../../middlewares/auth.middleware.js";
 import authorizeRoles from "../../middlewares/role.middleware.js";
-import { createReportSchema } from "./report.validation.js";
+import {
+  createReportSchema,
+  filerReportByTypeSchema,
+} from "./report.validation.js";
 import { ROLES } from "../../config/constants.js";
 
 const router = express.Router();
@@ -25,6 +28,13 @@ router.get(
   reportController.getProjectReports,
 );
 
+//get all reports
+router.get(
+  "/all",
+  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
+  reportController.getAllReports,
+);
+
 //download report
 router.get(
   "/:reportId/download",
@@ -32,10 +42,13 @@ router.get(
   reportController.downloadReport,
 );
 
+// filter report
+
 router.get(
-  "/all",
+  "/filter-report-by-type",
   authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
-  reportController.getAllReports,
+  validate(filerReportByTypeSchema, "query"),
+  reportController.reportFilter,
 );
 
 // delete report
@@ -44,6 +57,5 @@ router.delete(
   authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
   reportController.deleteReport,
 );
-
 
 export default router;
