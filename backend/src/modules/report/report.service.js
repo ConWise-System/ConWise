@@ -1,4 +1,6 @@
 import prisma from "../../config/prisma.js";
+import { notificationService } from "../notification/notification.service.js";
+
 
 const createReport = async (userId, companyId, reportData) => {
   try {
@@ -46,6 +48,20 @@ const createReport = async (userId, companyId, reportData) => {
         company: true, // optional
       },
     });
+
+    // I want to send notification hereto notification service
+    try {
+        await notificationService.createNotification({
+          recipientUserId: reportData.project.projectManagerId,
+          notificationTitle: "New Report Submitted",
+          notificationDescription: `${reportData.user.firstName} submitted a ${reportData.reportType} for project ${reportData.project.projectName}.`,
+          relatedEntityType: "REPORT",
+          relatedEntityId: newReport.id
+        });
+      } catch (notificationError) {
+        // We log the error but don't fail the whole request
+        // because the report was already successfully saved.
+        c
   } catch (error) {
     throw new Error(error);
   }
