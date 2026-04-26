@@ -29,6 +29,15 @@ const getProjectReports = catchAsync(async (req, res) => {
   });
 });
 
+const getAllReports = catchAsync(async (req, res) => {
+  const reports = await reportService.getAllReports();
+
+  res.status(200).json({
+    success: true,
+    data: reports,
+  });
+});
+
 const downloadReport = catchAsync(async (req, res) => {
   const { reportId } = req.params;
 
@@ -120,12 +129,19 @@ const downloadReport = catchAsync(async (req, res) => {
   doc.end();
 });
 
-const getAllReports = catchAsync(async (req, res) => {
-  const reports = await reportService.getAllReports();
+const reportFilter = catchAsync(async (req, res) => {
+  const { reportType } = req.query;
+
+  const report = await reportService.reportFilter(reportType);
 
   res.status(200).json({
     success: true,
-    data: reports,
+    message:
+      report.length > 0 ? "Report found successfully" : "No report found",
+    data: {
+      report,
+      count: report.length,
+    },
   });
 });
 
@@ -140,11 +156,10 @@ const deleteReport = catchAsync(async (req, res) => {
   });
 });
 
-
 export default {
   submitReport,
   getProjectReports,
-  downloadReport,
   getAllReports,
-  deleteReport
+  downloadReport,
+  reportFilter,
 };

@@ -1,35 +1,70 @@
 import prisma from "../../config/prisma.js";
+import { notificationService } from "../notification/notification.service.js";
+
 
 const createReport = async (userId, companyId, reportData) => {
-  return await prisma.report.create({
-    data: {
-      reportTitle: reportData.reportTitle,
-      reportType: reportData.reportType,
-      reportDate: new Date(reportData.reportDate),
-      workCompleted: reportData.workCompleted,
-      workersPresent: Number(reportData.workersPresent),
-      materialsUsed: reportData.materialsUsed,
-      weatherCondition: reportData.weatherCondition,
-      challenges: reportData.challenges,
-      progressPhotoUrl: reportData.progressPhotoUrl,
+  try {
+    // The companyId of the project report is creating and the user company id should be the same ,
+    // if it not the current implementation is one user is creating report for another company project wich is logically not correct user can create report for only their companies project
 
-      // Relations - Use connect for all three
-      user: {
-        connect: { id: Number(userId) },
+    if (reportData.projectId) {
+      const project = await prisma.project.findUnique({
+        where: { id: Number(reportData.projectId) },
+        select: { companyId: true },
+      });
+      if (project && project.companyId !== Number(companyId)) {
+        throw new Error(
+          "Cannot create report for a project that does not belong to this company.",
+        );
+      }
+    }
+
+    return await prisma.report.create({
+      data: {
+        reportTitle: reportData.reportTitle,
+        reportType: reportData.reportType,
+        reportDate: new Date(reportData.reportDate),
+        workCompleted: reportData.workCompleted,
+        workersPresent: Number(reportData.workersPresent),
+        materialsUsed: reportData.materialsUsed,
+        weatherCondition: reportData.weatherCondition,
+        challenges: reportData.challenges,
+        progressPhotoUrl: reportData.progressPhotoUrl,
+
+        // Relations - Use connect for all three
+        user: {
+          connect: { id: Number(userId) },
+        },
+        project: {
+          connect: { id: Number(reportData.projectId) },
+        },
+        company: {
+          connect: { id: Number(companyId) },
+        },
       },
-      project: {
-        connect: { id: Number(reportData.projectId) },
+      include: {
+        user: true, // optional - if you want to return user data
+        project: true, // optional
+        company: true, // optional
       },
-      company: {
-        connect: { id: Number(companyId) },
-      },
-    },
-    include: {
-      user: true, // optional - if you want to return user data
-      project: true, // optional
-      company: true, // optional
-    },
-  });
+    });
+
+    // I want to send notification hereto notification service
+    try {
+        await notificationService.createNotification({
+          recipientUserId: reportData.project.projectManagerId,
+          notificationTitle: "New Report Submitted",
+          notificationDescription: `${reportData.user.firstName} submitted a ${reportData.reportType} for project ${reportData.project.projectName}.`,
+          relatedEntityType: "REPORT",
+          relatedEntityId: newReport.id
+        });
+      } catch (notificationError) {
+        // We log the error but don't fail the whole request
+        // because the report was already successfully saved.
+        c
+  } catch (error) {
+    throw new Error(error);
+  }
 };
 
 const getReportsByProject = async (projectId) => {
@@ -63,7 +98,6 @@ const getAllReports = async () => {
   });
 };
 
-
 const downloadReport = async (reportId) => {
   return await prisma.report.findUnique({
     where: { id: Number(reportId) },
@@ -81,17 +115,28 @@ const downloadReport = async (reportId) => {
   });
 };
 
+// filter report by reportType DAILY OR WEEKLY
+const filterReport = async (reportType) => {
+  return await prisma.report.findMany({
+    where: {
+      reportType: reportType,
+    },
+  });
+};
+
+// delete report
+
 const deleteReport = async (reportId) => {
   return await prisma.report.delete({
     where: { id: Number(reportId) },
   });
 };
 
-
 export default {
   createReport,
   getReportsByProject,
-  downloadReport,
   getAllReports,
-  deleteReport
+  downloadReport,
+  filterReport,
+  deleteReport,
 };

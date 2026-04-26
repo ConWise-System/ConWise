@@ -101,8 +101,9 @@ model Company {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  users    User[]
-  projects Project[]
+  users     User[]
+  projects  Project[]
+  materials MaterialUsed[]
   reports  Report[]
 
   @@index([name])
@@ -258,15 +259,16 @@ model TaskProgress {
 
 model MaterialUsed {
   id               Int     @id @default(autoincrement())
+  companyId        Int
   materialName     String
   quantityUsed     Decimal @db.Decimal(10, 2)
   unit             String
   usageDescription String?
   materialStatus   String
+  tasks            Task[]
+  company          Company @relation(fields: [companyId], references: [id])
 
-  taskId Int
-  task   Task @relation(fields: [taskId], references: [id])
-
+  @@index([companyId])
   @@map("materials_used")
 }
 
@@ -353,15 +355,17 @@ model Issue {
 model Chat {
   id             Int      @id @default(autoincrement())
   senderUserId   Int
-  projectId      Int
-  messageContent String
+  receiverUserId Int? // Nullable for group chats
+  projectId      Int? // Nullable for private chats
+  messageContent String   @db.Text
   timestamp      DateTime @default(now())
   chatType       ChatType @default(TEXT)
 
-  sender  User    @relation("ChatSender", fields: [senderUserId], references: [id])
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sender  User     @relation("ChatSender", fields: [senderUserId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([senderUserId])
+  @@index([receiverUserId])
   @@index([projectId])
   @@map("chats")
 }
