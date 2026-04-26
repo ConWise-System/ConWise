@@ -13,6 +13,8 @@ import {
   refreshTokenSchema,
   logoutSchema,
   createUserSchema,
+  searchUserSchema,
+  filterUserByRoleSchema,
   changePasswordSchema,
   inviteUserSchema,
   acceptInviteSchema,
@@ -172,6 +174,19 @@ router.patch(
   "/change-password",
   validate(changePasswordSchema),
   authController.changePassword,
+);
+
+router.get(
+  "/search",
+  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN),
+  validate(searchUserSchema, "query"),
+  authController.searchUser,
+);
+router.get(
+  "/filter-user-by-role",
+  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN),
+  validate(filterUserByRoleSchema, "query"),
+  authController.filterUserByRole,
 );
 
 /**

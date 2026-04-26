@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
+
+import http from "http"; // 1. Import http
+import { initSocket } from "./socket.js";
 import swaggerUi from "swagger-ui-express";
 import { specs } from "./config/swagger.js";
 import notFoundHandler from "./middlewares/notFound.middleware.js";
@@ -10,12 +13,20 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import projectRoutes from "./modules/project/project.routes.js";
 import taskRoutes from "./modules/task/task.routes.js";
 import materialRoutes from "./modules/material/material.routes.js";
+import reportRotues from "./modules/report/report.routes.js";
+import messagingRoutes from "./modules/messaging/messaging.routes.js";
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app); // 3. Wrap Express with HTTP
 
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => callback(null, true), // Allows any origin
+    credentials: true,
+  }),
+);
 app.use(morgan("dev"));
 app.use(express.json());
 
@@ -28,6 +39,8 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/materials", materialRoutes);
+app.use("/api/reports", reportRotues);
+app.use("/api/messaging", messagingRoutes);
 app.use("/api", taskRoutes);
 
 // Swagger docs
@@ -58,8 +71,10 @@ app.get("/api-docs.json", (req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+initSocket(server);
+
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
