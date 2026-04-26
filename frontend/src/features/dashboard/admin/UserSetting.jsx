@@ -6,8 +6,8 @@ import {
   ShieldCheck, LogOut, Globe, Fingerprint,
   RefreshCw, Lock, Eye, EyeOff, KeyRound
 } from 'lucide-react';
-import { useUser } from '@/context/UserContext';
-import summeryApi from '@/common/summeryApi';
+import { useUser } from '../../../context/UserContext';
+import summeryApi from '../../../common/summeryApi';
 import Axios from '../../../../utils/Axios';
 
 export default function SovereignExecutiveSettings() {

@@ -11,18 +11,17 @@ import {
 import { motion } from 'framer-motion';
 
 const menuItems = [
-  { icon: <LayoutDashboard size={16} />, label: 'Dashboard Home', path: '/admin/dashboardHome' },
-  { icon: <Users size={16} />, label: 'User Management', path: '/admin/userManagement' },
-  { icon: <FolderRoot size={16} />, label: 'Project Management', path: '/admin/projectManagement' },
-  { icon: <CheckSquare size={16} />, label: 'Task Management', path: '/admin/taskManagement' },
-  { icon: <ShieldAlert size={16} />, label: 'Issue Management', path: '/admin/issueManagement' },
-  { icon: <BarChart3 size={16} />, label: 'Reports & Analytics', path: '/admin/report' },
-  { icon: <MessageSquare size={16} />, label: 'Messaging', path: '/admin/messaging' },
-  { icon: <Bell size={16} />, label: 'Notifications', path: '/admin/notification' },
-  { icon: <Settings size={16} />, label: 'Settings', path: '/admin/setting' },
+  { icon: <LayoutDashboard size={16} />, label: 'Project Manager Home', path: '/projectManager/Home' },
+  { icon: <Users size={16} />, label: 'Projects', path: '/projectManager/projects' },
+  { icon: <FolderRoot size={16} />, label: 'Task Center', path: '/projectManager/taskCenter' },
+  { icon: <CheckSquare size={16} />, label: 'Issue Tracking', path: '/projectManager/issueTracking' },
+  { icon: <ShieldAlert size={16} />, label: 'Team Intel', path: '/projectManager/teamIntel' },
+  { icon: <BarChart3 size={16} />, label: 'Reports', path: '/projectManager/reports' },
+  { icon: <MessageSquare size={16} />, label: 'Messages', path: '/projectManager/messages' },
+  { icon: <Bell size={16} />, label: 'Settings', path: '/projectManager/settings' },
 ];
 
-export default function Sidebar() {
+export default function ProjectManagerSideBar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
 

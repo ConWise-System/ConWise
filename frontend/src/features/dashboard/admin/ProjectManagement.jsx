@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Axios from '../../../../utils/Axios';
-import summeryApi from '@/common/summeryApi';
+import summeryApi from '../../../common/summeryApi';
 
 export default function ProjectManagementSystem() {
   const [view, setView] = useState('list'); 

@@ -1,0 +1,21 @@
+import React from 'react';
+
+const StatusBadge = ({ status }) => {
+  const styles = {
+    "On Track": "bg-emerald-50 text-emerald-600 border-emerald-100",
+    "Critical": "bg-rose-50 text-rose-600 border-rose-100",
+    "Delayed": "bg-amber-50 text-amber-600 border-amber-100",
+    "In Review": "bg-blue-50 text-blue-600 border-blue-100",
+    "Completed": "bg-slate-100 text-slate-600 border-slate-200"
+  };
+
+  const currentStyle = styles[status] || "bg-slate-50 text-slate-500 border-slate-100";
+
+  return (
+    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${currentStyle} transition-all`}>
+      {status}
+    </span>
+  );
+};
+
+export default StatusBadge;
