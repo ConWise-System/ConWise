@@ -68,9 +68,7 @@ export const updateProjectSchema = z
     endDate: z.coerce.date().optional(),
     clientName: z.string().min(2).max(100).optional(),
     projectBudget: z.number().positive().optional(),
-    status: z
-      .enum(["PLANNING", "ACTIVE", "ON_HOLD", "COMPLETED", "CANCELLED"])
-      .optional(),
+    status: ProjectStatus.optional(),
   })
   .refine(
     (data) => {
