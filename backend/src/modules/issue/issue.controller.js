@@ -134,6 +134,7 @@ export const issueController = {
       const issueId = parsePositiveInt(req.params.issueId, "issueId");
       const issue = await issueService.getIssue({
         issueId,
+        projectId,
         companyId: req.user.companyId,
         userRole: req.user.role,
         userId: req.user.id,
@@ -155,9 +156,11 @@ export const issueController = {
    */
   updateIssue: async (req, res) => {
     try {
+      const projectId = parsePositiveInt(req.params.projectId, "projectId");
       const issueId = parsePositiveInt(req.params.issueId, "issueId");
       const updated = await issueService.updateIssue({
         issueId,
+        projectId,
         companyId: req.user.companyId,
         actorId: req.user.id,
         userRole: req.user.role,
@@ -190,10 +193,12 @@ export const issueController = {
    */
   assignIssue: async (req, res) => {
     try {
+      const projectId = parsePositiveInt(req.params.projectId, "projectId");
       const issueId = parsePositiveInt(req.params.issueId, "issueId");
       const assigneeId = parsePositiveInt(req.body.assigneeId, "assigneeId");
       const result = await issueService.assignIssue({
         issueId,
+        projectId,
         companyId: req.user.companyId,
         actorId: req.user.id,
         userRole: req.user.role,
@@ -257,6 +262,8 @@ export const issueController = {
       const logs = await issueService.getAuditTrail({
         issueId,
         companyId: req.user.companyId,
+        userRole: req.user.role,
+        userId: req.user.id,
       });
       return res.status(200).json({ success: true, data: logs });
     } catch (error) {
