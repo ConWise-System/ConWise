@@ -129,6 +129,8 @@ export const issueService = {
     const limit = Math.min(50, Math.max(1, parseInt(query.limit) || 20));
     const skip = (page - 1) * limit;
 
+    const priorityOrder = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+
     // Build where clause
     const where = { companyId, projectId };
 
@@ -145,7 +147,7 @@ export const issueService = {
         where,
         skip,
         take: limit,
-        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }],
         include: {
           reporter: { select: { id: true, firstName: true, lastName: true } },
           assignee: { select: { id: true, firstName: true, lastName: true } },
@@ -158,6 +160,13 @@ export const issueService = {
       prisma.issue.count({ where }),
     ]);
 
+    issues.sort((a, b) => {
+      const priorityDiff =
+        priorityOrder[b.priority] - priorityOrder[a.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
     return {
       data: issues,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
@@ -165,9 +174,9 @@ export const issueService = {
   },
 
   // ── Get single issue with audit trail ──────────────────────────────────────
-  getIssue: async ({ issueId, companyId, userRole, userId }) => {
+  getIssue: async ({ issueId, projectId, companyId, userRole, userId }) => {
     const issue = await prisma.issue.findFirst({
-      where: { id: issueId, companyId },
+      where: { id: issueId, projectId, companyId },
       include: {
         reporter: {
           select: { id: true, firstName: true, lastName: true, role: true },
@@ -211,30 +220,14 @@ export const issueService = {
   },
 
   // ── Update issue metadata ────────────────────────────────────────────────────
-  updateIssue: async ({ issueId, companyId, actorId, userRole, data }) => {
-    const issue = await prisma.issue.findFirst({
-      where: { id: issueId, companyId },
-    });
-
-    if (!issue) {
-      const err = new Error("Issue not found");
-      err.statusCode = 404;
-      throw err;
-    }
-
-    if (issue.status === "CLOSED") {
-      const err = new Error("Cannot edit a closed issue");
-      err.statusCode = 409;
-      throw err;
-    }
-
-    // SITE_SUPERVISOR can only edit their own reported issues
-    if (userRole === ROLES.SITE_SUPERVISOR && issue.reporterId !== actorId) {
-      const err = new Error("You can only edit issues you reported");
-      err.statusCode = 403;
-      throw err;
-    }
-
+  updateIssue: async ({
+    issueId,
+    projectId,
+    companyId,
+    actorId,
+    userRole,
+    data,
+  }) => {
     // Whitelist updatable fields to prevent mass assignment
     const allowedFields = [
       "title",
@@ -250,6 +243,43 @@ export const issueService = {
     }
 
     return prisma.$transaction(async (tx) => {
+      const issue = await tx.issue.findFirst({
+        where: { id: issueId, projectId, companyId },
+      });
+
+      if (!issue) {
+        const err = new Error("Issue not found");
+        err.statusCode = 404;
+        throw err;
+      }
+
+      if (
+        updateData.blockedTaskId !== undefined &&
+        updateData.blockedTaskId !== null
+      ) {
+        const task = await tx.task.findFirst({
+          where: { id: updateData.blockedTaskId, projectId },
+        });
+        if (!task) {
+          const err = new Error("Task not found in this project");
+          err.statusCode = 404;
+          throw err;
+        }
+      }
+
+      if (issue.status === "CLOSED") {
+        const err = new Error("Cannot edit a closed issue");
+        err.statusCode = 409;
+        throw err;
+      }
+
+      // SITE_SUPERVISOR can only edit their own reported issues
+      if (userRole === ROLES.SITE_SUPERVISOR && issue.reporterId !== actorId) {
+        const err = new Error("You can only edit issues you reported");
+        err.statusCode = 403;
+        throw err;
+      }
+
       const updated = await tx.issue.update({
         where: { id: issueId },
         data: { ...updateData, updatedAt: new Date() },
@@ -276,6 +306,7 @@ export const issueService = {
   // ── Assign issue to a staff member ─────────────────────────────────────────
   assignIssue: async ({
     issueId,
+    projectId,
     companyId,
     actorId,
     userRole,
@@ -289,7 +320,7 @@ export const issueService = {
     }
 
     const issue = await prisma.issue.findFirst({
-      where: { id: issueId, companyId },
+      where: { id: issueId, projectId, companyId },
     });
 
     if (!issue) {
@@ -411,15 +442,31 @@ export const issueService = {
   },
 
   // ── Get audit trail only ────────────────────────────────────────────────────
-  getAuditTrail: async ({ issueId, companyId }) => {
+  getAuditTrail: async ({
+    issueId,
+    projectId,
+    companyId,
+    userRole,
+    userId,
+  }) => {
     const issue = await prisma.issue.findFirst({
-      where: { id: issueId, companyId },
-      select: { id: true },
+      where: { id: issueId, projectId, companyId },
+      select: { id: true, reporterId: true, assigneeId: true },
     });
 
     if (!issue) {
       const err = new Error("Issue not found");
       err.statusCode = 404;
+      throw err;
+    }
+
+    if (
+      userRole === ROLES.SITE_SUPERVISOR &&
+      issue.reporterId !== userId &&
+      issue.assigneeId !== userId
+    ) {
+      const err = new Error("You do not have permission to view this issue");
+      err.statusCode = 403;
       throw err;
     }
 
@@ -442,30 +489,33 @@ export const issueService = {
       throw err;
     }
 
-    const issue = await prisma.issue.findFirst({
-      where: { id: issueId, companyId },
-    });
+    return prisma.$transaction(async (tx) => {
+      const issue = await tx.issue.findFirst({
+        where: { id: issueId, companyId },
+        select: { status: true },
+      });
 
-    if (!issue) {
-      const err = new Error("Issue not found");
-      err.statusCode = 404;
-      throw err;
-    }
+      if (!issue) {
+        const err = new Error("Issue not found");
+        err.statusCode = 404;
+        throw err;
+      }
 
-    if (issue.status !== "OPEN") {
-      const err = new Error(
-        `Cannot delete an issue that is ${issue.status}. Only OPEN issues can be deleted.`,
-      );
-      err.statusCode = 409;
-      throw err;
-    }
+      if (issue.status !== "OPEN") {
+        const err = new Error(
+          `Cannot delete an issue that is ${issue.status}. Only OPEN issues can be deleted.`,
+        );
+        err.statusCode = 409;
+        throw err;
+      }
 
-    // Transaction: delete audit logs first (cascade handles it, but be explicit)
-    await prisma.$transaction(async (tx) => {
       await tx.issueAuditLog.deleteMany({ where: { issueId } });
-      await tx.issue.delete({ where: { id: issueId } });
-    });
 
-    return { deleted: true, id: issueId };
+      await tx.issue.deleteMany({
+        where: { id: issueId, companyId, status: "OPEN" },
+      });
+
+      return { deleted: true, id: issueId };
+    });
   },
 };
