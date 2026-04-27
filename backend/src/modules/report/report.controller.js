@@ -162,4 +162,6 @@ export default {
   getAllReports,
   downloadReport,
   reportFilter,
+  deleteReport,
 };
+
