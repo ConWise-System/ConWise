@@ -36,7 +36,7 @@ router.patch(
 // DELETE /api/projects/:projectId/issues/:issueId — Delete (ADMIN only, OPEN only)
 router.delete("/:issueId", issueController.deleteIssue);
 
-// ─── Issue actions (specific sub-routes BEFORE :issueId wildcard) ─────────────
+// ─── Issue actions (specific sub-routes AFTER :issueId wildcard) ─────────────
 
 // PATCH  /api/projects/:projectId/issues/:issueId/assign  — Assign to user
 router.patch(
