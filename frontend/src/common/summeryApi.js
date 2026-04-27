@@ -57,7 +57,16 @@ const summeryApi = {
     deleteReport:{
         url: (reportId) => `/api/reports/${reportId}`,
         method: "delete"
-    }
+    },
+    createProject:{
+        url: "/api/projects",
+        method: "post"
+    },
+    getAllProjects:{
+        url: "/api/projects",
+        method: "get"
+    },
+
 }
 
 export default summeryApi
