@@ -15,6 +15,7 @@ import taskRoutes from "./modules/task/task.routes.js";
 import materialRoutes from "./modules/material/material.routes.js";
 import reportRotues from "./modules/report/report.routes.js";
 import messagingRoutes from "./modules/messaging/messaging.routes.js";
+import milestoneRoutes from "./modules/milestone/milestone.routes.js";
 
 dotenv.config();
 
@@ -41,6 +42,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/materials", materialRoutes);
 app.use("/api/reports", reportRotues);
 app.use("/api/messaging", messagingRoutes);
+app.use("/api/milestones", milestoneRoutes);
 app.use("/api", taskRoutes);
 
 // Swagger docs
