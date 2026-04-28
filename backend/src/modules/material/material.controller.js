@@ -55,18 +55,22 @@ export const materialController = {
   getAllMaterials: async (req, res) => {
     try {
       const { companyId } = req.user;
-      const { take, skip } = req.query;
+      const take = Number.parseInt(req.query.take, 10);
+      const skip = Number.parseInt(req.query.skip, 10);
 
-      const materials = await materialService.getAllMaterials({
+      const parsedTake = Number.isInteger(take) && take > 0 ? take : 20;
+      const parsedSkip = Number.isInteger(skip) && skip >= 0 ? skip : 0;
+
+      const { materials, total } = await materialService.getAllMaterials({
         companyId,
-        take,
-        skip,
+        take: parsedTake,
+        skip: parsedSkip,
       });
 
       return res.status(200).json({
         success: true,
         data: materials,
-        total: materials.length,
+        total,
       });
     } catch (error) {
       return handleError(res, error, "getAllMaterials");
