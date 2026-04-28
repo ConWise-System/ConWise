@@ -56,28 +56,23 @@ export const materialService = {
       throw new Error("Company ID is required for material access.");
     }
 
-    // FIX(CodeRabbit): Validate pagination params to avoid NaN values
-    // parseInt("abc") = NaN which would crash Prisma — guard with fallback
-    const parsedTake = take !== undefined ? parseInt(take, 10) : undefined;
-    const parsedSkip = skip !== undefined ? parseInt(skip, 10) : undefined;
+    const safeTake = Number.isInteger(take) && take > 0 ? take : undefined;
+    const safeSkip = Number.isInteger(skip) && skip >= 0 ? skip : undefined;
 
-    const safeTake =
-      parsedTake !== undefined && !isNaN(parsedTake) && parsedTake > 0
-        ? parsedTake
-        : undefined;
-    const safeSkip =
-      parsedSkip !== undefined && !isNaN(parsedSkip) && parsedSkip >= 0
-        ? parsedSkip
-        : undefined;
+    const [materials, total] = await Promise.all([
+      prisma.materialUsed.findMany({
+        where: { companyId },
+        orderBy: { id: "desc" },
+        take: safeTake,
+        skip: safeSkip,
+      }),
+      prisma.materialUsed.count({ where: { companyId } }),
+    ]);
 
-    const materials = await prisma.materialUsed.findMany({
-      where: { companyId },
-      orderBy: { id: "desc" },
-      take: safeTake,
-      skip: safeSkip,
-    });
-
-    return materials.map(serializeMaterial);
+    return {
+      materials: materials.map(serializeMaterial),
+      total,
+    };
   },
 
   // Get a single material by ID — company scoped
@@ -239,19 +234,21 @@ export const costSummaryService = {
 
     // Store costVariance as a plain number for Prisma Decimal field
     const costVarianceValue = costVariance.toNumber();
+    const numericEstimatedCost = safeEstimated.toNumber();
+    const numericActualTaskCost = safeActual.toNumber();
 
     const summary = await prisma.costSummary.upsert({
       where: { projectId },
       update: {
-        estimatedCost,
-        actualTaskCost,
+        estimatedCost: numericEstimatedCost,
+        actualTaskCost: numericActualTaskCost,
         costVariance: costVarianceValue,
         lastUpdated: new Date(),
       },
       create: {
         projectId,
-        estimatedCost,
-        actualTaskCost,
+        estimatedCost: numericEstimatedCost,
+        actualTaskCost: numericActualTaskCost,
         costVariance: costVarianceValue,
         lastUpdated: new Date(),
       },

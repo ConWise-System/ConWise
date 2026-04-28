@@ -1,0 +1,1 @@
+-- Migration already applied in 20260403131743_init_companies
