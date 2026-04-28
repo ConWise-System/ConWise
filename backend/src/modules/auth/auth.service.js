@@ -8,6 +8,8 @@ import {
   USER_STATUSES,
   VERIFICATION_TYPES,
 } from "../../config/constants.js";
+import * as notificationService from "../notification/notification.service.js";
+
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -606,7 +608,7 @@ export const verifyAccount = async (payload) => {
       code: verificationCode,
       usedAt: null,
       expiresAt: { gt: new Date() },
-      type: VERIFICATION_TYPES.EMAIL_VERIFICATION,   // since it's company admin email verification
+      type: VERIFICATION_TYPES.EMAIL_VERIFICATION, // since it's company admin email verification
     },
     orderBy: { createdAt: "desc" },
     include: {
@@ -661,7 +663,6 @@ export const verifyAccount = async (payload) => {
     redirectTo: "/login",
   };
 };
-
 
 export const resendVerificationCode = async (payload, meta = {}) => {
   const identifier = resolveIdentifierPayload(payload);
@@ -938,7 +939,7 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
       await sendStaffInviteEmail(createdUser.email, temporaryPassword);
     } catch (error) {
       console.error("Staff invite email failed to send:", error);
-      }
+    }
   }
 
   return {
@@ -951,22 +952,49 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
 };
 
 export const changePassword = async (userId, newPassword) => {
-  const { value: hashedPassword } = await hashPassword(newPassword);
+  try {
+    // 1. Hash the new password
+    const { value: hashedPassword } = await hashPassword(newPassword);
 
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      passwordHash: hashedPassword,
-      isVerified: true,
-      status: USER_STATUSES.ACTIVE,
-    },
-  });
+    // 2. Update the user record in the database
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash: hashedPassword,
+        isVerified: true,
+        status: USER_STATUSES.ACTIVE,
+      },
+    });
 
-  return sanitizeUser(updatedUser);
+    // 3. Handle Notification (Wrapped in its own try-catch so it's non-blocking)
+    try {
+      console.log(
+        "Attempting to call notificationService for user:",
+        updatedUser.id,
+      );
+      await notificationService.createNotification({
+        recipientUserId: updatedUser.id,
+        notificationTitle: "Security Update: Password Changed",
+        notificationDescription:
+          "Your password has been successfully updated. Your account is now fully verified and activated!.",
+        relatedEntityType: "USER",
+        relatedEntityId: updatedUser.id,
+      });
+    } catch (error) {
+      // We log this for the backend team, but the user doesn't need to see a crash
+      console.error("Notification Service Error:", error.message);
+    }
+
+    // 4. Return the sanitized user to the controller
+    return sanitizeUser(updatedUser);
+  } catch (error) {
+    // This catches database errors or hashing errors
+    // Throwing it here allows your 'catchAsync' in the controller to pass it to 'errorMiddleware'
+    throw error;
+  }
 };
 
-
-export const searchUser = async (query, companyId,  limit = 20) => {
+export const searchUser = async (query, companyId, limit = 20) => {
   if (!query || query.trim() === "") {
     return [];
   }
@@ -974,16 +1002,16 @@ export const searchUser = async (query, companyId,  limit = 20) => {
   const users = await prisma.user.findMany({
     where: {
       companyId: Number(companyId),
-      OR:( [
+      OR: [
         { firstName: { contains: query.trim(), mode: "insensitive" } },
-        { lastName:  { contains: query.trim(), mode: "insensitive" } },
-        { email:     { contains: query.trim(), mode: "insensitive" } },
-      ]),
+        { lastName: { contains: query.trim(), mode: "insensitive" } },
+        { email: { contains: query.trim(), mode: "insensitive" } },
+      ],
     },
     orderBy: {
       firstName: "asc",
     },
-    take: limit,           // Prevent returning too many users
+    take: limit, // Prevent returning too many users
   });
 
   return users.map(sanitizeUser);
@@ -1000,7 +1028,7 @@ export const filterUserByRole = async (companyId, role) => {
   });
 
   return users.map(sanitizeUser);
-}
+};
 
 export const inviteUser = async (actor, payload, meta = {}) => {
   ensureCompanyScopedActor(actor);

@@ -7,9 +7,9 @@ export const createNotification = async (data) => {
   // Real-time push
   const io = getIO();
   if (io) {
-    const room = String(data.recipientUserId);
+    const room = `notify_${String(data.recipientUserId)}`;
     io.to(room).emit("new_notification", notification);
-    
+
     // Also push the updated count so the Bell icon updates instantly
     const unreadCount = await countUnread(data.recipientUserId);
     io.to(room).emit("unread_count_update", { unreadCount });

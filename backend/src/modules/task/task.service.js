@@ -1,5 +1,6 @@
 // src/modules/task/task.service.js
 import prisma from "../../config/prisma.js";
+import * as notificationService from "../notification/notification.service.js";
 
 const calculateDaysRemaining = (dueDate) => {
   if (!dueDate) return 0;
@@ -78,6 +79,19 @@ export const taskService = {
       },
     });
 
+    // Notify the Site Engineer
+    try {
+      await notificationService.createNotification({
+        recipientUserId: task.assigneeUserId,
+        notificationTitle: "New Task Assigned",
+        notificationDescription: `You have been assigned to: ${task.taskTitle} in project ${task.project.projectName}`,
+        relatedEntityType: "TASK",
+        relatedEntityId: task.id,
+      });
+    } catch (err) {
+      console.error("Notification failed in task service", err.message);
+    }
+
     return withDaysRemaining(task);
   },
 
@@ -142,7 +156,37 @@ export const taskService = {
     const task = await prisma.task.update({
       where: { id: parseInt(id) },
       data: updateData,
+      include: {
+        project: { select: { projectName: true, projectManagerId: true } },
+        assignee: { select: { id: true } },
+      },
     });
+
+    try {
+      // 1. If Engineer marks as PENDING_APPROVAL -> Notify PM
+      if (status === "PENDING_APPROVAL") {
+        await notificationService.createNotification({
+          recipientUserId: task.project.projectManagerId,
+          notificationTitle: "Task Ready for Review",
+          notificationDescription: `Task "${task.taskTitle}" has been submitted for approval in ${task.project.projectName}.`,
+          relatedEntityType: "TASK",
+          relatedEntityId: task.id,
+        });
+      }
+      // 2. If PM marks as DONE (Approved) or REVISION -> Notify Engineer
+      else if (status === "DONE" || status === "IN_PROGRESS") {
+        await notificationService.createNotification({
+          recipientUserId: task.assigneeUserId,
+          notificationTitle:
+            status === "DONE" ? "Task Approved" : "Task Needs Revision",
+          notificationDescription: `Your task "${task.taskTitle}" was marked as ${status.toLowerCase().replace("_", " ")}.`,
+          relatedEntityType: "TASK",
+          relatedEntityId: task.id,
+        });
+      }
+    } catch (err) {
+      console.error("Notification failed in task service:", err.message);
+    }
 
     return withDaysRemaining(task);
   },
@@ -157,6 +201,19 @@ export const taskService = {
       where: { id: parseInt(taskId) },
       data: { assigneeUserId: parseInt(userId) },
     });
+
+    try {
+      await notificationService.createNotification({
+        recipientUserId: task.assigneeUserId,
+        notificationTitle: "New Task Assignment",
+        notificationDescription: `You have been assigned to: ${task.taskTitle}`,
+        relatedEntityType: "TASK",
+        relatedEntityId: task.id,
+      });
+    } catch (err) {
+      console.error("Notification failed in task service:", err.message);
+    }
+
     return withDaysRemaining(task);
   },
 
@@ -165,6 +222,19 @@ export const taskService = {
       where: { id: parseInt(taskId) },
       data: { taskStatus: "DONE" },
     });
+
+    try {
+      await notificationService.createNotification({
+        recipientUserId: task.project.projectManagerId,
+        notificationTitle: "Task Submitted",
+        notificationDescription: `A task in ${task.project.projectName} is waiting for your review.`,
+        relatedEntityType: "TASK",
+        relatedEntityId: task.id,
+      });
+    } catch (err) {
+      console.error("Notification failed in task service:", err.message);
+    }
+
     return withDaysRemaining(task);
   },
 };

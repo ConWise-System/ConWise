@@ -1,6 +1,7 @@
 // src/modules/issue/issue.service.js
 import prisma from "../../config/prisma.js";
 import { ROLES } from "../../config/constants.js";
+import * as notificationService from "../notification/notification.service.js";
 
 // ─── State machine: valid transitions ────────────────────────────────────────
 // OPEN → IN_PROGRESS → RESOLVED → CLOSED
@@ -121,6 +122,21 @@ export const issueService = {
 
       return issue;
     });
+
+    // Notify Project Manager
+    try {
+      if (issue.project?.projectManagerId) {
+        await notificationService.createNotification({
+          recipientUserId: issue.project.projectManagerId,
+          notificationTitle: "🚨 New Issue Reported",
+          notificationDescription: `${result.reporter.firstName} reported: "${result.title}" in ${result.project.projectName}`,
+          relatedEntityType: "ISSUE",
+          relatedEntityId: result.id,
+        });
+      }
+    } catch (err) {
+      console.error("Notification failed in createIssue:", err.message);
+    }
   },
 
   // ── List issues (paginated + filtered) ─────────────────────────────────────

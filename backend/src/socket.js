@@ -23,6 +23,14 @@ export const initSocket = (server) => {
       socket.join(`user_${userId}`);
     });
 
+    // 3. Join a room for System Notifications
+    socket.on("join_notifications", (userId) => {
+      socket.join(`notify_${userId}`);
+      console.log(
+        `🔔 User ${userId} joined notification room: notify_${userId}`,
+      );
+    });
+
     // Handle user disconnecting
     socket.on("disconnect", () => {
       console.log("❌ User disconnected");

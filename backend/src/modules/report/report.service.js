@@ -18,7 +18,7 @@ const createReport = async (userId, companyId, reportData) => {
       }
     }
 
-    return await prisma.report.create({
+    const newReport = await prisma.report.create({
       data: {
         reportTitle: reportData.reportTitle,
         reportType: reportData.reportType,
@@ -48,19 +48,20 @@ const createReport = async (userId, companyId, reportData) => {
       },
     });
 
-    // I want to send notification hereto notification service
-    // try {
-    //     await notificationService.createNotification({
-    //       recipientUserId: reportData.project.projectManagerId,
-    //       notificationTitle: "New Report Submitted",
-    //       notificationDescription: `${reportData.user.firstName} submitted a ${reportData.reportType} for project ${reportData.project.projectName}.`,
-    //       relatedEntityType: "REPORT",
-    //       relatedEntityId: newReport.id
-    //     });
-    //   } catch (notificationError) {
-    // We log the error but don't fail the whole request
-    // because the report was already successfully saved.
-    // }
+    // this try catch block is used to send a notification to the project manager
+    try {
+      await notificationService.createNotification({
+        recipientUserId: reportData.project.projectManagerId,
+        notificationTitle: "New Report Submitted For you Project",
+        notificationDescription: `${reportData.user.firstName} submitted a ${reportData.reportType} for project ${reportData.project.projectName}.`,
+        relatedEntityType: "REPORT",
+        relatedEntityId: newReport.id,
+      });
+    } catch (error) {
+      console.error("Notification failed:", error.message);
+    }
+
+    return newReport;
   } catch (error) {
     throw new Error(error);
   }
