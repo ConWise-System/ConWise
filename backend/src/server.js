@@ -55,6 +55,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/materials", materialRoutes);
 app.use("/api/reports", reportRotues);
 app.use("/api/messaging", messagingRoutes);
+app.use("/api/milestones", milestoneRoutes);
 app.use("/api", taskRoutes);
 app.use("/api/projects/:projectId/issues", issueRoutes);
 
