@@ -15,16 +15,29 @@ import taskRoutes from "./modules/task/task.routes.js";
 import materialRoutes from "./modules/material/material.routes.js";
 import reportRotues from "./modules/report/report.routes.js";
 import messagingRoutes from "./modules/messaging/messaging.routes.js";
-import milestoneRoutes from "./modules/milestone/milestone.routes.js";
+import issueRoutes from "./modules/issue/issue.routes.js";
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app); // 3. Wrap Express with HTTP
 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
+  : [];
+
 app.use(
   cors({
-    origin: (origin, callback) => callback(null, true), // Allows any origin
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"), false);
+      }
+    },
     credentials: true,
   }),
 );
@@ -44,6 +57,7 @@ app.use("/api/reports", reportRotues);
 app.use("/api/messaging", messagingRoutes);
 app.use("/api/milestones", milestoneRoutes);
 app.use("/api", taskRoutes);
+app.use("/api/projects/:projectId/issues", issueRoutes);
 
 // Swagger docs
 app.use(
