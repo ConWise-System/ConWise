@@ -1,9 +1,9 @@
 /*
-  Warnings:
+Warnings:
 
-  - You are about to drop the `Project` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `Task` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `User` table. If the table is not empty, all the data it contains will be lost.
+- You are about to drop the `Project` table. If the table is not empty, all the data it contains will be lost.
+- You are about to drop the `Task` table. If the table is not empty, all the data it contains will be lost.
+- You are about to drop the `User` table. If the table is not empty, all the data it contains will be lost.
 
 */
 -- CreateEnum
@@ -21,8 +21,17 @@ CREATE TYPE "VerificationType" AS ENUM ('EMAIL_VERIFICATION', 'PHONE_VERIFICATIO
 -- CreateEnum
 CREATE TYPE "ProjectStatus" AS ENUM ('PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED');
 
+-- CreateEnum (was missing — caused TaskPriority does not exist error)
+CREATE TYPE "TaskPriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+
+-- CreateEnum (was missing)
+CREATE TYPE "TaskStatus" AS ENUM ('TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE');
+
 -- CreateEnum
 CREATE TYPE "IssueStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED');
+
+-- CreateEnum (new — for BE-PROJ-08)
+CREATE TYPE "IssuePriority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
 
 -- CreateEnum
 CREATE TYPE "ReportType" AS ENUM ('DAILY_SITE_REPORT', 'PROGRESS_REPORT', 'INCIDENT_REPORT', 'QUALITY_REPORT');
@@ -33,26 +42,19 @@ CREATE TYPE "NotificationEntityType" AS ENUM ('PROJECT', 'TASK', 'REPORT', 'ISSU
 -- CreateEnum
 CREATE TYPE "ChatType" AS ENUM ('TEXT', 'IMAGE', 'FILE', 'SYSTEM');
 
--- AlterEnum
-ALTER TYPE "TaskPriority" ADD VALUE 'CRITICAL';
+-- DropForeignKey (only if old tables exist — safe to run even if they don't)
+ALTER TABLE IF EXISTS "Task"
+DROP CONSTRAINT IF EXISTS "Task_projectId_fkey";
 
--- AlterEnum
-ALTER TYPE "TaskStatus" ADD VALUE 'BLOCKED';
-
--- DropForeignKey
-ALTER TABLE "Task" DROP CONSTRAINT "Task_projectId_fkey";
-
--- DropForeignKey
-ALTER TABLE "Task" DROP CONSTRAINT "Task_taskAssigneeID_fkey";
+ALTER TABLE IF EXISTS "Task"
+DROP CONSTRAINT IF EXISTS "Task_taskAssigneeID_fkey";
 
 -- DropTable
-DROP TABLE "Project";
+DROP TABLE IF EXISTS "Project";
 
--- DropTable
-DROP TABLE "Task";
+DROP TABLE IF EXISTS "Task";
 
--- DropTable
-DROP TABLE "User";
+DROP TABLE IF EXISTS "User";
 
 -- CreateTable
 CREATE TABLE "companies" (
@@ -64,7 +66,6 @@ CREATE TABLE "companies" (
     "status" "CompanyStatus" NOT NULL DEFAULT 'PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "companies_pkey" PRIMARY KEY ("id")
 );
 
@@ -84,7 +85,6 @@ CREATE TABLE "users" (
     "lastLoginAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
@@ -100,7 +100,6 @@ CREATE TABLE "sessions" (
     "revokedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
 );
 
@@ -113,7 +112,6 @@ CREATE TABLE "verification_codes" (
     "expiresAt" TIMESTAMP(3) NOT NULL,
     "usedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "verification_codes_pkey" PRIMARY KEY ("id")
 );
 
@@ -127,11 +125,10 @@ CREATE TABLE "projects" (
     "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3),
     "clientName" TEXT NOT NULL,
-    "projectBudget" DECIMAL(15,2) NOT NULL,
+    "projectBudget" DECIMAL(15, 2) NOT NULL,
     "status" "ProjectStatus" NOT NULL DEFAULT 'PLANNING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "projects_pkey" PRIMARY KEY ("id")
 );
 
@@ -139,11 +136,10 @@ CREATE TABLE "projects" (
 CREATE TABLE "project_progress" (
     "id" SERIAL NOT NULL,
     "projectId" INTEGER NOT NULL,
-    "completionPercentage" DECIMAL(5,2) NOT NULL,
+    "completionPercentage" DECIMAL(5, 2) NOT NULL,
     "totalTasks" INTEGER NOT NULL,
     "tasksCompleted" INTEGER NOT NULL,
     "lastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "project_progress_pkey" PRIMARY KEY ("id")
 );
 
@@ -157,12 +153,11 @@ CREATE TABLE "tasks" (
     "taskDescription" TEXT,
     "startDate" TIMESTAMP(3),
     "dueDate" TIMESTAMP(3) NOT NULL,
-    "taskBudget" DECIMAL(15,2) NOT NULL,
+    "taskBudget" DECIMAL(15, 2) NOT NULL,
     "taskPriority" "TaskPriority" NOT NULL,
     "taskStatus" "TaskStatus" NOT NULL DEFAULT 'TODO',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "tasks_pkey" PRIMARY KEY ("id")
 );
 
@@ -174,19 +169,18 @@ CREATE TABLE "task_progress" (
     "deadlineStatus" TEXT NOT NULL,
     "taskStatus" "TaskStatus" NOT NULL,
     "lastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "task_progress_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "materials_used" (
     "id" SERIAL NOT NULL,
+    "companyId" INTEGER NOT NULL,
     "materialName" TEXT NOT NULL,
-    "quantityUsed" DECIMAL(10,2) NOT NULL,
+    "quantityUsed" DECIMAL(10, 2) NOT NULL,
     "unit" TEXT NOT NULL,
     "usageDescription" TEXT,
     "materialStatus" TEXT NOT NULL,
-
     CONSTRAINT "materials_used_pkey" PRIMARY KEY ("id")
 );
 
@@ -194,11 +188,10 @@ CREATE TABLE "materials_used" (
 CREATE TABLE "cost_summaries" (
     "id" SERIAL NOT NULL,
     "projectId" INTEGER NOT NULL,
-    "estimatedCost" DECIMAL(15,2) NOT NULL,
-    "actualTaskCost" DECIMAL(15,2) NOT NULL,
-    "costVariance" DECIMAL(15,2) NOT NULL,
+    "estimatedCost" DECIMAL(15, 2) NOT NULL,
+    "actualTaskCost" DECIMAL(15, 2) NOT NULL,
+    "costVariance" DECIMAL(15, 2) NOT NULL,
     "lastUpdated" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "cost_summaries_pkey" PRIMARY KEY ("id")
 );
 
@@ -213,7 +206,6 @@ CREATE TABLE "reports" (
     "workCompleted" TEXT NOT NULL,
     "progressPhotoUrl" TEXT,
     "submittedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "reports_pkey" PRIMARY KEY ("id")
 );
 
@@ -227,23 +219,43 @@ CREATE TABLE "notifications" (
     "isRead" BOOLEAN NOT NULL DEFAULT false,
     "relatedEntityType" "NotificationEntityType" NOT NULL,
     "relatedEntityId" INTEGER NOT NULL,
-
     CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
+-- CreateTable: new Issue model (BE-PROJ-08)
+
 CREATE TABLE "issues" (
     "id" SERIAL NOT NULL,
-    "reporterUserId" INTEGER NOT NULL,
-    "projectId" INTEGER,
-    "issueName" TEXT NOT NULL,
-    "issueDescription" TEXT NOT NULL,
-    "issuePhotoUrl" TEXT,
-    "issueStatus" "IssueStatus" NOT NULL DEFAULT 'OPEN',
-    "issueAssigneeUserId" INTEGER,
-    "reportedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "companyId" INTEGER NOT NULL,
+    "projectId" INTEGER NOT NULL,
+    "reporterId" INTEGER NOT NULL,
+    "assigneeId" INTEGER,
+    "blockedTaskId" INTEGER,
+    "title" VARCHAR(200) NOT NULL,
+    "description" TEXT NOT NULL,
+    "location" VARCHAR(200),
+    "priority" "IssuePriority" NOT NULL DEFAULT 'MEDIUM',
+    "status" "IssueStatus" NOT NULL DEFAULT 'OPEN',
+    "photoUrls" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "resolvedAt" TIMESTAMP(3),
+    "closedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "issues_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable: audit log (BE-PROJ-08)
+CREATE TABLE "issue_audit_logs" (
+    "id" SERIAL NOT NULL,
+    "issueId" INTEGER NOT NULL,
+    "actorId" INTEGER NOT NULL,
+    "action" VARCHAR(50) NOT NULL,
+    "fromValue" TEXT,
+    "toValue" TEXT,
+    "note" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "issue_audit_logs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -254,144 +266,137 @@ CREATE TABLE "chats" (
     "messageContent" TEXT NOT NULL,
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "chatType" "ChatType" NOT NULL DEFAULT 'TEXT',
-
     CONSTRAINT "chats_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "companies_email_key" ON "companies"("email");
+CREATE UNIQUE INDEX "companies_email_key" ON "companies" ("email");
 
--- CreateIndex
-CREATE UNIQUE INDEX "companies_phone_key" ON "companies"("phone");
+CREATE UNIQUE INDEX "companies_phone_key" ON "companies" ("phone");
 
--- CreateIndex
-CREATE INDEX "companies_name_idx" ON "companies"("name");
+CREATE INDEX "companies_name_idx" ON "companies" ("name");
 
--- CreateIndex
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX "users_email_key" ON "users" ("email");
 
--- CreateIndex
-CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
+CREATE UNIQUE INDEX "users_phone_key" ON "users" ("phone");
 
--- CreateIndex
-CREATE INDEX "users_companyId_idx" ON "users"("companyId");
+CREATE INDEX "users_companyId_idx" ON "users" ("companyId");
 
--- CreateIndex
-CREATE INDEX "users_role_idx" ON "users"("role");
+CREATE INDEX "users_role_idx" ON "users" ("role");
 
--- CreateIndex
-CREATE INDEX "users_status_idx" ON "users"("status");
+CREATE INDEX "users_status_idx" ON "users" ("status");
 
--- CreateIndex
-CREATE INDEX "sessions_userId_idx" ON "sessions"("userId");
+CREATE INDEX "sessions_userId_idx" ON "sessions" ("userId");
 
--- CreateIndex
-CREATE INDEX "sessions_expiresAt_idx" ON "sessions"("expiresAt");
+CREATE INDEX "sessions_expiresAt_idx" ON "sessions" ("expiresAt");
 
--- CreateIndex
-CREATE INDEX "verification_codes_userId_type_idx" ON "verification_codes"("userId", "type");
+CREATE INDEX "verification_codes_userId_type_idx" ON "verification_codes" ("userId", "type");
 
--- CreateIndex
-CREATE INDEX "verification_codes_expiresAt_idx" ON "verification_codes"("expiresAt");
+CREATE INDEX "verification_codes_expiresAt_idx" ON "verification_codes" ("expiresAt");
 
--- CreateIndex
-CREATE INDEX "projects_companyId_idx" ON "projects"("companyId");
+CREATE INDEX "projects_companyId_idx" ON "projects" ("companyId");
 
--- CreateIndex
-CREATE INDEX "projects_ownerUserId_idx" ON "projects"("ownerUserId");
+CREATE INDEX "projects_ownerUserId_idx" ON "projects" ("ownerUserId");
 
--- CreateIndex
-CREATE UNIQUE INDEX "project_progress_projectId_key" ON "project_progress"("projectId");
+CREATE UNIQUE INDEX "project_progress_projectId_key" ON "project_progress" ("projectId");
 
--- CreateIndex
-CREATE INDEX "tasks_projectId_idx" ON "tasks"("projectId");
+CREATE INDEX "tasks_projectId_idx" ON "tasks" ("projectId");
 
--- CreateIndex
-CREATE INDEX "tasks_assigneeUserId_idx" ON "tasks"("assigneeUserId");
+CREATE INDEX "tasks_assigneeUserId_idx" ON "tasks" ("assigneeUserId");
 
--- CreateIndex
-CREATE UNIQUE INDEX "task_progress_taskId_key" ON "task_progress"("taskId");
+CREATE UNIQUE INDEX "task_progress_taskId_key" ON "task_progress" ("taskId");
 
--- CreateIndex
-CREATE UNIQUE INDEX "cost_summaries_projectId_key" ON "cost_summaries"("projectId");
+CREATE UNIQUE INDEX "cost_summaries_projectId_key" ON "cost_summaries" ("projectId");
 
--- CreateIndex
-CREATE INDEX "reports_userId_idx" ON "reports"("userId");
+CREATE INDEX "reports_userId_idx" ON "reports" ("userId");
 
--- CreateIndex
-CREATE INDEX "reports_projectId_idx" ON "reports"("projectId");
+CREATE INDEX "reports_projectId_idx" ON "reports" ("projectId");
 
--- CreateIndex
-CREATE INDEX "notifications_recipientUserId_isRead_idx" ON "notifications"("recipientUserId", "isRead");
+CREATE INDEX "notifications_recipientUserId_isRead_idx" ON "notifications" ("recipientUserId", "isRead");
 
--- CreateIndex
-CREATE INDEX "issues_reporterUserId_idx" ON "issues"("reporterUserId");
+CREATE INDEX "issues_companyId_idx" ON "issues" ("companyId");
 
--- CreateIndex
-CREATE INDEX "issues_projectId_idx" ON "issues"("projectId");
+CREATE INDEX "issues_projectId_idx" ON "issues" ("projectId");
 
--- CreateIndex
-CREATE INDEX "issues_issueAssigneeUserId_idx" ON "issues"("issueAssigneeUserId");
+CREATE INDEX "issues_assigneeId_idx" ON "issues" ("assigneeId");
 
--- CreateIndex
-CREATE INDEX "chats_senderUserId_idx" ON "chats"("senderUserId");
+CREATE INDEX "issues_status_idx" ON "issues" ("status");
 
--- CreateIndex
-CREATE INDEX "chats_projectId_idx" ON "chats"("projectId");
+CREATE INDEX "issue_audit_logs_issueId_idx" ON "issue_audit_logs" ("issueId");
+
+CREATE INDEX "chats_senderUserId_idx" ON "chats" ("senderUserId");
+
+CREATE INDEX "chats_projectId_idx" ON "chats" ("projectId");
 
 -- AddForeignKey
-ALTER TABLE "users" ADD CONSTRAINT "users_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "users"
+ADD CONSTRAINT "users_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "sessions"
+ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "verification_codes" ADD CONSTRAINT "verification_codes_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "verification_codes"
+ADD CONSTRAINT "verification_codes_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "projects" ADD CONSTRAINT "projects_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "projects"
+ADD CONSTRAINT "projects_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "projects" ADD CONSTRAINT "projects_ownerUserId_fkey" FOREIGN KEY ("ownerUserId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "projects"
+ADD CONSTRAINT "projects_ownerUserId_fkey" FOREIGN KEY ("ownerUserId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "project_progress" ADD CONSTRAINT "project_progress_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "project_progress"
+ADD CONSTRAINT "project_progress_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "tasks"
+ADD CONSTRAINT "tasks_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_assigneeUserId_fkey" FOREIGN KEY ("assigneeUserId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "tasks"
+ADD CONSTRAINT "tasks_assigneeUserId_fkey" FOREIGN KEY ("assigneeUserId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "tasks" ADD CONSTRAINT "tasks_materialUsedId_fkey" FOREIGN KEY ("materialUsedId") REFERENCES "materials_used"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "tasks"
+ADD CONSTRAINT "tasks_materialUsedId_fkey" FOREIGN KEY ("materialUsedId") REFERENCES "materials_used" ("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "task_progress" ADD CONSTRAINT "task_progress_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "tasks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "task_progress"
+ADD CONSTRAINT "task_progress_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "tasks" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "cost_summaries" ADD CONSTRAINT "cost_summaries_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "materials_used"
+ADD CONSTRAINT "materials_used_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "reports" ADD CONSTRAINT "reports_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "cost_summaries"
+ADD CONSTRAINT "cost_summaries_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "reports" ADD CONSTRAINT "reports_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "reports"
+ADD CONSTRAINT "reports_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_recipientUserId_fkey" FOREIGN KEY ("recipientUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "reports"
+ADD CONSTRAINT "reports_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "issues" ADD CONSTRAINT "issues_reporterUserId_fkey" FOREIGN KEY ("reporterUserId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "notifications"
+ADD CONSTRAINT "notifications_recipientUserId_fkey" FOREIGN KEY ("recipientUserId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "issues" ADD CONSTRAINT "issues_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "issues"
+ADD CONSTRAINT "issues_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "companies" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "issues" ADD CONSTRAINT "issues_issueAssigneeUserId_fkey" FOREIGN KEY ("issueAssigneeUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "issues"
+ADD CONSTRAINT "issues_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "chats" ADD CONSTRAINT "chats_senderUserId_fkey" FOREIGN KEY ("senderUserId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "issues"
+ADD CONSTRAINT "issues_reporterId_fkey" FOREIGN KEY ("reporterId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "chats" ADD CONSTRAINT "chats_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "issues"
+ADD CONSTRAINT "issues_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "users" ("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "issues"
+ADD CONSTRAINT "issues_blockedTaskId_fkey" FOREIGN KEY ("blockedTaskId") REFERENCES "tasks" ("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "issue_audit_logs"
+ADD CONSTRAINT "issue_audit_logs_issueId_fkey" FOREIGN KEY ("issueId") REFERENCES "issues" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "issue_audit_logs"
+ADD CONSTRAINT "issue_audit_logs_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "chats"
+ADD CONSTRAINT "chats_senderUserId_fkey" FOREIGN KEY ("senderUserId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "chats"
+ADD CONSTRAINT "chats_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
