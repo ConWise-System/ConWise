@@ -571,18 +571,10 @@ export const swaggerSchemas = {
   },
 
   MaterialInput: {
-    type: "object",
-    additionalProperties: false,
-    description:
-      "Material usage entry. Runtime note: nested material writes are blocked until DB schema matches Prisma relation (`materials_used.taskId`).",
-    properties: {
-      materialName: { type: "string" },
-      quantityUsed: { type: "number" },
-      unit: { type: "string" },
-      usageDescription: { type: "string", nullable: true },
-      materialStatus: { type: "string" },
-    },
-    required: ["materialName", "quantityUsed", "unit", "materialStatus"],
+    type: "integer",
+    format: "int32",
+    description: "Existing Material ID to link to the task.",
+    example: 1,
   },
 
   CreateTaskInput: {

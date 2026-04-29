@@ -1,12 +1,9 @@
 import { z } from 'zod';
 
-const materialInputSchema = z.object({
-    materialName: z.string().min(1, "Material name is required"),
-    quantityUsed: z.coerce.number().positive("Quantity must be positive"),
-    unit: z.string().min(1, "Unit is required"),
-    usageDescription: z.string().optional(),
-    materialStatus: z.string().min(1, "Material status is required")
-});
+const materialIdSchema = z.coerce
+    .number()
+    .int("Material ID must be an integer")
+    .positive("Material ID must be a positive integer");
 
 const taskPrioritySchema = z.enum(['HIGH', 'MEDIUM', 'LOW', 'CRITICAL'], {
     errorMap: () => ({ message: "Task priority must be one of: HIGH, MEDIUM, LOW, CRITICAL" })
@@ -36,7 +33,7 @@ export const createTaskSchema = z.object({
     startDate: z.coerce.date().optional(),
     dueDate: z.coerce.date({ required_error: "Due date is required" }),
     taskBudget: z.coerce.number().nonnegative("Task budget cannot be negative"),
-    materials: z.array(materialInputSchema).optional(),
+    materials: z.array(materialIdSchema).optional(),
     taskPriority: taskPrioritySchema,
     taskStatus: taskStatusSchema.optional(),
 }).transform(normalizeAssignee);
@@ -51,7 +48,7 @@ export const updateTaskSchema = z.object({
     startDate: z.coerce.date().optional(),
     dueDate: z.coerce.date().optional(),
     taskBudget: z.coerce.number().nonnegative().optional(),
-    materials: z.array(materialInputSchema).optional(),
+    materials: z.array(materialIdSchema).optional(),
     taskPriority: taskPrioritySchema.optional(),
     taskStatus: taskStatusSchema.optional(),
 }).transform(normalizeAssignee);
