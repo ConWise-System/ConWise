@@ -1,60 +1,142 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  AlertTriangle, CheckCircle2, FileText, Filter, Download, 
-  MoreHorizontal, ArrowUpRight, Zap, ShieldAlert, ArrowLeft,
-  Camera, User, Send, ChevronRight, Loader2, X, Image as ImageIcon,
-  Scan, Maximize2, Plus 
+  AlertTriangle, ArrowUpRight, Zap, ArrowLeft,
+  Camera, Loader2, Image as ImageIcon, Plus, Filter
 } from 'lucide-react';
+import Axios from '../../../../utils/Axios';
+import summeryApi from '../../../common/summeryApi';
+import axios from 'axios';
 
 export default function IssueTracking() {
-  const [view, setView] = useState('ledger'); // 'ledger' | 'report' | 'resolve'
-  const [activeIssue, setActiveIssue] = useState(null);
+  const [view, setView] = useState('ledger'); 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [images, setImages] = useState([]);
+  const [projectList, setProjectList] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(""); // Stores PostgreSQL ID (int or uuid)
+  const [images, setImages] = useState([]); 
   const fileInputRef = useRef(null);
 
-  const pageTransition = { 
-    initial: { opacity: 0, y: 10 }, 
-    animate: { opacity: 1, y: 0 }, 
-    exit: { opacity: 0, y: -10 } 
-  };
-
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    if (images.length + files.length <= 4) {
-      const newUrls = files.map(file => URL.createObjectURL(file));
-      setImages([...images, ...newUrls]);
+  // --- DATA LOADING ---
+  const loadProjects = async () => {
+    try {
+      const res = await Axios({...summeryApi.getAllProjects});
+      // PostgreSQL typically returns rows in a 'data' array
+      const projects = res.data.data || res.data;
+      setProjectList(Array.isArray(projects) ? projects : []);
+    } catch (error) {
+      console.error("Failed to load projects:", error);
     }
   };
 
-  const handleReportSubmit = (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    priority: 'MEDIUM',
+    location: '',
+    photoUrls: [],
+    blockedTaskId: null
+  });
+
+  // --- HANDLERS ---
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'blockedTaskId' ? (value ? Number(value) : null) : value
+    }));
+  };
+
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    if (images.length + files.length > 4) {
+      alert("Maximum 4 images allowed");
+      return;
+    }
+
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
+      const uploadedUrls = [];
+      for (const file of files) {
+        const data = new FormData();
+        data.append('file', file);
+        const response = await Axios({
+          ...summeryApi.uploadImage,
+          data: data,
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (response.data.success) {
+          uploadedUrls.push(response.data.url);
+        }
+      }
+      setImages(prev => [...prev, ...uploadedUrls]);
+      setFormData(prev => ({
+        ...prev,
+        photoUrls: [...prev.photoUrls, ...uploadedUrls]
+      }));
+    } catch (error) {
+      alert("Image upload failed.");
+    } finally {
       setIsProcessing(false);
-      setView('ledger');
-      setImages([]); // Reset images after submission
-    }, 1500);
+    }
+  };
+
+  const handleReportSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!selectedProjectId) {
+      alert("Please select a Target Project.");
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      const response = await Axios({
+        // 1. Call the function to get the dynamic URL: /api/projects/10/issues
+        url: summeryApi.createIssue.url(selectedProjectId), 
+        method: summeryApi.createIssue.method,
+        data: formData
+      });
+
+      if (response.data.success) {
+        alert("Anomaly Transmitted Successfully");
+        setFormData({
+          title: '', description: '', priority: 'MEDIUM',
+          location: '', photoUrls: [], blockedTaskId: null
+        });
+        setImages([]);
+        setSelectedProjectId("");
+        setView('ledger');
+      }
+    } catch (error) {
+      console.error("Attempted URL:", error.config?.url);
+      console.error("Status:", error.response?.status);
+      
+      const message = error.response?.data?.message || "Transmission failed.";
+      alert(`Status ${error.response?.status || 'Network'}: ${message}`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
     <div className="w-full min-h-screen bg-[#F8F9FA] p-6 md:p-10 text-slate-900">
       <AnimatePresence mode="wait">
         {view === 'ledger' ? (
-          /* --- MANAGER LEDGER --- */
-          <motion.div key="ledger" {...pageTransition} className="max-w-[1300px] mx-auto space-y-6">
+          <motion.div key="ledger" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-[1300px] mx-auto space-y-6 text-left">
             <div className="flex justify-between items-end">
               <div>
                 <p className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-600 mb-1">Risk Management</p>
                 <h1 className="text-2xl font-black text-[#111827] tracking-tighter uppercase italic leading-none">Issue Tracking</h1>
               </div>
-              <button 
-                onClick={() => setView('report')}
-                className="bg-[#111827] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-black text-[9px] uppercase tracking-widest shadow-lg hover:bg-blue-600 transition-all"
-              >
+              <button onClick={() => setView('report')} className="bg-[#111827] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-black text-[9px] uppercase tracking-widest shadow-lg hover:bg-blue-600 transition-all">
                 <AlertTriangle size={14} /> Report Exception
               </button>
             </div>
@@ -72,12 +154,11 @@ export default function IssueTracking() {
             </div>
 
             <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
-              <div className="p-4 flex justify-between items-center border-b border-slate-50 bg-slate-50/30">
+               <div className="p-4 flex justify-between items-center border-b border-slate-50 bg-slate-50/30">
                 <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Centralized Ledger</h3>
                 <TableButton icon={<Filter size={12} />} label="Filter" />
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
+              <table className="w-full text-left">
                   <thead className="bg-slate-50/50">
                     <tr className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100">
                       <th className="px-6 py-3">Anomaly Descriptor</th>
@@ -89,21 +170,18 @@ export default function IssueTracking() {
                   <tbody className="divide-y divide-slate-50">
                     <IssueRow 
                       title="HVAC Compression Failure" area="Sector B" priority="Critical" color="blue" lead="M. Thorne"
-                      onClick={() => { setActiveIssue("HVAC Compression Failure"); setView('resolve'); }}
+                      onClick={() => setView('report')}
                     />
-                    <IssueRow title="Structural Joint Anomaly" area="Level 4" priority="High" color="indigo" lead="E. Rodriguez" />
-                    <IssueRow title="Misting System Calib" area="Whole Site" priority="Std" color="slate" lead="S. Chen" />
                   </tbody>
-                </table>
-              </div>
+              </table>
             </div>
           </motion.div>
         ) : view === 'report' ? (
-          /* --- SUPERVISOR REPORTING VIEW --- */
-          <motion.div key="report" {...pageTransition} className="max-w-[700px] mx-auto">
+          <motion.div key="report" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-[700px] mx-auto text-left">
             <button onClick={() => setView('ledger')} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 mb-6 hover:text-black">
               <ArrowLeft size={14} /> Back to Ledger
             </button>
+
             <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
               <div className="p-8 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
                 <div>
@@ -114,111 +192,123 @@ export default function IssueTracking() {
               </div>
               
               <form onSubmit={handleReportSubmit} className="p-8 space-y-8">
+                {/** PROJECT DROPDOWN (PostgreSQL id) */}
+                <div className="space-y-1.5">
+                  <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Target Project</label>
+                  <select 
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    required
+                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl text-[11px] font-bold outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none"
+                  >
+                    <option value="">Choose Project...</option>
+                    {projectList.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.projectName || p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="space-y-4">
-                  <div className="flex justify-between items-end">
-                    <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Photo Evidence ({images.length}/4)</label>
-                    <span className="text-[8px] font-bold text-blue-600 uppercase">System Ready</span>
+                  <div className="flex justify-between items-center">
+                     <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Photo Evidence ({images.length}/4)</label>
+                     {isProcessing && <Loader2 size={12} className="animate-spin text-blue-600" />}
                   </div>
                   
-                  <input type="file" multiple hidden ref={fileInputRef} onChange={handleImageUpload} accept="image/*" />
+                  <input type="file" multiple hidden ref={fileInputRef} onChange={handleImageUpload} accept="image/*" disabled={isProcessing} />
                   
                   <div className="grid grid-cols-4 gap-3">
                     <div 
-                      onClick={() => fileInputRef.current.click()}
-                      className="col-span-2 aspect-video border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center bg-slate-50 group hover:border-blue-400 transition-all cursor-pointer overflow-hidden"
+                      onClick={() => !isProcessing && fileInputRef.current.click()}
+                      className={`col-span-2 aspect-video border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center bg-slate-50 group hover:border-blue-400 transition-all cursor-pointer overflow-hidden ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {images[0] ? (
-                        <img src={images[0]} className="w-full h-full object-cover" alt="preview" />
-                      ) : (
-                        <div className="flex flex-col items-center group-hover:scale-110 transition-transform">
-                          <Camera size={24} className="text-slate-300 group-hover:text-blue-500 mb-2" />
-                          <p className="text-[8px] font-black uppercase text-slate-400">Capture Scene</p>
-                        </div>
-                      )}
+                      {images[0] ? <img src={images[0]} className="w-full h-full object-cover" alt="p" /> : <Camera size={24} className="text-slate-300" />}
                     </div>
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} onClick={() => fileInputRef.current.click()} className="aspect-square border border-slate-100 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 hover:bg-blue-50 transition-colors cursor-pointer overflow-hidden">
-                        {images[i] ? <img src={images[i]} className="w-full h-full object-cover" alt="sub" /> : <Plus size={16} />}
+                    {images.slice(1).map((img, i) => (
+                      <div key={i} className="aspect-square border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                        <img src={img} className="w-full h-full object-cover" alt="sub" />
                       </div>
                     ))}
-                  </div>
-
-                  <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <Scan size={16} className="text-blue-500" />
-                      <p className="text-[9px] font-bold text-slate-500 uppercase italic">Awaiting coordinates...</p>
-                    </div>
-                    <div className="h-1.5 w-16 bg-slate-200 rounded-full overflow-hidden">
-                      <motion.div initial={{ x: -64 }} animate={{ x: 64 }} transition={{ repeat: Infinity, duration: 1.5 }} className="h-full w-full bg-blue-500" />
-                    </div>
+                    {images.length < 4 && images.length > 0 && (
+                      <div onClick={() => !isProcessing && fileInputRef.current.click()} className="aspect-square border border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-slate-300 cursor-pointer">
+                        <Plus size={16}/>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <FormSelect label="Anomaly Priority">
-                    <option>Standard Maintenance</option>
-                    <option>High Priority</option>
-                    <option>Critical Failure</option>
-                  </FormSelect>
-                  <FormInput label="Location Code" placeholder="e.g. ZONE-B4" />
                   <div className="col-span-2">
-                    <FormInput label="Quick Description" placeholder="Detailed anomaly analysis..." isTextArea />
+                    <FormInput label="Anomaly Title" name="title" value={formData.title} onChange={handleInputChange} placeholder="Issue summary..." />
+                  </div>
+                  
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Anomaly Priority</label>
+                    <select 
+                      name="priority" 
+                      value={formData.priority} 
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[10px] font-black uppercase outline-none focus:border-blue-500 appearance-none"
+                    >
+                      <option value="LOW">LOW</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="HIGH">HIGH</option>
+                      <option value="CRITICAL">CRITICAL</option>
+                    </select>
+                  </div>
+
+                  <FormInput label="Location Code" name="location" value={formData.location} onChange={handleInputChange} placeholder="ZONE-B4" />
+                  <FormInput label="Blocked Task ID" name="blockedTaskId" type="number" value={formData.blockedTaskId || ''} onChange={handleInputChange} placeholder="1" />
+
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Quick Description</label>
+                    <textarea 
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500 min-h-[100px]" 
+                      placeholder="Describe the issue..." 
+                    />
                   </div>
                 </div>
 
-                <button type="submit" className="w-full bg-[#111827] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl flex items-center justify-center gap-2 hover:bg-blue-600 transition-all">
+                <button 
+                  type="submit" 
+                  disabled={isProcessing} 
+                  className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl flex items-center justify-center gap-2 transition-all ${isProcessing ? 'bg-slate-400' : 'bg-[#111827] hover:bg-blue-600 text-white'}`}
+                >
                   {isProcessing ? <Loader2 size={16} className="animate-spin" /> : "Transmit to Engineering"}
                 </button>
               </form>
             </div>
           </motion.div>
-        ) : (
-          /* --- RESOLUTION VIEW --- */
-          <motion.div key="resolve" {...pageTransition} className="max-w-[500px] mx-auto">
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-2xl space-y-6">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <span className="text-[8px] font-black px-2 py-1 bg-blue-50 text-blue-600 rounded uppercase border border-blue-100">Status: In Review</span>
-                  <h2 className="text-xl font-black italic tracking-tighter">{activeIssue}</h2>
-                </div>
-                <button onClick={() => setView('ledger')} className="p-2 text-slate-300 hover:text-black"><X size={20}/></button>
-              </div>
-              
-              <div className="aspect-square rounded-3xl bg-slate-100 overflow-hidden relative group">
-                 <img src={`https://api.dicebear.com/7.x/identicon/svg?seed=${activeIssue}`} className="w-full h-full object-cover opacity-20 grayscale" alt="placeholder" />
-                 <div className="absolute inset-0 flex items-center justify-center">
-                    <Maximize2 size={24} className="text-slate-300 group-hover:text-blue-500 transition-colors cursor-pointer" />
-                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 border-y border-slate-50 py-4">
-                 <div>
-                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Reported By</p>
-                   <p className="text-[10px] font-bold text-slate-700 uppercase italic">Supervisor Alpha</p>
-                 </div>
-                 <div className="text-right">
-                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Timestamp</p>
-                   <p className="text-[10px] font-bold text-slate-700">11:22 AM - APR 22</p>
-                 </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setView('ledger')} className="flex-1 bg-white border border-slate-200 py-3 rounded-xl text-[9px] font-black uppercase text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all">Request More Data</button>
-                <button onClick={() => setView('ledger')} className="flex-1 bg-[#111827] text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:bg-blue-600 transition-all">Finalize & Close</button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   );
 }
 
-// --- SUB-COMPONENTS ---
+// Sub-components
+function FormInput({ label, name, value, onChange, placeholder, type = "text" }) {
+  return (
+    <div className="space-y-1.5 flex-1">
+      <label className="text-[8px] font-black uppercase text-slate-400 ml-1 tracking-widest">{label}</label>
+      <input 
+        name={name} 
+        value={value} 
+        onChange={onChange} 
+        type={type}
+        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500" 
+        placeholder={placeholder} 
+      />
+    </div>
+  );
+}
 
 function MiniMetric({ label, value, sub, color }) {
   return (
-    <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm group hover:border-blue-100 transition-all">
+    <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm">
       <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{label}</p>
       <h4 className={`text-2xl font-black italic tracking-tighter ${color}`}>{value}</h4>
       <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">{sub}</p>
@@ -253,30 +343,6 @@ function IssueRow({ title, area, priority, color, lead, onClick }) {
         <ArrowUpRight size={14} className="inline text-slate-200 group-hover:text-blue-400 transition-all" />
       </td>
     </tr>
-  );
-}
-
-function FormInput({ label, placeholder, isTextArea }) {
-  return (
-    <div className="space-y-1.5 flex-1">
-      <label className="text-[8px] font-black uppercase text-slate-400 ml-1 tracking-widest">{label}</label>
-      {isTextArea ? (
-        <textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500 min-h-[80px]" placeholder={placeholder} />
-      ) : (
-        <input className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500" placeholder={placeholder} />
-      )}
-    </div>
-  );
-}
-
-function FormSelect({ label, children }) {
-  return (
-    <div className="space-y-1.5 flex-1">
-      <label className="text-[8px] font-black uppercase text-slate-400 ml-1 tracking-widest">{label}</label>
-      <select className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[10px] font-black uppercase outline-none focus:border-blue-500 appearance-none cursor-pointer">
-        {children}
-      </select>
-    </div>
   );
 }
 

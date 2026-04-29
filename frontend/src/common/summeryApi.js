@@ -66,7 +66,22 @@ const summeryApi = {
         url: "/api/projects",
         method: "get"
     },
-
+    assignTask:{
+        url:"/api/tasks",
+        method:"post"
+    },
+    getTasks:{
+        url:"/api/tasks",
+        method:"get"
+    },
+    uploadImage:{
+        url:"/api/upload/image",
+        method:"post"
+    },
+    createIssue:{
+        url: (projectId) => `/api/projects/${projectId}/issues`,
+        method: "post"
+    }
 }
 
 export default summeryApi
