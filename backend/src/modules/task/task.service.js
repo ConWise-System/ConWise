@@ -21,17 +21,26 @@ export const taskService = {
         const materialIds = materials?.length
             ? [...new Set(materials.map((id) => Number(id)))]
             : [];
-        const task = await prisma.task.create({
+
+        const task = await prisma.$transaction(async (tx) => {
+          const createdTask = await tx.task.create({
             data: {
-                ...taskData,
-                ...(materialIds.length
-                    ? {
-                        materials: {
-                            connect: materialIds.map((id) => ({ id })),
-                        },
-                    }
-                    : {}),
+              ...taskData,
             },
+          });
+
+          if (materialIds.length) {
+            const updated = await tx.materialUsed.updateMany({
+              where: { id: { in: materialIds } },
+              data: { taskId: createdTask.id },
+            });
+
+            if (updated.count !== materialIds.length) {
+              throw new Error("One or more material IDs were not found.");
+            }
+          }
+
+          return createdTask;
         });
         return withDaysRemaining(task);
     },
@@ -49,7 +58,16 @@ export const taskService = {
       include: {
         assignee: { select: { id: true, firstName: true, lastName: true } },
         taskProgress: true,
-        materialUsed: true,
+        materials: {
+          select: {
+            id: true,
+            materialName: true,
+            quantityUsed: true,
+            unit: true,
+            usageDescription: true,
+            materialStatus: true,
+          },
+        },
       },
       orderBy: { dueDate: "asc" },
     });
@@ -67,22 +85,33 @@ export const taskService = {
 
     updateTask: async (id, data) => {
         const { materials, ...taskData } = data ?? {};
+        const taskId = Number(id);
         const materialIds = materials?.length
             ? [...new Set(materials.map((materialId) => Number(materialId)))]
             : [];
-        const task = await prisma.task.update({
-            where: { id: Number(id) },
+
+        const task = await prisma.$transaction(async (tx) => {
+          const updatedTask = await tx.task.update({
+            where: { id: taskId },
             data: {
-                ...taskData,
-                ...(materials
-                    ? {
-                        // Replace the task-material assignment list.
-                        materials: {
-                            set: materialIds.map((materialId) => ({ id: materialId })),
-                        },
-                    }
-                    : {}),
+              ...taskData,
             }
+          });
+
+          if (materials) {
+            if (materialIds.length) {
+              const updated = await tx.materialUsed.updateMany({
+                where: { id: { in: materialIds } },
+                data: { taskId },
+              });
+
+              if (updated.count !== materialIds.length) {
+                throw new Error("One or more material IDs were not found.");
+              }
+            }
+          }
+
+          return updatedTask;
         });
         return withDaysRemaining(task);
     },
