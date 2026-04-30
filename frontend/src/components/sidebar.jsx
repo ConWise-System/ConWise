@@ -2,11 +2,15 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, Users, FolderRoot, CheckSquare, 
   ShieldAlert, BarChart3, MessageSquare, Bell, 
+<<<<<<< HEAD
   Settings, ChevronLeft
+=======
+  Settings, ChevronLeft, LogOut 
+>>>>>>> 3e6f6b7 (update sidebar of admin page)
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -24,14 +28,13 @@ const menuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="relative sticky top-0 h-screen z-50">
-      {/* ENHANCED TOGGLE BUTTON 
-          - backdrop-blur: makes it look like glass
-          - hover:shadow: adds a blue glow on interaction
-      */}
+      
+      {/* Toggle Button */}
       <button 
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3.5 top-12 w-7 h-7 bg-blue-600 rounded-full border-[3px] border-[#070912] 
@@ -51,11 +54,14 @@ export default function Sidebar() {
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="bg-[#070912] text-slate-400 flex flex-col h-full border-r border-white/5 overflow-hidden"
       >
+
+        {/* Header */}
         <div className="p-6 mb-1">
           <div className="flex items-center gap-3">
             <div className="min-w-[36px] h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
               <ShieldAlert size={18} className="text-white" strokeWidth={2.5} />
             </div>
+
             {!isCollapsed && (
               <motion.div 
                 initial={{ opacity: 0 }} 
@@ -69,8 +75,13 @@ export default function Sidebar() {
           </div>
         </div>
 
+<<<<<<< HEAD
         {/* 2. Navigation (Scroll Disabled) */}
       <nav className="flex-1 px-4 space-y-1 py-4 overflow-hidden">
+=======
+        {/* Menu */}
+        <nav className="flex-1 px-4 space-y-0.5 py-4 overflow-hidden">
+>>>>>>> 3e6f6b7 (update sidebar of admin page)
           {menuItems.map((item, idx) => {
             const isActive = pathname === item.path;
 
@@ -102,17 +113,42 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="p-4 mt-auto">
-          <div className="flex bg-white/[0.03] border border-white/5 rounded-xl justify-center p-3">
-            {!isCollapsed ? (
-              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                ConWise System v1.0
+        {/* Profile + Logout */}
+        <div className="p-4 mt-auto border-t border-white/5">
+          <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3 flex items-center justify-between">
+
+            {!isCollapsed && (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg overflow-hidden border border-white/10">
+                  <img 
+                    src="https://api.dicebear.com/7.x/avataaars/svg?seed=Gifti"
+                    alt="profile"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div>
+                  <p className="text-[11px] font-bold text-white uppercase">
+                    Firomsa Hika
+                  </p>
+                  <p className="text-[9px] text-slate-500 uppercase">
+                    Admin
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
             )}
+
+            <button 
+              onClick={() => router.push('/login')}
+              className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </button>
+
           </div>
         </div>
+
       </motion.aside>
     </div>
   );
