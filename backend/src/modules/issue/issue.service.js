@@ -69,16 +69,16 @@ export const issueService = {
     }
 
     // Verify project belongs to this company
-    const project = await prisma.project.findFirst({
+    const projectCheck = await prisma.project.findFirst({
       where: { id: projectId, companyId },
     });
-    if (!project) {
+    if (!projectCheck) {
       const err = new Error("Project not found or access denied");
       err.statusCode = 404;
       throw err;
     }
 
-    // If linking to a task, verify task belongs to this project
+    // Verification for blocked task...
     if (data.blockedTaskId) {
       const task = await prisma.task.findFirst({
         where: { id: data.blockedTaskId, projectId },
@@ -90,7 +90,8 @@ export const issueService = {
       }
     }
 
-    return prisma.$transaction(async (tx) => {
+    // 1. Capture the result of the transaction
+    const newIssue = await prisma.$transaction(async (tx) => {
       const issue = await tx.issue.create({
         data: {
           companyId,
@@ -108,7 +109,13 @@ export const issueService = {
           reporter: {
             select: { id: true, firstName: true, lastName: true, role: true },
           },
-          project: { select: { id: true, projectName: true } },
+          project: {
+            select: {
+              id: true,
+              projectName: true,
+              ownerUserId: true, // CRITICAL: Need this for notification recipient
+            },
+          },
         },
       });
 
@@ -123,22 +130,24 @@ export const issueService = {
       return issue;
     });
 
-    // Notify Project Manager
+    // 2. Notify Project Manager (Now outside the transaction and before the final return)
     try {
-      if (issue.project?.projectManagerId) {
+      if (newIssue.project?.ownerUserId) {
         await notificationService.createNotification({
-          recipientUserId: issue.project.projectManagerId,
+          recipientUserId: newIssue.project.ownerUserId,
           notificationTitle: "🚨 New Issue Reported",
-          notificationDescription: `${result.reporter.firstName} reported: "${result.title}" in ${result.project.projectName}`,
+          notificationDescription: `${newIssue.reporter.firstName} reported: "${newIssue.title}" in ${newIssue.project.projectName}`,
           relatedEntityType: "ISSUE",
-          relatedEntityId: result.id,
+          relatedEntityId: newIssue.id,
         });
       }
     } catch (err) {
       console.error("Notification failed in createIssue:", err.message);
     }
-  },
 
+    // 3. Final return
+    return newIssue;
+  },
   // ── List issues (paginated + filtered) ─────────────────────────────────────
   listIssues: async ({ projectId, companyId, userRole, userId, query }) => {
     const page = Math.max(1, parseInt(query.page) || 1);

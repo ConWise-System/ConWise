@@ -134,17 +134,17 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  company         Company?           @relation(fields: [companyId], references: [id])
-  ownedProjects   Project[]          @relation("ProjectOwner")
-  assignedTasks   Task[]             @relation("TaskAssignee")
-  reports         Report[]
-  notifications   Notification[]     @relation("NotificationRecipient")
-  reportedIssues  Issue[]            @relation("IssueReporter")
-  assignedIssues  Issue[]            @relation("IssueAssignee")
-  issueAuditLogs  IssueAuditLog[]
-  sentMessages    Chat[]             @relation("ChatSender")
-  sessions        Session[]
-  verifications   VerificationCode[]
+  company        Company?           @relation(fields: [companyId], references: [id])
+  ownedProjects  Project[]          @relation("ProjectOwner")
+  assignedTasks  Task[]             @relation("TaskAssignee")
+  reports        Report[]
+  notifications  Notification[]     @relation("NotificationRecipient")
+  reportedIssues Issue[]            @relation("IssueReporter")
+  assignedIssues Issue[]            @relation("IssueAssignee")
+  issueAuditLogs IssueAuditLog[]
+  sentMessages   Chat[]             @relation("ChatSender")
+  sessions       Session[]
+  verifications  VerificationCode[]
 
   @@index([companyId])
   @@index([role])
@@ -232,7 +232,7 @@ model Task {
   id              Int          @id @default(autoincrement())
   projectId       Int
   assigneeUserId  Int
-  materialUsedId  Int?
+  materialUsedId  Int?         
   taskTitle       String
   taskDescription String?
   startDate       DateTime?
@@ -332,10 +332,10 @@ model Notification {
 }
 
 model Issue {
-  id            Int           @id @default(autoincrement())
+  id            Int  @id @default(autoincrement())
   companyId     Int
   projectId     Int
-  reporterId    Int?
+  cd ..     Int?
   assigneeId    Int?
   blockedTaskId Int?
 
@@ -351,11 +351,11 @@ model Issue {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reporter    User?          @relation("IssueReporter", fields: [reporterId], references: [id], onDelete: SetNull)
-  assignee    User?          @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  blockedTask Task?          @relation("IssueBlockedTask", fields: [blockedTaskId], references: [id], onDelete: SetNull)
+  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reporter    User?           @relation("IssueReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  assignee    User?           @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  blockedTask Task?           @relation("IssueBlockedTask", fields: [blockedTaskId], references: [id], onDelete: SetNull)
   auditLogs   IssueAuditLog[]
 
   @@index([companyId])
