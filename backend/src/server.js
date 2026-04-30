@@ -16,6 +16,7 @@ import materialRoutes from "./modules/material/material.routes.js";
 import reportRotues from "./modules/report/report.routes.js";
 import messagingRoutes from "./modules/messaging/messaging.routes.js";
 import issueRoutes from "./modules/issue/issue.routes.js";
+import milestoneRoutes from "./modules/milestone/milestone.routes.js";
 
 dotenv.config();
 
