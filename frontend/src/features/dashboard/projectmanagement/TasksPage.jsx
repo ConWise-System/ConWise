@@ -4,55 +4,25 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, MoreHorizontal, Filter, Trash2,
-  Clock, Rocket, CheckSquare,ChevronRight ,
-  ArrowLeft, User, DollarSign, Box, Loader2, Hash
+  Clock, Rocket, CheckSquare, ChevronRight,
+  ArrowLeft, User, DollarSign, Box, Loader2, Hash, Calendar
 } from 'lucide-react';
-import Axios from '../../../../utils/Axios'
+import Axios from '../../../../utils/Axios';
 import summeryApi from '../../../common/summeryApi';
 
 export default function TaskCenter() {
   const [view, setView] = useState('list'); 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tasks, setTasks] = useState([]); // To hold tasks fetched from DB
-  const [projectList, setProjectList] = useState([])
-  const [user,setUser] = useState([])
+  const [tasks, setTasks] = useState([]); 
+  const [projectList, setProjectList] = useState([]);
+  const [userList, setUserList] = useState([]); // Renamed for clarity
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
 
-  const loadProjects = async () => {
-    const res = await Axios({...summeryApi.getAllProjects});
-    
-    setProjectList(res.data.data);
-  };
-
-  const loadTasks = async () => {
-    try {
-      // Replace with your actual list task API endpoint
-      const response = await Axios({ ...summeryApi.getTasks }); 
-      if (response.data.success) {
-        setTasks(response.data.data);
-      }
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-    }
-  };
-
-  const loadUsers = async()=>{
-    const response = await Axios({...summeryApi.getUsers})
-    setUser(response.data.data.users)
-  }
-
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
-  useEffect(()=>{
-    loadUsers()
-  },[])
-
-  // --- 1. STATE ALIGNED WITH YOUR JSON BODY ---
   const [formData, setFormData] = useState({
     projectId: 0,
     assigneeUserId: 0,
-    taskAssigneeID: 0,
+    taskAssigneeID: 0, // Often kept in sync with assigneeUserId
     taskTitle: '',
     taskDescription: '',
     startDate: '',
@@ -63,16 +33,75 @@ export default function TaskCenter() {
     materials: [] 
   });
 
-  // --- 2. LOGIC HANDLERS ---
+  const loadProjects = async () => {
+    try {
+      const res = await Axios({...summeryApi.getAllProjects});
+      setProjectList(res.data.data || []);
+    } catch (error) {
+      console.error("Error loading projects:", error);
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const response = await Axios({...summeryApi.getUsers});
+      // Added safety check for different possible API response structures
+      const allUsers = response.data.data.users || response.data.data || [];
+      
+      // Filtering to ensure we only have users with valid IDs and Names
+      const cleanUsers = allUsers.filter(u => u && (u.id || u._id) && (u.name || u.firstName)); 
+      setUserList(cleanUsers);
+    } catch (error) {
+      console.error("Error loading users:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadProjects();
+    loadUsers();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const numericFields = ['projectId', 'assigneeUserId', 'taskAssigneeID', 'taskBudget'];
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: numericFields.includes(name) ? Number(value) : value 
-    }));
+    
+    setFormData(prev => {
+      const newVal = numericFields.includes(name) ? Number(value) : value;
+      
+      // If we update assigneeUserId, we likely want to keep taskAssigneeID in sync
+      if (name === 'assigneeUserId') {
+        return { ...prev, [name]: newVal, taskAssigneeID: newVal };
+      }
+      
+      return { ...prev, [name]: newVal };
+    });
   };
 
+  const handleProjectClick = (project) => {
+    setSelectedProject(project);
+    setView('taskDetail');
+    loadTasksByProject(project.id || project._id); 
+  };
+
+  const loadTasksByProject = async (projectId) => {
+    setIsLoadingTasks(true);
+    try {
+      const response = await Axios({
+        method: 'GET',
+        url: `/api/projects/${projectId}/tasks` 
+      });
+      if (response.data.success) {
+        setTasks(response.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      setTasks([]); 
+    } finally {
+      setIsLoadingTasks(false);
+    }
+  };
+
+  // ... (addMaterial, updateMaterial, removeMaterial remain the same)
   const addMaterial = () => {
     setFormData(prev => ({
       ...prev,
@@ -97,60 +126,41 @@ export default function TaskCenter() {
 
   const handleTaskSubmission = async(e) => {
     e.preventDefault();
-    // Validation: Don't submit if IDs are 0
     if (formData.projectId === 0 || formData.assigneeUserId === 0) {
       alert("Please select a Project and an Assignee");
       return;
     }
     setIsSubmitting(true);
-    // Integrate your Axios call here similar to how we did the Project Creation
-    try{
+    try {
       const response = await Axios({
         ...summeryApi.assignTask,
-        data:formData
-      })
-      if(response.data.success){
-        setFormData({projectId: 0,
-          assigneeUserId: 0,
-          taskAssigneeID: 0,
-          taskTitle: '',
-          taskDescription: '',
-          startDate: '',
-          dueDate: '',
-          taskBudget: 0,
-          taskPriority: 'HIGH',
-          taskStatus: 'TODO',
-          materials: [] 
-        })
-        alert("Task Created Successfully!")
+        data: formData
+      });
+      if (response.data.success) {
+        alert("Task Created Successfully!");
+        setFormData({
+          projectId: 0, assigneeUserId: 0, taskAssigneeID: 0,
+          taskTitle: '', taskDescription: '', startDate: '',
+          dueDate: '', taskBudget: 0, taskPriority: 'HIGH',
+          taskStatus: 'TODO', materials: [] 
+        });
+        setView('list');
       }
-    }catch (error) {
-      console.error("Submission Error Details:", error.response?.data);
-      alert(error.response?.data?.message || "Check console for 400 details");
+    } catch (error) {
+      alert(error.response?.data?.message || "Check console for details");
     } finally {
       setIsSubmitting(false);
     }
-    
-    
-    console.log("Final Task Payload:", formData);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setView('list');
-    }, 1500);
   };
 
   return (
     <div className="w-full min-h-screen bg-[#F9FAFB] p-4 md:p-10">
       <AnimatePresence mode="wait">
         
-        {view === 'list' ? (
-          /* --- YOUR ORIGINAL DASHBOARD VIEW --- */
-          <motion.div 
-            key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="max-w-[1300px] mx-auto space-y-6"
-          >
+        {view === 'list' && (
+          <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="max-w-[1300px] mx-auto space-y-6">
             <div className="flex justify-between items-end">
-              <div>
+              <div className="text-left">
                 <p className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-600 mb-1">Operational Hub</p>
                 <h1 className="text-2xl font-black text-[#111827] tracking-tighter uppercase italic leading-none">Task Center</h1>
               </div>
@@ -175,127 +185,138 @@ export default function TaskCenter() {
               </div>
             </div>
 
-            <div className="bg-white rounded-[1.5rem] border border-slate-200/60 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-[1.5rem] border border-slate-200/60 shadow-sm overflow-hidden text-left">
               <div className="p-5 flex justify-between items-center border-b border-slate-50 bg-slate-50/30">
-                <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Ongoing Assignments</h3>
-                <button className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-lg text-[8px] font-black uppercase text-slate-400">
-                  <Filter size={12} /> Filter
-                </button>
+                <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Available Projects</h3>
               </div>
-
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead className="bg-slate-50/50">
                     <tr className="text-[8px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
-                      <th className="px-6 py-3">Task Details</th>
-                      <th className="px-6 py-3 text-center">Engineers</th>
-                      <th className="px-6 py-3">Priority</th>
+                      <th className="px-6 py-3">Project Details</th>
+                      <th className="px-6 py-3">Budget Allocation</th>
                       <th className="px-6 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {/* Placeholder for real data mapping later */}
-                    <TaskRow 
-                      title="Cloud Infrastructure" project="Project #102" 
-                      status="HIGH" color="blue" 
-                    />
-                    <TaskRow 
-                      title="OAuth Integration" project="Project #105" 
-                      status="MEDIUM" color="amber" 
-                    />
+                    {projectList.map((p) => (
+                      <tr key={p.id || p._id} onClick={() => handleProjectClick(p)} className="hover:bg-slate-50 transition-all cursor-pointer group">
+                        <td className="px-6 py-4">
+                          <h4 className="text-[10px] font-black text-[#111827] uppercase group-hover:text-blue-600">{p.projectName}</h4>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Client: {p.clientName}</p>
+                        </td>
+                        <td className="px-6 py-4 text-[10px] font-black text-slate-700">${p.projectBudget}</td>
+                        <td className="px-6 py-4 text-right">
+                          <ChevronRight size={14} className="inline text-slate-300 group-hover:text-blue-600" />
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             </div>
           </motion.div>
+        )}
 
-        ) : (
-          /* --- THE UPDATED CREATE TASK PAGE --- */
-          <motion.div key="create" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-[850px] mx-auto">
+        {view === 'create' && (
+          <motion.div key="create" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="max-w-[850px] mx-auto text-left">
             <button onClick={() => setView('list')} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 mb-8 hover:text-black">
-              <ArrowLeft size={14} /> Return to Center
+              <ArrowLeft size={14} strokeWidth={3} /> Abort Action
             </button>
 
-            <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden text-left">
-              <div className="p-10 border-b border-slate-50 bg-slate-50/50">
-                <h2 className="text-2xl font-black uppercase italic tracking-tighter text-[#111827]">Create Task</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Assign deployment parameters & estimate logistics</p>
-              </div>
-
-              <form onSubmit={handleTaskSubmission} className="p-10 space-y-8">
-                {/* ID GRID */}
-                <div className="grid grid-cols-3 gap-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                  {/** Selection */}
-                  <select name="projectId" onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 text-[11px] font-bold outline-none focus:border-blue-500 focus:bg-white transition-all">
-                    <option value="">Select Target Project</option>
-                    {projectList.map(p => (
-                      <option key={p.id} value={p.id}>{p.projectName}</option>
-                    ))}
-                   </select>
-                   <select name="assigneeUserId" onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 text-[11px] font-bold outline-none focus:border-blue-500 focus:bg-white transition-all">
-                    <option value="">Assign User</option>
-                    {user.map(p => (
-                      <option key={p.id} value={p.id}>{p.firstName}{` ( ${p.role} ) `}</option>
-                    ))}
-                   </select>
-                  <FormInput label="Task Assignee ID" name="taskAssigneeID" type="number" value={formData.taskAssigneeID} onChange={handleInputChange} icon={<User size={12}/>} />
+            <form onSubmit={handleTaskSubmission} className="space-y-6">
+              <div className="bg-white rounded-[2rem] border border-slate-200/60 shadow-2xl p-8 md:p-12 space-y-10">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-600">Task Creation Protocol</p>
+                    <h2 className="text-3xl font-black text-[#111827] uppercase italic tracking-tighter leading-none">New Assignment</h2>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100"><Hash size={24} className="text-slate-300" /></div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
-                  <FormInput label="Task Title" name="taskTitle" colSpan="col-span-2" placeholder="e.g. Server Hardening" value={formData.taskTitle} onChange={handleInputChange} />
-                  <FormInput label="Start Date" name="startDate" type="date" value={formData.startDate} onChange={handleInputChange} />
-                  <FormInput label="Due Date" name="dueDate" type="date" value={formData.dueDate} onChange={handleInputChange} />
-                  <FormInput label="Task Budget" name="taskBudget" type="number" value={formData.taskBudget} onChange={handleInputChange} icon={<DollarSign size={12}/>} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* PROJECT SELECTION */}
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[8px] font-black uppercase tracking-widest text-slate-400 ml-1">Parent Project</label>
+                    <select 
+                      name="projectId" 
+                      value={formData.projectId} 
+                      onChange={handleInputChange} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500 transition-all cursor-pointer"
+                    >
+                      <option value={0}>SELECT TARGET PROJECT</option>
+                      {projectList.map(p => (
+                        <option key={p.id || p._id} value={p.id || p._id}>
+                          {p.projectName.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* USER / ASSIGNEE SELECTION */}
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-[8px] font-black uppercase tracking-widest text-slate-400 ml-1">Field Operative (Assignee)</label>
+                    <select 
+                      name="assigneeUserId" 
+                      value={formData.assigneeUserId} 
+                      onChange={handleInputChange} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500 transition-all cursor-pointer"
+                    >
+                      <option value={0}>SELECT ASSIGNEE</option>
+                      {userList.map(u => (
+                        <option key={u.id || u._id} value={u.id || u._id}>
+                          {(u.name || `${u.firstName} ${u.lastName}`).toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <FormInput label="Task Designation" name="taskTitle" value={formData.taskTitle} onChange={handleInputChange} placeholder="E.G., FOUNDATION EXCAVATION" colSpan="md:col-span-2" icon={<Rocket size={16}/>} />
+                  <FormInput label="Commencement Date" name="startDate" value={formData.startDate} onChange={handleInputChange} type="date" icon={<Calendar size={16}/>} />
+                  <FormInput label="Deadline" name="dueDate" value={formData.dueDate} onChange={handleInputChange} type="date" icon={<Clock size={16}/>} />
+                  <FormInput label="Resource Allocation (Budget)" name="taskBudget" value={formData.taskBudget} onChange={handleInputChange} type="number" icon={<DollarSign size={16}/>} />
                   
                   <div className="space-y-1.5 text-left">
-                    <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Task Priority</label>
-                    <select name="taskPriority" value={formData.taskPriority} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-black outline-none appearance-none">
-                      <option value="HIGH">HIGH</option>
-                      <option value="MEDIUM">MEDIUM</option>
-                      <option value="LOW">LOW</option>
+                    <label className="text-[8px] font-black uppercase tracking-widest text-slate-400 ml-1">Priority Level</label>
+                    <select name="taskPriority" value={formData.taskPriority} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none">
+                      <option value="LOW">LOW PRIORITY</option>
+                      <option value="MEDIUM">MEDIUM PRIORITY</option>
+                      <option value="HIGH">CRITICAL STATUS</option>
                     </select>
                   </div>
                 </div>
 
-                {/* MATERIALS LOGIC */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Materials & Resources</h3>
-                    <button type="button" onClick={addMaterial} className="text-[9px] font-black text-blue-600 flex items-center gap-1">
-                      <Plus size={12} strokeWidth={3}/> Add Item
+                <div className="pt-8 border-t border-slate-100">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                      <Box size={14} /> Bill of Materials
+                    </h3>
+                    <button type="button" onClick={addMaterial} className="text-[9px] font-black uppercase text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                      <Plus size={14} /> Add Resource
                     </button>
                   </div>
-                  {formData.materials.map((mat, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-3 p-4 bg-slate-50/50 rounded-2xl relative">
-                      <div className="col-span-5">
-                        <FormInput label="Material Name" value={mat.materialName} onChange={(e) => updateMaterial(index, 'materialName', e.target.value)} />
+                  
+                  <div className="space-y-4">
+                    {formData.materials.map((mat, idx) => (
+                      <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-100 relative">
+                        <input placeholder="MATERIAL NAME" value={mat.materialName} onChange={(e) => updateMaterial(idx, 'materialName', e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-[10px] font-bold outline-none" />
+                        <input type="number" placeholder="QTY" value={mat.quantityUsed} onChange={(e) => updateMaterial(idx, 'quantityUsed', e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-[10px] font-bold outline-none" />
+                        <input placeholder="UNIT" value={mat.unit} onChange={(e) => updateMaterial(idx, 'unit', e.target.value)} className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-[10px] font-bold outline-none" />
+                        <button type="button" onClick={() => removeMaterial(idx)} className="text-red-400 hover:text-red-600 self-center justify-self-end"><Trash2 size={16} /></button>
                       </div>
-                      <div className="col-span-3">
-                        <FormInput label="Quantity" type="number" value={mat.quantityUsed} onChange={(e) => updateMaterial(index, 'quantityUsed', e.target.value)} />
-                      </div>
-                      <div className="col-span-3">
-                        <FormInput label="Unit" placeholder="kg/pcs" value={mat.unit} onChange={(e) => updateMaterial(index, 'unit', e.target.value)} />
-                      </div>
-                      <button type="button" onClick={() => removeMaterial(index)} className="col-span-1 flex items-end pb-3 text-slate-300 hover:text-red-500">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
-                <div className="space-y-2 text-left">
-                  <label className="text-[9px] font-black uppercase text-slate-400 ml-1">Task Description</label>
-                  <textarea 
-                    name="taskDescription" value={formData.taskDescription} onChange={handleInputChange}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-[11px] font-medium outline-none h-24" 
-                  />
-                </div>
-
-                <button type="submit" disabled={isSubmitting} className="w-full bg-[#111827] text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-600 transition-all">
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin mx-auto" /> : "Initialize Deployment"}
+                <button 
+                  disabled={isSubmitting}
+                  type="submit" 
+                  className="w-full bg-[#111827] text-white py-5 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] shadow-2xl hover:bg-blue-600 transition-all flex justify-center items-center gap-3 disabled:opacity-50"
+                >
+                  {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <><CheckSquare size={18} strokeWidth={3} /> Finalize Assignment</>}
                 </button>
-              </form>
-            </div>
+              </div>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>
@@ -303,41 +324,7 @@ export default function TaskCenter() {
   );
 }
 
-// --- SUB-COMPONENTS ---
-
-function TaskRow({ title, project, status, color }) {
-  const themes = {
-    blue: "text-blue-600 bg-blue-50 border-blue-100",
-    amber: "text-amber-600 bg-amber-50 border-amber-100",
-    emerald: "text-emerald-600 bg-emerald-50 border-emerald-100"
-  };
-  return (
-    <tr className="hover:bg-slate-50/80 transition-all cursor-pointer">
-      <td className="px-6 py-4 text-left">
-        <h4 className="text-[10px] font-black text-[#111827] uppercase tracking-tight">{title}</h4>
-        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Ref: {project}</p>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex justify-center -space-x-1.5">
-          {[1, 2].map((i) => (
-            <div key={i} className="w-6 h-6 rounded-lg bg-slate-200 border-2 border-white overflow-hidden shadow-sm">
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + title}`} alt="Avatar" />
-            </div>
-          ))}
-        </div>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`text-[8px] font-black px-2.5 py-1 rounded-full border uppercase tracking-tighter ${themes[color]}`}>
-          {status}
-        </span>
-      </td>
-      <td className="px-6 py-4 text-right">
-        <MoreHorizontal size={14} className="inline text-slate-300 hover:text-black" />
-      </td>
-    </tr>
-  );
-}
-
+// Sub-components (FormInput, MiniMetric) remain the same as your original code...
 function FormInput({ label, name, value, onChange, placeholder, icon, type = "text", colSpan = "" }) {
   return (
     <div className={`space-y-1.5 ${colSpan} text-left`}>
