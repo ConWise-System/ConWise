@@ -72,7 +72,7 @@ export const projectService = {
       const companyAdmin = await prisma.user.findFirst({
         where: {
           companyId: companyId,
-          role: "ADMIN",
+          role: "COMPANY_ADMIN",
         },
         select: {
           id: true,
@@ -213,7 +213,7 @@ export const projectService = {
         const companyAdmin = await prisma.user.findFirst({
           where: {
             companyId: companyId,
-            role: "ADMIN",
+            role: "COMPANY_ADMIN",
           },
           select: {
             id: true,
@@ -226,14 +226,14 @@ export const projectService = {
             notificationTitle: "Project Deleted",
             notificationDescription: `Project "${deletedProject.projectName}" has been deleted.`,
             relatedEntityType: "PROJECT",
-            relatedEntityId: project.companyId,
+            relatedEntityId: companyId,
           });
         }
-      } catch (notificationError) {
+      } catch (error) {
         // Notification failures don't block project deletion
         console.error(
-          "Notification failed in project service",
-          notificationError,
+          "Notification failed in project deletion service",
+          error.message,
         );
       }
 
