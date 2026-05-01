@@ -113,6 +113,7 @@ model Company {
   projects  Project[]
   materials MaterialUsed[]
   issues    Issue[]
+  reports   Report[]
 
   @@index([name])
   @@map("companies")
@@ -296,21 +297,33 @@ model CostSummary {
 }
 
 model Report {
-  id               Int        @id @default(autoincrement())
-  userId           Int
-  projectId        Int
-  reportTitle      String
-  reportType       ReportType
-  reportDate       DateTime
-  workCompleted    String
-  progressPhotoUrl String?
-  submittedAt      DateTime   @default(now())
+  id          Int        @id @default(autoincrement())
+  userId      Int
+  projectId   Int
+  companyId   Int // Critical for multi-tenancy
+  reportTitle String
+  reportType  ReportType @default(DAILY_SITE_REPORT)
+  reportDate  DateTime
 
+  // Requirement fields: work, workers, materials, challenges
+  workCompleted    String  @db.Text
+  workersPresent   Int     @default(0)
+  materialsUsed    String? @db.Text
+  weatherCondition String?
+  challenges       String? @db.Text
+
+  progressPhotoUrl String?
+  submittedAt      DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
   user    User    @relation(fields: [userId], references: [id])
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id])
 
   @@index([userId])
   @@index([projectId])
+  @@index([companyId])
   @@map("reports")
 }
 
