@@ -80,6 +80,7 @@ export default function IssueTracking() {
         ...prev,
         photoUrls: [...prev.photoUrls, ...uploadedUrls]
       }));
+      
     } catch (error) {
       alert("Image upload failed.");
     } finally {
@@ -95,18 +96,30 @@ export default function IssueTracking() {
       return;
     }
 
+    // 1. Resolve the project metadata
+    const selectedProject = projectList.find(p => String(p.id) === String(selectedProjectId));
+    
     setIsProcessing(true);
     
     try {
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        priority: formData.priority,
+        location: formData.location || "N/A",
+        photoUrls: formData.photoUrls,
+        blockedTaskId: formData.blockedTaskId ? Number(formData.blockedTaskId) : null
+      };
+      // 2. USE THE DYNAMIC URL FUNCTION
       const response = await Axios({
-        // 1. Call the function to get the dynamic URL: /api/projects/10/issues
-        url: summeryApi.createIssue.url(selectedProjectId), 
+        url: summeryApi.createIssue.url(selectedProjectId), // Dynamic injection
         method: summeryApi.createIssue.method,
-        data: formData
+        data: payload
       });
 
       if (response.data.success) {
         alert("Anomaly Transmitted Successfully");
+        // Reset form...
         setFormData({
           title: '', description: '', priority: 'MEDIUM',
           location: '', photoUrls: [], blockedTaskId: null
@@ -116,16 +129,13 @@ export default function IssueTracking() {
         setView('ledger');
       }
     } catch (error) {
-      console.error("Attempted URL:", error.config?.url);
-      console.error("Status:", error.response?.status);
-      
+      console.error("Validation Details:", error.response?.data);
       const message = error.response?.data?.message || "Transmission failed.";
-      alert(`Status ${error.response?.status || 'Network'}: ${message}`);
+      alert(`Error: ${message}`);
     } finally {
       setIsProcessing(false);
     }
   };
-
   return (
     <div className="w-full min-h-screen bg-[#F8F9FA] p-6 md:p-10 text-slate-900">
       <AnimatePresence mode="wait">

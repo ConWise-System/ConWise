@@ -1,4 +1,5 @@
-import EngineerSidebar from "@/components/dashboard/engineer/EngineerSidebar";
+
+import EngineerSidebar from '../../../components/dashboard/engineer/EngineerSidebar';
 
 export default function EngineerLayout({ children }) {
   return (

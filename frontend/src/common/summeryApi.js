@@ -43,7 +43,7 @@ const summeryApi = {
     },
     reports: {
         url: "/api/reports/all",
-        method: "post"
+        method: "get"
     },
     /* --- ADDED THIS ENDPOINT --- */
     downloadReport: {

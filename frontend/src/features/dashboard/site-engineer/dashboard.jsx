@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 // Sidebar kantiinara components keessaa fidi
-import EngineerSidebar from '@/components/sidebar'; 
+import EngineerSidebar from '../../../components/sidebar'; 
 
 export default function SiteEngineerDashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);
