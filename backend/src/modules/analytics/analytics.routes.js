@@ -49,3 +49,24 @@ router.get(
 );
 
 export default router;
+
+
+/**
+ * @swagger
+ * /api/projects/{projectId}/cost-summary:
+ *   get:
+ *     tags:
+ *       - Analytics
+ *     summary: Get project cost summary
+ *     description: Provides budget, actual costs, variance, utilization, and cost trends.
+ */
+router.get(
+  "/projects/:projectId/cost-summary",
+  authorizeRoles(
+    ROLES.COMPANY_ADMIN,
+    ROLES.PROJECT_MANAGER,
+    ROLES.SITE_ENGINEER,
+    ROLES.SITE_SUPERVISOR,
+  ),
+  analyticsController.getCostSummary,
+);

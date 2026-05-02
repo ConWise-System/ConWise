@@ -69,4 +69,54 @@ export const analyticsController = {
       return handleError(res, error, "getProjectAnalytics");
     }
   },
+  
+  getCostSummary: async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const projectId = parsePositiveInt(req.params.projectId);
+    if (!projectId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid project ID. Must be a positive integer.",
+      });
+    }
+
+    const { id: userId, companyId, role } = req.user;
+
+    if (!companyId) {
+      return res.status(400).json({
+        success: false,
+        message: "User is not associated with a company.",
+      });
+    }
+
+    const data = await analyticsService.getCostSummary({
+      projectId,
+      companyId,
+      userId,
+      role,
+    });
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Cost summary retrieved successfully.",
+      data,
+    });
+  } catch (error) {
+    return handleError(res, error, "getCostSummary");
+  }
+},
 };
