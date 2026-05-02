@@ -18,6 +18,7 @@ import messagingRoutes from "./modules/messaging/messaging.routes.js";
 import issueRoutes from "./modules/issue/issue.routes.js";
 import milestoneRoutes from "./modules/milestone/milestone.routes.js";
 import uploadRoute from '../routes/upload.js';
+import analyticsRoutes from "./modules/analytics/analytics.routes.js";
 
 dotenv.config();
 
@@ -59,6 +60,7 @@ app.use("/api/reports", reportRotues);
 app.use("/api/messaging", messagingRoutes);
 app.use("/api/milestones", milestoneRoutes);
 app.use("/api", taskRoutes);
+app.use("/api", analyticsRoutes);
 app.use("/api/projects/:projectId/issues", issueRoutes);
 app.use('/api/upload', uploadRoute)
 
