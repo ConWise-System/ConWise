@@ -165,4 +165,111 @@ export const analyticsService = {
       issueStats,
     };
   },
+
+  getCostSummary: async ({ projectId, companyId, userId, role }) => {
+  let where = { id: projectId, companyId };
+
+  if (role === ROLES.SITE_ENGINEER || role === ROLES.SITE_SUPERVISOR) {
+    where = {
+      id: projectId,
+      companyId,
+      tasks: { some: { assigneeUserId: userId } },
+    };
+  }
+
+  const project = await prisma.project.findFirst({
+    where,
+    select: {
+      id: true,
+      projectName: true,
+      projectBudget: true,
+      costSummary: {
+        select: {
+          estimatedCost: true,
+          costVariance: true,
+        },
+      },
+    },
+  });
+
+  if (!project) return null;
+
+  // ---- TASK COST (SUM) ----
+  const taskCostAgg = await prisma.task.aggregate({
+    where: { projectId },
+    _sum: { taskBudget: true },
+  });
+
+  const taskCost = Number(taskCostAgg._sum.taskBudget || 0);
+  const totalActualCost = taskCost;
+
+  const projectBudget = Number(project.projectBudget || 0);
+  const estimatedCost = Number(project.costSummary?.estimatedCost || 0);
+  const costVariance = Number(project.costSummary?.costVariance || 0);
+
+  // ---- VARIANCE STATUS ----
+  let varianceStatus = "ON_BUDGET";
+  if (costVariance < 0) varianceStatus = "UNDER_BUDGET";
+  if (costVariance > 0) varianceStatus = "OVER_BUDGET";
+
+  // ---- UTILIZATION ----
+  const budgetUsedPercentage =
+    projectBudget === 0
+      ? 0
+      : Math.round((totalActualCost / projectBudget) * 100 * 100) / 100;
+
+  // ---- COST TREND (GROUP BY MONTH) ----
+  const trendRaw = await prisma.task.groupBy({
+    by: ["createdAt"],
+    where: { projectId },
+    _sum: { taskBudget: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const monthlyMap = {};
+
+  trendRaw.forEach((item) => {
+    const date = new Date(item.createdAt);
+    const key = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}`;
+
+    if (!monthlyMap[key]) {
+      monthlyMap[key] = 0;
+    }
+
+    monthlyMap[key] += Number(item._sum.taskBudget || 0);
+  });
+
+  const costTrend = Object.entries(monthlyMap).map(([key, cost]) => {
+    const [year, month] = key.split("-");
+    return {
+      date: `${year}-${month.padStart(2, "0")}`,
+      cost: Math.round(cost * 100) / 100,
+    };
+  });
+
+  return {
+    projectId: project.id,
+
+    budget: {
+      projectBudget,
+      estimatedCost,
+    },
+
+    actuals: {
+      taskCost,
+      totalActualCost,
+    },
+
+    variance: {
+      costVariance,
+      status: varianceStatus,
+    },
+
+    utilization: {
+      budgetUsedPercentage,
+    },
+
+    costTrend,
+  };
+},
 };
