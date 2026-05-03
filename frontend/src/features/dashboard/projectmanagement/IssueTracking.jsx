@@ -1,365 +1,292 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  AlertTriangle, ArrowUpRight, Zap, ArrowLeft,
-  Camera, Loader2, Image as ImageIcon, Plus, Filter
+  AlertTriangle, Zap, MapPin, User, X, CheckCircle2, Info, Loader2
 } from 'lucide-react';
 import Axios from '../../../../utils/Axios';
 import summeryApi from '../../../common/summeryApi';
-import axios from 'axios';
 
 export default function IssueTracking() {
-  const [view, setView] = useState('ledger'); 
-  const [isProcessing, setIsProcessing] = useState(false);
   const [projectList, setProjectList] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState(""); // Stores PostgreSQL ID (int or uuid)
-  const [images, setImages] = useState([]); 
-  const fileInputRef = useRef(null);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState(null);
+  const [tempStatus, setTempStatus] = useState("");
 
-  // --- DATA LOADING ---
-  const loadProjects = async () => {
-    try {
-      const res = await Axios({...summeryApi.getAllProjects});
-      // PostgreSQL typically returns rows in a 'data' array
-      const projects = res.data.data || res.data;
-      setProjectList(Array.isArray(projects) ? projects : []);
-    } catch (error) {
-      console.error("Failed to load projects:", error);
-    }
-  };
-
+  // Data Loading
   useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const res = await Axios({...summeryApi.getAllProjects});
+        const projects = res.data.data || res.data;
+        setProjectList(Array.isArray(projects) ? projects : []);
+        if (projects.length > 0) setSelectedProjectId(String(projects[0].id));
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+      }
+    };
     loadProjects();
   }, []);
 
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    priority: 'MEDIUM',
-    location: '',
-    photoUrls: [],
-    blockedTaskId: null
-  });
-
-  // --- HANDLERS ---
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'blockedTaskId' ? (value ? Number(value) : null) : value
-    }));
-  };
-
-  const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    if (images.length + files.length > 4) {
-      alert("Maximum 4 images allowed");
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const uploadedUrls = [];
-      for (const file of files) {
-        const data = new FormData();
-        data.append('file', file);
-        const response = await Axios({
-          ...summeryApi.uploadImage,
-          data: data,
-          headers: { 'Content-Type': 'multipart/form-data' }
+  useEffect(() => {
+    const loadIssues = async () => {
+      if (!selectedProjectId) return;
+      setLoading(true);
+      try {
+        const res = await Axios({
+          url: summeryApi.getAllIssues.url(selectedProjectId),
+          method: summeryApi.getAllIssues.method
         });
-        if (response.data.success) {
-          uploadedUrls.push(response.data.url);
-        }
+        setIssues(res.data.data || []);
+      } catch (error) {
+        console.error("Failed to load issues:", error);
+      } finally {
+        setLoading(false);
       }
-      setImages(prev => [...prev, ...uploadedUrls]);
-      setFormData(prev => ({
-        ...prev,
-        photoUrls: [...prev.photoUrls, ...uploadedUrls]
-      }));
-      
-    } catch (error) {
-      alert("Image upload failed.");
-    } finally {
-      setIsProcessing(false);
+    };
+    loadIssues();
+  }, [selectedProjectId]);
+
+  // Sync tempStatus when an issue is selected
+  useEffect(() => {
+    if (selectedIssue) {
+      setTempStatus(selectedIssue.status);
     }
-  };
+  }, [selectedIssue]);
 
-  const handleReportSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!selectedProjectId) {
-      alert("Please select a Target Project.");
-      return;
-    }
-
-    // 1. Resolve the project metadata
-    const selectedProject = projectList.find(p => String(p.id) === String(selectedProjectId));
-    
-    setIsProcessing(true);
+  const handleUpdateStatus = async () => {
+    if (!selectedIssue || !tempStatus) return;
+    setUpdating(true);
     
     try {
-      const payload = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        priority: formData.priority,
-        location: formData.location || "N/A",
-        photoUrls: formData.photoUrls,
-        blockedTaskId: formData.blockedTaskId ? Number(formData.blockedTaskId) : null
-      };
-      // 2. USE THE DYNAMIC URL FUNCTION
-      const response = await Axios({
-        url: summeryApi.createIssue.url(selectedProjectId), // Dynamic injection
-        method: summeryApi.createIssue.method,
-        data: payload
+      await Axios({
+        url: summeryApi.updateIssueStatus.url(selectedProjectId, selectedIssue.id),
+        method: summeryApi.updateIssueStatus.method,
+        data: { status: tempStatus }
       });
 
-      if (response.data.success) {
-        alert("Anomaly Transmitted Successfully");
-        // Reset form...
-        setFormData({
-          title: '', description: '', priority: 'MEDIUM',
-          location: '', photoUrls: [], blockedTaskId: null
-        });
-        setImages([]);
-        setSelectedProjectId("");
-        setView('ledger');
-      }
+      // Update local states
+      setIssues(prev => prev.map(i => i.id === selectedIssue.id ? { ...i, status: tempStatus } : i));
+      setSelectedIssue(prev => ({ ...prev, status: tempStatus }));
+      
+      alert("Lifecycle status updated successfully.");
     } catch (error) {
-      console.error("Validation Details:", error.response?.data);
-      const message = error.response?.data?.message || "Transmission failed.";
-      alert(`Error: ${message}`);
+      console.error("Update Error:", error);
+      const errMsg = error.response?.data?.errors?.[0]?.message || "Failed to update status.";
+      alert(errMsg);
     } finally {
-      setIsProcessing(false);
+      setUpdating(false);
     }
   };
+
   return (
-    <div className="w-full min-h-screen bg-[#F8F9FA] p-6 md:p-10 text-slate-900">
-      <AnimatePresence mode="wait">
-        {view === 'ledger' ? (
-          <motion.div key="ledger" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-[1300px] mx-auto space-y-6 text-left">
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-600 mb-1">Risk Management</p>
-                <h1 className="text-2xl font-black text-[#111827] tracking-tighter uppercase italic leading-none">Issue Tracking</h1>
-              </div>
-              <button onClick={() => setView('report')} className="bg-[#111827] text-white px-5 py-2.5 rounded-xl flex items-center gap-2 font-black text-[9px] uppercase tracking-widest shadow-lg hover:bg-blue-600 transition-all">
-                <AlertTriangle size={14} /> Report Exception
+    <div className="w-full min-h-screen bg-[#F8F9FA] p-6 md:p-10 text-slate-900 relative">
+      <div className="max-w-[1300px] mx-auto space-y-6 text-left">
+        
+        {/* HEADER */}
+        <div className="flex justify-between items-end">
+          <div>
+            <p className="text-[8px] font-black uppercase tracking-[0.4em] text-blue-600 mb-1">Risk Management</p>
+            <h1 className="text-2xl font-black text-[#111827] tracking-tighter uppercase italic leading-none">Issue Tracking</h1>
+          </div>
+          <select 
+            value={selectedProjectId}
+            onChange={(e) => setSelectedProjectId(e.target.value)}
+            className="bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none shadow-sm cursor-pointer"
+          >
+            {projectList.map(p => (
+              <option key={p.id} value={p.id}>{p.projectName || p.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* TOP METRICS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <MetricCard 
+            label="Total Anomalies" 
+            value={issues.length} 
+            sub="Live Database" 
+            color="bg-blue-50 text-blue-600" 
+          />
+          <MetricCard 
+            label="High Priority" 
+            value={issues.filter(i => i.priority === 'CRITICAL' || i.priority === 'HIGH').length} 
+            sub="Requires Action" 
+            color="bg-red-50 text-red-600" 
+          />
+          <div className="bg-[#111827] rounded-[1.5rem] p-6 text-white flex justify-between items-center shadow-sm min-h-[120px]">
+            <div className="space-y-2">
+              <p className="text-[9px] font-black uppercase opacity-40 tracking-widest text-slate-100">System Status</p>
+              <p className="text-sm font-bold italic text-blue-400">Monitoring Active</p>
+            </div>
+            <Zap size={24} className="text-blue-400 animate-pulse" />
+          </div>
+        </div>
+
+        {/* GRID */}
+        {loading ? (
+          <div className="py-20 text-center text-slate-400 font-black uppercase text-[10px] tracking-widest">Synchronizing Ledger...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence>
+              {issues.map((issue) => (
+                <IssueCard key={issue.id} issue={issue} onClick={() => setSelectedIssue(issue)} />
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* DETAIL MODAL */}
+      <AnimatePresence>
+        {selectedIssue && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSelectedIssue(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-4xl rounded-[2.5rem] overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[90vh] z-[10000]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button onClick={() => setSelectedIssue(null)} className="absolute top-6 right-6 z-10 p-2 bg-white/80 rounded-full text-slate-400 hover:text-red-500 transition-colors shadow-sm">
+                <X size={20} />
               </button>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <MiniMetric label="Critical Exceptions" value="24" sub="+12% Trend" color="text-blue-600" />
-              <MiniMetric label="Active Resolution" value="158" sub="4.2h Avg" color="text-indigo-600" />
-              <div className="bg-[#111827] rounded-2xl p-5 text-white flex justify-between items-center shadow-sm">
-                <div className="space-y-1">
-                  <p className="text-[8px] font-black uppercase opacity-50 tracking-widest">Predictive engine</p>
-                  <p className="text-[11px] font-bold italic text-blue-400">Sector B Anomaly</p>
-                </div>
-                <Zap size={20} className="text-blue-400 animate-pulse" />
+              <div className="w-full md:w-1/2 bg-slate-100 h-64 md:h-auto overflow-hidden">
+                {selectedIssue.photoUrls?.[0] ? (
+                  <img src={selectedIssue.photoUrls[0]} alt="Evidence" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300"><AlertTriangle size={48} /></div>
+                )}
               </div>
-            </div>
 
-            <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
-               <div className="p-4 flex justify-between items-center border-b border-slate-50 bg-slate-50/30">
-                <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Centralized Ledger</h3>
-                <TableButton icon={<Filter size={12} />} label="Filter" />
-              </div>
-              <table className="w-full text-left">
-                  <thead className="bg-slate-50/50">
-                    <tr className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100">
-                      <th className="px-6 py-3">Anomaly Descriptor</th>
-                      <th className="px-6 py-3">Severity</th>
-                      <th className="px-6 py-3">Lead</th>
-                      <th className="px-6 py-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    <IssueRow 
-                      title="HVAC Compression Failure" area="Sector B" priority="Critical" color="blue" lead="M. Thorne"
-                      onClick={() => setView('report')}
-                    />
-                  </tbody>
-              </table>
-            </div>
-          </motion.div>
-        ) : view === 'report' ? (
-          <motion.div key="report" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-[700px] mx-auto text-left">
-            <button onClick={() => setView('ledger')} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 mb-6 hover:text-black">
-              <ArrowLeft size={14} /> Back to Ledger
-            </button>
-
-            <div className="bg-white rounded-[2rem] shadow-2xl border border-slate-100 overflow-hidden">
-              <div className="p-8 bg-blue-50/50 border-b border-blue-100 flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg font-black uppercase italic tracking-tighter text-blue-600">Field Incident Report</h2>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Visual Evidence Required</p>
-                </div>
-                <div className="p-3 bg-white rounded-xl shadow-sm"><ImageIcon size={20} className="text-blue-500"/></div>
-              </div>
-              
-              <form onSubmit={handleReportSubmit} className="p-8 space-y-8">
-                {/** PROJECT DROPDOWN (PostgreSQL id) */}
-                <div className="space-y-1.5">
-                  <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Target Project</label>
-                  <select 
-                    value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                    required
-                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-xl text-[11px] font-bold outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none"
-                  >
-                    <option value="">Choose Project...</option>
-                    {projectList.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.projectName || p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                     <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Photo Evidence ({images.length}/4)</label>
-                     {isProcessing && <Loader2 size={12} className="animate-spin text-blue-600" />}
-                  </div>
-                  
-                  <input type="file" multiple hidden ref={fileInputRef} onChange={handleImageUpload} accept="image/*" disabled={isProcessing} />
-                  
-                  <div className="grid grid-cols-4 gap-3">
-                    <div 
-                      onClick={() => !isProcessing && fileInputRef.current.click()}
-                      className={`col-span-2 aspect-video border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center bg-slate-50 group hover:border-blue-400 transition-all cursor-pointer overflow-hidden ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      {images[0] ? <img src={images[0]} className="w-full h-full object-cover" alt="p" /> : <Camera size={24} className="text-slate-300" />}
+              <div className="w-full md:w-1/2 p-8 md:p-10 text-left overflow-y-auto">
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[8px] font-black bg-blue-600 text-white px-3 py-1 rounded-full uppercase tracking-widest">{selectedIssue.priority} Priority</span>
+                    <h2 className="text-2xl font-black text-[#111827] uppercase italic leading-tight mt-4 tracking-tighter">{selectedIssue.title}</h2>
+                    <div className="flex items-center gap-2 mt-2 text-slate-400">
+                      <MapPin size={14} />
+                      <p className="text-[10px] font-bold uppercase">{selectedIssue.location}</p>
                     </div>
-                    {images.slice(1).map((img, i) => (
-                      <div key={i} className="aspect-square border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
-                        <img src={img} className="w-full h-full object-cover" alt="sub" />
-                      </div>
-                    ))}
-                    {images.length < 4 && images.length > 0 && (
-                      <div onClick={() => !isProcessing && fileInputRef.current.click()} className="aspect-square border border-dashed border-slate-200 rounded-2xl flex items-center justify-center text-slate-300 cursor-pointer">
-                        <Plus size={16}/>
-                      </div>
-                    )}
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <FormInput label="Anomaly Title" name="title" value={formData.title} onChange={handleInputChange} placeholder="Issue summary..." />
+                  <div className="space-y-2">
+                    <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Description</p>
+                    <p className="text-[13px] text-slate-600 font-medium italic leading-relaxed">"{selectedIssue.description}"</p>
                   </div>
-                  
-                  <div className="space-y-1.5 text-left">
-                    <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Anomaly Priority</label>
-                    <select 
-                      name="priority" 
-                      value={formData.priority} 
-                      onChange={handleInputChange}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[10px] font-black uppercase outline-none focus:border-blue-500 appearance-none"
+
+                  <div className="grid grid-cols-2 gap-4 py-4 border-y border-slate-100">
+                    <DetailItem label="Reporter" value={`${selectedIssue.reporter?.firstName} ${selectedIssue.reporter?.lastName}`} />
+                    <DetailItem label="Created" value={new Date(selectedIssue.createdAt).toLocaleDateString()} />
+                  </div>
+
+                  {/* UPDATE STATUS SECTION */}
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <label className="text-[8px] font-black uppercase text-blue-600 tracking-widest">Lifecycle Status</label>
+                      <select 
+                        value={tempStatus}
+                        onChange={(e) => setTempStatus(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl text-[10px] font-black uppercase outline-none focus:border-blue-500 appearance-none cursor-pointer"
+                      >
+                        <option value="OPEN">OPEN</option>
+                        <option value="IN_PROGRESS">IN PROGRESS</option>
+                        <option value="RESOLVED">RESOLVED</option>
+                        <option value="CLOSED">CLOSED</option>
+                      </select>
+                    </div>
+                    
+                    <button 
+                      onClick={handleUpdateStatus}
+                      disabled={updating || tempStatus === selectedIssue.status}
+                      className="w-full bg-[#111827] text-white py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-600 disabled:bg-slate-200 disabled:text-slate-400 transition-all flex items-center justify-center gap-2"
                     >
-                      <option value="LOW">LOW</option>
-                      <option value="MEDIUM">MEDIUM</option>
-                      <option value="HIGH">HIGH</option>
-                      <option value="CRITICAL">CRITICAL</option>
-                    </select>
-                  </div>
-
-                  <FormInput label="Location Code" name="location" value={formData.location} onChange={handleInputChange} placeholder="ZONE-B4" />
-                  <FormInput label="Blocked Task ID" name="blockedTaskId" type="number" value={formData.blockedTaskId || ''} onChange={handleInputChange} placeholder="1" />
-
-                  <div className="col-span-2 space-y-1.5">
-                    <label className="text-[8px] font-black uppercase text-slate-400 ml-1">Quick Description</label>
-                    <textarea 
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500 min-h-[100px]" 
-                      placeholder="Describe the issue..." 
-                    />
+                      {updating ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                      {updating ? "Updating..." : "Update Status"}
+                    </button>
                   </div>
                 </div>
-
-                <button 
-                  type="submit" 
-                  disabled={isProcessing} 
-                  className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl flex items-center justify-center gap-2 transition-all ${isProcessing ? 'bg-slate-400' : 'bg-[#111827] hover:bg-blue-600 text-white'}`}
-                >
-                  {isProcessing ? <Loader2 size={16} className="animate-spin" /> : "Transmit to Engineering"}
-                </button>
-              </form>
-            </div>
-          </motion.div>
-        ) : null}
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );
 }
 
-// Sub-components
-function FormInput({ label, name, value, onChange, placeholder, type = "text" }) {
-  return (
-    <div className="space-y-1.5 flex-1">
-      <label className="text-[8px] font-black uppercase text-slate-400 ml-1 tracking-widest">{label}</label>
-      <input 
-        name={name} 
-        value={value} 
-        onChange={onChange} 
-        type={type}
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500" 
-        placeholder={placeholder} 
-      />
+const MetricCard = ({ label, value, sub, color }) => (
+  <div className="bg-white p-4 rounded-2xl border border-slate-200/50 shadow-sm flex flex-col justify-between min-h-[120px]">
+    <div className="flex justify-between items-start">
+      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <Info size={12} className="text-slate-200" />
     </div>
-  );
-}
-
-function MiniMetric({ label, value, sub, color }) {
-  return (
-    <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm">
-      <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-      <h4 className={`text-2xl font-black italic tracking-tighter ${color}`}>{value}</h4>
-      <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 tracking-tighter">{sub}</p>
+    <div className="flex items-baseline justify-between mt-auto">
+      <h3 className="text-4xl font-black text-[#111827] tracking-tighter italic leading-none">{value}</h3>
+      <span className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-tight ${color}`}>
+        {sub}
+      </span>
     </div>
-  );
-}
+  </div>
+);
 
-function IssueRow({ title, area, priority, color, lead, onClick }) {
-  const themes = {
-    blue: "text-blue-600 bg-blue-50 border-blue-100",
-    indigo: "text-indigo-600 bg-indigo-50 border-indigo-100",
-    slate: "text-slate-500 bg-slate-50 border-slate-100"
+function IssueCard({ issue, onClick }) {
+  const priorityColors = {
+    CRITICAL: "bg-red-500 text-white",
+    HIGH: "bg-orange-500 text-white",
+    MEDIUM: "bg-blue-500 text-white",
+    LOW: "bg-slate-500 text-white"
   };
+
   return (
-    <tr onClick={onClick} className="hover:bg-blue-50/30 transition-colors cursor-pointer group">
-      <td className="px-6 py-4">
-        <h4 className="text-[10px] font-black text-[#111827] uppercase leading-none mb-1 group-hover:text-blue-600 transition-colors">{title}</h4>
-        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest italic">Ref: {area}</p>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`text-[8px] font-black px-2 py-0.5 rounded border uppercase tracking-tighter ${themes[color]}`}>{priority}</span>
-      </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-slate-100 overflow-hidden grayscale group-hover:grayscale-0 transition-all">
-            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${lead}`} alt="avatar" />
-          </div>
-          <span className="text-[9px] font-bold text-slate-500 uppercase">{lead}</span>
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      onClick={onClick}
+      className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl transition-all overflow-hidden group cursor-pointer text-left"
+    >
+      <div className="h-40 bg-slate-100 overflow-hidden relative">
+        {issue.photoUrls?.[0] ? (
+          <img src={issue.photoUrls[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="p" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-300"><AlertTriangle size={24} /></div>
+        )}
+        <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${priorityColors[issue.priority] || 'bg-slate-500'}`}>
+          {issue.priority}
         </div>
-      </td>
-      <td className="px-6 py-4 text-right">
-        <ArrowUpRight size={14} className="inline text-slate-200 group-hover:text-blue-400 transition-all" />
-      </td>
-    </tr>
+      </div>
+      <div className="p-6 space-y-4">
+        <div>
+          <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1">Issue ID: #{issue.id}</p>
+          <h3 className="text-sm font-black text-[#111827] uppercase leading-tight group-hover:text-blue-600 transition-colors line-clamp-1">{issue.title}</h3>
+        </div>
+        <p className="text-[11px] text-slate-500 font-medium line-clamp-2 italic leading-relaxed">"{issue.description}"</p>
+        <div className="pt-4 border-t border-slate-50 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+               <User size={10} className="text-blue-600" />
+            </div>
+            <span className="text-[9px] font-black uppercase text-slate-600">{issue.reporter?.firstName}</span>
+          </div>
+          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{issue.status.replace('_', ' ')}</span>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
-function TableButton({ icon, label }) {
+function DetailItem({ label, value }) {
   return (
-    <button className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-lg text-[8px] font-black uppercase text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all">
-      {icon} {label}
-    </button>
+    <div>
+      <p className="text-[7px] font-black uppercase text-slate-400 tracking-widest mb-1">{label}</p>
+      <p className="text-[11px] font-bold text-slate-800 uppercase truncate">{value || 'N/A'}</p>
+    </div>
   );
 }
