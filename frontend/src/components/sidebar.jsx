@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -75,8 +76,7 @@ export default function Sidebar() {
       <nav className="flex-1 px-4 space-y-1 py-4 overflow-hidden">
           {menuItems.map((item, idx) => {
             const isActive = pathname === item.path;
-
-            return (
+return (
               <Link 
                 key={idx} 
                 href={item.path}
