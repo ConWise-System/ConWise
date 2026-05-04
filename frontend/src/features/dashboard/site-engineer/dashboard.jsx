@@ -7,8 +7,7 @@ import {
   Maximize2, HardHat, Pickaxe, Truck, AlertCircle 
 } from 'lucide-react';
 
-// Sidebar kantiinara components keessaa fidi
-import EngineerSidebar from '@/components/sidebar'; 
+import EngineerSidebar from "../../../components/dashboard/engineer/EngineerSidebar.jsx";
 
 export default function SiteEngineerDashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);

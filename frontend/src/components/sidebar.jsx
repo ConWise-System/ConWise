@@ -6,11 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, Users, FolderRoot, CheckSquare, 
   ShieldAlert, BarChart3, MessageSquare, Bell, 
-<<<<<<< HEAD
-  Settings, ChevronLeft
-=======
   Settings, ChevronLeft, LogOut 
->>>>>>> 3e6f6b7 (update sidebar of admin page)
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -75,13 +71,8 @@ export default function Sidebar() {
           </div>
         </div>
 
-<<<<<<< HEAD
-        {/* 2. Navigation (Scroll Disabled) */}
-      <nav className="flex-1 px-4 space-y-1 py-4 overflow-hidden">
-=======
-        {/* Menu */}
-        <nav className="flex-1 px-4 space-y-0.5 py-4 overflow-hidden">
->>>>>>> 3e6f6b7 (update sidebar of admin page)
+        {/* Navigation */}
+        <nav className="flex-1 px-4 space-y-1 py-4 overflow-hidden">
           {menuItems.map((item, idx) => {
             const isActive = pathname === item.path;
 
