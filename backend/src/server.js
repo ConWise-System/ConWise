@@ -17,7 +17,9 @@ import reportRotues from "./modules/report/report.routes.js";
 import messagingRoutes from "./modules/messaging/messaging.routes.js";
 import issueRoutes from "./modules/issue/issue.routes.js";
 import milestoneRoutes from "./modules/milestone/milestone.routes.js";
-import uploadRoute from '../routes/upload.js';
+import uploadRoute from "../routes/upload.js";
+import analyticsRoutes from "./modules/analytics/analytics.routes.js";
+import notifcationRoutes from "./modules/notification/notification.routes.js";
 
 dotenv.config();
 
@@ -26,7 +28,7 @@ const server = http.createServer(app); // 3. Wrap Express with HTTP
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
-  : [];
+  : ["http://localhost:3000"];
 
 app.use(
   cors({
@@ -59,8 +61,10 @@ app.use("/api/reports", reportRotues);
 app.use("/api/messaging", messagingRoutes);
 app.use("/api/milestones", milestoneRoutes);
 app.use("/api", taskRoutes);
+app.use("/api", analyticsRoutes);
 app.use("/api/projects/:projectId/issues", issueRoutes);
-app.use('/api/upload', uploadRoute)
+app.use("/api/notifications", notifcationRoutes);
+app.use("/api/upload", uploadRoute);
 
 // Swagger docs
 app.use(

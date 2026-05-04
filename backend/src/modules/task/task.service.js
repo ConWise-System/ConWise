@@ -18,73 +18,45 @@ const withDaysRemaining = (task) => ({
 
 export const taskService = {
   createTask: async (data) => {
-    // Strip fields that don't exist on the Task model.
-    // `materials` is NOT a Task relation — material linking uses materialUsedId (FK to existing record).
-    const {
-      materials, // not a Task field, ignore
-      taskAssigneeID, // old field name, map to assigneeUserId
-      projectId,
-      assigneeUserId,
-      taskTitle,
-      taskDescription,
-      startDate,
-      dueDate,
-      taskBudget,
-      taskPriority,
-      taskStatus,
-      materialUsedId,
-    } = data ?? {};
+    const { materials, ...taskData } = data ?? {};
+    const materialIds = materials?.length
+      ? [...new Set(materials.map((id) => Number(id)))]
+      : [];
 
-    const resolvedAssigneeId = parseInt(assigneeUserId ?? taskAssigneeID);
-    const resolvedProjectId = parseInt(projectId);
-
-    if (isNaN(resolvedProjectId) || resolvedProjectId < 1) {
-      const err = new Error("projectId must be a positive integer");
-      err.statusCode = 400;
-      throw err;
-    }
-    if (isNaN(resolvedAssigneeId) || resolvedAssigneeId < 1) {
-      const err = new Error("assigneeUserId must be a positive integer");
-      err.statusCode = 400;
-      throw err;
-    }
-
-    const project = await prisma.project.findUnique({
-      where: { id: resolvedProjectId },
-    });
-    if (!project) {
-      const err = new Error("Project not found");
-      err.statusCode = 404;
-      throw err;
-    }
-
-    const task = await prisma.task.create({
-      data: {
-        projectId: resolvedProjectId,
-        assigneeUserId: resolvedAssigneeId,
-        taskTitle,
-        taskDescription: taskDescription ?? null,
-        startDate: startDate ? new Date(startDate) : null,
-        dueDate: new Date(dueDate),
-        taskBudget,
-        taskPriority,
-        taskStatus: taskStatus ?? "TODO",
-        materialUsedId: materialUsedId ? parseInt(materialUsedId) : null,
-      },
-      include: {
-        assignee: {
-          select: { id: true, firstName: true, lastName: true, role: true },
+    const task = await prisma.$transaction(async (tx) => {
+      const createdTask = await tx.task.create({
+        data: {
+          ...taskData,
         },
-        project: { select: { id: true, projectName: true } },
-      },
+        include: {
+          project: {
+            select: {
+              projectName: true,
+            },
+          },
+        },
+      });
+
+      if (materialIds.length) {
+        const updated = await tx.materialUsed.updateMany({
+          where: { id: { in: materialIds } },
+          data: { taskId: createdTask.id },
+        });
+
+        if (updated.count !== materialIds.length) {
+          throw new Error("One or more material IDs were not found.");
+        }
+      }
+
+      return createdTask;
     });
 
-    // Notify the Site Engineer
+    // sendnotification to site engineer
     try {
       await notificationService.createNotification({
         recipientUserId: task.assigneeUserId,
         notificationTitle: "New Task Assigned",
-        notificationDescription: `You have been assigned to: ${task.taskTitle} in project ${task.project.projectName}`,
+        notificationDescription: `You have been assigned to: ${task.taskTitle} in project ${task.project?.projectName}`,
         relatedEntityType: "TASK",
         relatedEntityId: task.id,
       });
@@ -108,7 +80,16 @@ export const taskService = {
       include: {
         assignee: { select: { id: true, firstName: true, lastName: true } },
         taskProgress: true,
-        materialUsed: true,
+        materials: {
+          select: {
+            id: true,
+            materialName: true,
+            quantityUsed: true,
+            unit: true,
+            usageDescription: true,
+            materialStatus: true,
+          },
+        },
       },
       orderBy: { dueDate: "asc" },
     });
@@ -121,73 +102,52 @@ export const taskService = {
       where: { id: parseInt(id) },
       data: { taskStatus: status },
     });
+
+    // send notification
+    try {
+      await notificationService.createNotification({
+        recipientUserId: task.assigneeUserId,
+        notificationTitle: "Task Status Updated",
+        notificationDescription: `The status of your task "${task.taskTitle}" has been updated to "${status}".`,
+        relatedEntityType: "TASK",
+        relatedEntityId: task.id,
+      });
+    } catch (error) {
+      console.error("Failed to send notification:", error);
+    }
     return withDaysRemaining(task);
   },
 
   updateTask: async (id, data) => {
-    const {
-      materials, // ignore — not a Task relation
-      taskAssigneeID, // old field name
-      projectId, // not updatable after creation
-      ...rest
-    } = data ?? {};
+    const { materials, ...taskData } = data ?? {};
+    const taskId = Number(id);
+    const materialIds = materials?.length
+      ? [...new Set(materials.map((materialId) => Number(materialId)))]
+      : [];
 
-    const allowedFields = [
-      "taskTitle",
-      "taskDescription",
-      "startDate",
-      "dueDate",
-      "taskBudget",
-      "taskPriority",
-      "taskStatus",
-      "assigneeUserId",
-      "materialUsedId",
-    ];
+    const task = await prisma.$transaction(async (tx) => {
+      const updatedTask = await tx.task.update({
+        where: { id: taskId },
+        data: {
+          ...taskData,
+        },
+      });
 
-    const updateData = {};
-    for (const field of allowedFields) {
-      if (rest[field] !== undefined) updateData[field] = rest[field];
-    }
+      if (materials) {
+        if (materialIds.length) {
+          const updated = await tx.materialUsed.updateMany({
+            where: { id: { in: materialIds } },
+            data: { taskId },
+          });
 
-    if (taskAssigneeID && !updateData.assigneeUserId) {
-      updateData.assigneeUserId = parseInt(taskAssigneeID);
-    }
+          if (updated.count !== materialIds.length) {
+            throw new Error("One or more material IDs were not found.");
+          }
+        }
+      }
 
-    const task = await prisma.task.update({
-      where: { id: parseInt(id) },
-      data: updateData,
-      include: {
-        project: { select: { projectName: true, projectManagerId: true } },
-        assignee: { select: { id: true } },
-      },
+      return updatedTask;
     });
-
-    try {
-      // 1. If Engineer marks as PENDING_APPROVAL -> Notify PM
-      if (status === "PENDING_APPROVAL") {
-        await notificationService.createNotification({
-          recipientUserId: task.project.projectManagerId,
-          notificationTitle: "Task Ready for Review",
-          notificationDescription: `Task "${task.taskTitle}" has been submitted for approval in ${task.project.projectName}.`,
-          relatedEntityType: "TASK",
-          relatedEntityId: task.id,
-        });
-      }
-      // 2. If PM marks as DONE (Approved) or REVISION -> Notify Engineer
-      else if (status === "DONE" || status === "IN_PROGRESS") {
-        await notificationService.createNotification({
-          recipientUserId: task.assigneeUserId,
-          notificationTitle:
-            status === "DONE" ? "Task Approved" : "Task Needs Revision",
-          notificationDescription: `Your task "${task.taskTitle}" was marked as ${status.toLowerCase().replace("_", " ")}.`,
-          relatedEntityType: "TASK",
-          relatedEntityId: task.id,
-        });
-      }
-    } catch (err) {
-      console.error("Notification failed in task service:", err.message);
-    }
-
     return withDaysRemaining(task);
   },
 
@@ -221,11 +181,19 @@ export const taskService = {
     const task = await prisma.task.update({
       where: { id: parseInt(taskId) },
       data: { taskStatus: "DONE" },
+      include: {
+        project: {
+          select: {
+            projectName: true,
+            ownerUserId: true,
+          },
+        },
+      },
     });
 
     try {
       await notificationService.createNotification({
-        recipientUserId: task.project.projectManagerId,
+        recipientUserId: task.project.ownerUserId,
         notificationTitle: "Task Submitted",
         notificationDescription: `A task in ${task.project.projectName} is waiting for your review.`,
         relatedEntityType: "TASK",

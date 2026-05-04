@@ -1,37 +1,34 @@
-
 'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Users, FolderRoot, CheckSquare, 
   ShieldAlert, BarChart3, MessageSquare, Bell, 
-  Settings, ChevronLeft, LogOut 
+  Settings, ChevronLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const menuItems = [
-  { icon: <LayoutDashboard size={16} />, label: 'Dashboard Home', path: '/admin/dashboardHome' },
-  { icon: <Users size={16} />, label: 'User Management', path: '/admin/userManagement' },
-  { icon: <FolderRoot size={16} />, label: 'Project Management', path: '/admin/projectManagement' },
-  { icon: <CheckSquare size={16} />, label: 'Task Management', path: '/admin/taskManagement' },
-  { icon: <ShieldAlert size={16} />, label: 'Issue Management', path: '/admin/issueManagement' },
-  { icon: <BarChart3 size={16} />, label: 'Reports & Analytics', path: '/admin/report' },
-  { icon: <MessageSquare size={16} />, label: 'Messaging', path: '/admin/messaging' },
-  { icon: <Bell size={16} />, label: 'Notifications', path: '/admin/notification' },
-  { icon: <Settings size={16} />, label: 'Settings', path: '/admin/setting' },
+  { icon: <LayoutDashboard size={16} />, label: 'Site Engineer Home', path: '/siteEngineer/dashboardHome' },
+  { icon: <FolderRoot size={16} />, label: 'Site Task', path: '/siteEngineer/siteTask' },
+  { icon: <CheckSquare size={16} />, label: 'Site Issue Tracking', path: '/siteEngineer/siteIssue' },
+  { icon: <BarChart3 size={16} />, label: 'Site Engineer Reports', path: '/siteEngineer/siteReport' },
+  { icon: <MessageSquare size={16} />, label: 'Messages', path: '/siteEngineer/siteMessage' },
+  { icon: <Bell size={16} />, label: 'Settings', path: '/siteEngineer/siteSetting' },
 ];
 
-export default function Sidebar() {
+export default function SiteEngineerSideBar() {
   const pathname = usePathname();
-  const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="relative sticky top-0 h-screen z-50">
-      
-      {/* Toggle Button */}
+      {/* ENHANCED TOGGLE BUTTON 
+          - backdrop-blur: makes it look like glass
+          - hover:shadow: adds a blue glow on interaction
+      */}
       <button 
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3.5 top-12 w-7 h-7 bg-blue-600 rounded-full border-[3px] border-[#070912] 
@@ -51,14 +48,11 @@ export default function Sidebar() {
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="bg-[#070912] text-slate-400 flex flex-col h-full border-r border-white/5 overflow-hidden"
       >
-
-        {/* Header */}
         <div className="p-6 mb-1">
           <div className="flex items-center gap-3">
             <div className="min-w-[36px] h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
               <ShieldAlert size={18} className="text-white" strokeWidth={2.5} />
             </div>
-
             {!isCollapsed && (
               <motion.div 
                 initial={{ opacity: 0 }} 
@@ -76,7 +70,8 @@ export default function Sidebar() {
       <nav className="flex-1 px-4 space-y-1 py-4 overflow-hidden">
           {menuItems.map((item, idx) => {
             const isActive = pathname === item.path;
-return (
+
+            return (
               <Link 
                 key={idx} 
                 href={item.path}
@@ -104,42 +99,17 @@ return (
           })}
         </nav>
 
-        {/* Profile + Logout */}
-        <div className="p-4 mt-auto border-t border-white/5">
-          <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3 flex items-center justify-between">
-
-            {!isCollapsed && (
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg overflow-hidden border border-white/10">
-                  <img 
-                    src="https://api.dicebear.com/7.x/avataaars/svg?seed=Gifti"
-                    alt="profile"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div>
-                  <p className="text-[11px] font-bold text-white uppercase">
-                    Firomsa Hika
-                  </p>
-                  <p className="text-[9px] text-slate-500 uppercase">
-                    Admin
-                  </p>
-                </div>
+        <div className="p-4 mt-auto">
+          <div className="flex bg-white/[0.03] border border-white/5 rounded-xl justify-center p-3">
+            {!isCollapsed ? (
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                ConWise System v1.0
               </div>
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
             )}
-
-            <button 
-              onClick={() => router.push('/login')}
-              className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
-
           </div>
         </div>
-
       </motion.aside>
     </div>
   );

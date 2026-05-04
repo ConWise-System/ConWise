@@ -113,6 +113,7 @@ model Company {
   projects  Project[]
   materials MaterialUsed[]
   issues    Issue[]
+  reports   Report[]
 
   @@index([name])
   @@map("companies")
@@ -134,17 +135,17 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  company         Company?           @relation(fields: [companyId], references: [id])
-  ownedProjects   Project[]          @relation("ProjectOwner")
-  assignedTasks   Task[]             @relation("TaskAssignee")
-  reports         Report[]
-  notifications   Notification[]     @relation("NotificationRecipient")
-  reportedIssues  Issue[]            @relation("IssueReporter")
-  assignedIssues  Issue[]            @relation("IssueAssignee")
-  issueAuditLogs  IssueAuditLog[]
-  sentMessages    Chat[]             @relation("ChatSender")
-  sessions        Session[]
-  verifications   VerificationCode[]
+  company        Company?           @relation(fields: [companyId], references: [id])
+  ownedProjects  Project[]          @relation("ProjectOwner")
+  assignedTasks  Task[]             @relation("TaskAssignee")
+  reports        Report[]
+  notifications  Notification[]     @relation("NotificationRecipient")
+  reportedIssues Issue[]            @relation("IssueReporter")
+  assignedIssues Issue[]            @relation("IssueAssignee")
+  issueAuditLogs IssueAuditLog[]
+  sentMessages   Chat[]             @relation("ChatSender")
+  sessions       Session[]
+  verifications  VerificationCode[]
 
   @@index([companyId])
   @@index([role])
@@ -232,7 +233,6 @@ model Task {
   id              Int          @id @default(autoincrement())
   projectId       Int
   assigneeUserId  Int
-  materialUsedId  Int?
   taskTitle       String
   taskDescription String?
   startDate       DateTime?
@@ -243,11 +243,11 @@ model Task {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  assignee        User          @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee        User           @relation("TaskAssignee", fields: [assigneeUserId], references: [id])
   taskProgress    TaskProgress?
-  materialUsed    MaterialUsed? @relation(fields: [materialUsedId], references: [id])
-  blockedByIssues Issue[]       @relation("IssueBlockedTask")
+  materials       MaterialUsed[]
+  blockedByIssues Issue[]        @relation("IssueBlockedTask")
 
   @@index([projectId])
   @@index([assigneeUserId])
@@ -268,18 +268,18 @@ model TaskProgress {
 }
 
 model MaterialUsed {
-  id               Int     @id @default(autoincrement())
-  companyId        Int?
+  id               Int      @id @default(autoincrement())
+  taskId           Int?
   materialName     String
-  quantityUsed     Decimal @db.Decimal(10, 2)
+  quantityUsed     Decimal  @db.Decimal(10, 2)
   unit             String
   usageDescription String?
   materialStatus   String
-  tasks            Task[]
+  task             Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  company          Company? @relation(fields: [companyId], references: [id])
+  companyId        Int?
 
-  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([companyId])
+  @@index([taskId])
   @@map("materials_used")
 }
 
@@ -297,21 +297,33 @@ model CostSummary {
 }
 
 model Report {
-  id               Int        @id @default(autoincrement())
-  userId           Int
-  projectId        Int
-  reportTitle      String
-  reportType       ReportType
-  reportDate       DateTime
-  workCompleted    String
-  progressPhotoUrl String?
-  submittedAt      DateTime   @default(now())
+  id          Int        @id @default(autoincrement())
+  userId      Int
+  projectId   Int
+  companyId   Int // Critical for multi-tenancy
+  reportTitle String
+  reportType  ReportType @default(DAILY_SITE_REPORT)
+  reportDate  DateTime
 
+  // Requirement fields: work, workers, materials, challenges
+  workCompleted    String  @db.Text
+  workersPresent   Int     @default(0)
+  materialsUsed    String? @db.Text
+  weatherCondition String?
+  challenges       String? @db.Text
+
+  progressPhotoUrl String?
+  submittedAt      DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
   user    User    @relation(fields: [userId], references: [id])
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id])
 
   @@index([userId])
   @@index([projectId])
+  @@index([companyId])
   @@map("reports")
 }
 
@@ -332,7 +344,7 @@ model Notification {
 }
 
 model Issue {
-  id            Int           @id @default(autoincrement())
+  id            Int  @id @default(autoincrement())
   companyId     Int
   projectId     Int
   reporterId    Int?
@@ -351,11 +363,11 @@ model Issue {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
-  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  reporter    User?          @relation("IssueReporter", fields: [reporterId], references: [id], onDelete: SetNull)
-  assignee    User?          @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  blockedTask Task?          @relation("IssueBlockedTask", fields: [blockedTaskId], references: [id], onDelete: SetNull)
+  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reporter    User?           @relation("IssueReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  assignee    User?           @relation("IssueAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  blockedTask Task?           @relation("IssueBlockedTask", fields: [blockedTaskId], references: [id], onDelete: SetNull)
   auditLogs   IssueAuditLog[]
 
   @@index([companyId])

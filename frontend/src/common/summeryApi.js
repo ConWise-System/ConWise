@@ -43,7 +43,7 @@ const summeryApi = {
     },
     reports: {
         url: "/api/reports/all",
-        method: "post"
+        method: "get"
     },
     /* --- ADDED THIS ENDPOINT --- */
     downloadReport: {
@@ -71,7 +71,7 @@ const summeryApi = {
         method:"post"
     },
     getTasks:{
-        url:"/api/tasks",
+        url:"/api/projects/{projectId}/tasks",
         method:"get"
     },
     uploadImage:{
@@ -81,6 +81,19 @@ const summeryApi = {
     createIssue:{
         url: (projectId) => `/api/projects/${projectId}/issues`,
         method: "post"
+    },
+    getAllMaterial:{
+        url: "/api/materials",
+        method: "get"
+    },
+    getAllIssues:{
+        url: (projectId) => `/api/projects/${projectId}/issues`,
+        method: "get"
+    },
+    updateIssueStatus: {
+        // Add projectId as the first argument
+        url: (projectId, issueId) => `/api/projects/${projectId}/issues/${issueId}/status`,
+        method: "patch"
     }
 }
 
