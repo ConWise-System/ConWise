@@ -15,7 +15,6 @@ const menuItems = [
   { icon: <Users size={16} />, label: 'Projects', path: '/projectManager/projects' },
   { icon: <FolderRoot size={16} />, label: 'Task Center', path: '/projectManager/taskCenter' },
   { icon: <CheckSquare size={16} />, label: 'Issue Tracking', path: '/projectManager/issueTracking' },
-  { icon: <ShieldAlert size={16} />, label: 'Team Intel', path: '/projectManager/teamIntel' },
   { icon: <BarChart3 size={16} />, label: 'Reports', path: '/projectManager/reports' },
   { icon: <MessageSquare size={16} />, label: 'Messages', path: '/projectManager/messages' },
   { icon: <Bell size={16} />, label: 'Settings', path: '/projectManager/settings' },
