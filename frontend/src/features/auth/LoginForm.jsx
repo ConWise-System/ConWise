@@ -15,6 +15,7 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const { fetchUserDetails } = useUser()
+  const { user, setUser } = useUser();
   
   // 1. Logic: Form State
   const [data, setData] = useState({
@@ -32,24 +33,54 @@ export default function LoginForm() {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
-
+  
     try {
       const response = await Axios({
         ...summeryApi.login,
-        data: data
+        data: data // Ensure 'data' contains your email/password state
       });
-      
+  
       if (response.data.success) {
-        const token = response.data.accessToken
-        console.log(response.data.success)
-        localStorage.setItem('accessToken', response.data.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.data.refreshToken);
-        document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
-        await fetchUserDetails();
-        router.push('/admin/dashboardHome');
+        // Based on your console log: response.data.data.user exists
+        const resData = response.data.data;
+        const userData = resData.user;
+        const accessToken = resData.accessToken;
+        const refreshToken = resData.refreshToken;
+  
+        // 1. Validate role exists before proceeding
+        if (!userData?.role) {
+          throw new Error("User role is missing from account data.");
+        }
+  
+        const userRole = userData.role.toLowerCase();
+  
+        // 2. Storage
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+  
+        // 3. Set Cookies (Critical for the Middleware to work)
+        document.cookie = `token=${accessToken}; path=/; max-age=86400; SameSite=Lax`;
+        document.cookie = `role=${userRole}; path=/; max-age=86400; SameSite=Lax`;
+       
+        // 4. Update Global State
+        setUser(userData);
+  
+        // 5. Role-Based Routing
+        // Note: Use .includes() if the role might have spaces or underscores
+        if (userRole === 'company_admin') {
+          router.push('/admin/dashboardHome');
+        } else if (userRole.includes('project') && userRole.includes('manager')) {
+          router.push('/projectManager/Home');
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Invalid credentials.");
+      console.error("Login Client Error:", err);
+      
+      // If the error was thrown by our 'throw new Error', it shows here.
+      // Otherwise, it shows the backend error message.
+      setError(err.response?.data?.message || err.message || "Login failed.");
     } finally {
       setIsSubmitting(false);
     }

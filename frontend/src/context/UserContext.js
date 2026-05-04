@@ -14,12 +14,18 @@ export const UserProvider = ({ children }) => {
   // Use a ref to prevent multiple simultaneous fetches
   const isFetching = useRef(false);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = () => {
     localStorage.removeItem('accessToken');
-    setUser(null);
-    setLoading(false);
-    router.push('/login');
-  }, [router]);
+    localStorage.removeItem('refreshToken');
+  
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+    document.cookie = "role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+    if (setUser) {
+      setUser(null);
+    }
+
+    window.location.href = '/login';
+  };
 
   const fetchUserDetails = useCallback(async () => {
     // Prevent overlapping requests
