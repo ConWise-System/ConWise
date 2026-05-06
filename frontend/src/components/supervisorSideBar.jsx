@@ -15,6 +15,7 @@ const menuItems = [
   { icon: <FolderRoot size={16} />, label: 'Task', path: '/supervisor/Task' },
   { icon: <CheckSquare size={16} />, label: 'Issue Tracking', path: '/supervisor/Issue' },
   { icon: <BarChart3 size={16} />, label: 'Reports', path: '/supervisor/Report' },
+  { icon: <Bell size={16} />, label: 'Notifications', path: '/supervisor/Notification' },
   { icon: <MessageSquare size={16} />, label: 'Messages', path: '/supervisor/Message' },
   { icon: <Bell size={16} />, label: 'Settings', path: '/supervisor/Setting' },
 ];
