@@ -19,6 +19,7 @@ import issueRoutes from "./modules/issue/issue.routes.js";
 import milestoneRoutes from "./modules/milestone/milestone.routes.js";
 import uploadRoute from "../routes/upload.js";
 import analyticsRoutes from "./modules/analytics/analytics.routes.js";
+import analyticssRoutes from "./modules/analytics/analyticss.routes.js";
 import notifcationRoutes from "./modules/notification/notification.routes.js";
 
 dotenv.config();
@@ -62,6 +63,7 @@ app.use("/api/messaging", messagingRoutes);
 app.use("/api/milestones", milestoneRoutes);
 app.use("/api", taskRoutes);
 app.use("/api", analyticsRoutes);
+app.use("/api/analytics", analyticssRoutes);
 app.use("/api/projects/:projectId/issues", issueRoutes);
 app.use("/api/notifications", notifcationRoutes);
 app.use("/api/upload", uploadRoute);

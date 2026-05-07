@@ -6,7 +6,7 @@ services:
     container_name: conwise_backend
     restart: unless-stopped
     env_file:
-      - .env                        # reads from root ConWise/.env
+      - .env # reads from root ConWise/.env
     environment:
       # Override/add anything Docker-specific here
       NODE_ENV: ${NODE_ENV}
@@ -31,7 +31,7 @@ services:
       - "${PORT}:${PORT}"
     volumes:
       - ./backend:/app
-      - /app/node_modules       # keep container's node_modules intact
+      - /app/node_modules # keep container's node_modules intact
 
   frontend:
     build:
@@ -48,5 +48,6 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - /app/node_modules # ← this line protects container's node_modules
+      - /app/.next # ← this protects the Next.js build cache
+    command: npm run dev
