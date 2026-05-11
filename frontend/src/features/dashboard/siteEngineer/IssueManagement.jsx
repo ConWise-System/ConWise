@@ -1,201 +1,243 @@
 "use client";
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  AlertCircle, CheckCircle2, Clock, User, 
-  Filter, X, Image as ImageIcon,
-  ChevronRight, ShieldAlert, Lock
-} from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import {
+  ShieldAlert,
+  Lock,
+  Loader2,
+  MapPin,
+  User,
+  Calendar,
+  Filter,
+  Search,
+  AlertCircle,
+  CheckCircle2,
+  Briefcase,
+  History,
+  Clock,
+  X,
+  ExternalLink,
+} from "lucide-react";
+import Axios from "../../../../utils/Axios";
+import summeryApi from "../../../common/summeryApi";
 
-export default function SiteIssueReport() {
-  // 1. ROLE IDENTIFICATION
-  // Engineer-ichi view qofa akka danda'uuf 'engineer' jennaan
-  const userRole = 'engineer'; 
+export default function SiteIssueRegistry() {
+  const [issues, setIssues] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // 2. STATE MANAGEMENT
-  const [issues, setIssues] = useState([
-    { 
-      id: "ISS-942", title: "Structural Rebar Anomaly", description: "Ground floor reinforcement misalignment detected in Sector B.",
-      priority: "Critical", reporter: "Alan E.", status: "Open", date: "2026-05-03",
-      category: "Structural", image: "https://images.unsplash.com/photo-1590644365607-1c5a519a7a37?auto=format&fit=crop&q=80&w=200"
-    },
-    { 
-      id: "ISS-938", title: "HVAC Ducting Obstruction", description: "Unforeseen piping clash at Pillar 42C preventing duct installation.",
-      priority: "High", reporter: "Sarah L.", status: "Investigating", date: "2026-05-04",
-      category: "Mechanical", image: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&q=80&w=200"
+  useEffect(() => {
+    fetchIssueData();
+  }, []);
+
+  const fetchIssueData = async () => {
+    try {
+      setLoading(true);
+      const response = await Axios({ ...summeryApi.getIssueByAssignee });
+      if (response.data.success) setIssues(response.data.data);
+    } catch (error) {
+      console.error("API Sync Error:", error);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
-  const [selectedIssue, setSelectedIssue] = useState(null);
+  const filteredIssues = issues.filter(
+    (issue) =>
+      issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      issue.project.projectName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()),
+  );
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-400 min-h-screen bg-[#FDFDFD]">
+        <Loader2 className="animate-spin mb-2" size={30} />
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          Syncing Incident Ledger...
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full min-h-screen bg-[#F8FAFC] text-[#0F172A] font-sans antialiased">
-      {/* HEADER SECTION */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div className="max-w-[1440px] mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg text-white">
+    <div className="min-h-screen p-4 lg:px-8 lg:py-6 font-sans antialiased text-slate-900 bg-[#FDFDFD]">
+      <div className="max-w-[1500px] mx-auto space-y-6">
+        {/* --- HEADER --- */}
+        <header className="flex justify-between items-center border-b border-slate-100 pb-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-slate-200">
               <ShieldAlert size={24} />
             </div>
             <div>
-              <h1 className="text-xl font-black uppercase tracking-tighter italic">Engineer Insight</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Read-Only Site Monitoring</p>
+              <h1 className="text-lg font-black uppercase tracking-tight">
+                Incident <span className="text-rose-600">Registry</span>
+              </h1>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                Blocked Task Monitoring & Forensics
+              </p>
             </div>
           </div>
-          
-          {/* Role Badge */}
-          <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200">
-            <Lock size={14} className="text-slate-400" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Engineer Access</span>
+          <div className="flex items-center gap-4">
+            <div className="relative bg-white rounded-xl shadow-sm hidden md:block">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
+                size={15}
+              />
+              <input
+                type="text"
+                placeholder="Filter incidents..."
+                className="pl-9 pr-4 py-2.5 border border-slate-100 rounded-xl text-[12px] font-medium w-72 focus:ring-2 focus:ring-rose-100 outline-none transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+              <Lock size={12} className="text-slate-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Engineer View
+              </span>
+            </div>
           </div>
+        </header>
+
+        {/* --- SUMMARY STATS --- */}
+        <div className="flex justify-between items-center px-2">
+          <div className="flex gap-4">
+            <div className="bg-white border border-slate-100 px-4 py-2 rounded-xl flex items-center gap-2">
+              <AlertCircle size={14} className="text-rose-500" />
+              <span className="text-[10px] font-black uppercase text-slate-600">
+                {issues.filter((i) => i.status !== "RESOLVED").length} Active
+              </span>
+            </div>
+            <div className="bg-white border border-slate-100 px-4 py-2 rounded-xl flex items-center gap-2">
+              <CheckCircle2 size={14} className="text-emerald-500" />
+              <span className="text-[10px] font-black uppercase text-slate-600">
+                {issues.filter((i) => i.status === "RESOLVED").length} Resolved
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Total Records: {issues.length}
+          </span>
         </div>
-      </header>
 
-      <main className="max-w-[1440px] mx-auto px-6 py-10 grid grid-cols-12 gap-8">
-        
-        {/* STATS OVERVIEW */}
-        <section className="col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-          <StatCard label="Total Monitored" value={issues.length} color="text-slate-900" />
-          <StatCard label="Critical Blockers" value={issues.filter(i => i.priority === 'Critical').length} color="text-rose-600" />
-          <StatCard label="Access Level" value="View Only" color="text-blue-600" />
-        </section>
-
-        {/* MAIN ISSUE FEED */}
-        <div className="col-span-12 lg:col-span-8 space-y-4">
-          <div className="flex justify-between items-center px-2">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Project Incident Log</h2>
-            <button className="p-2 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-slate-900"><Filter size={14}/></button>
+        {/* --- GRID TABLE --- */}
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.04)] overflow-hidden">
+          {/* Header Row */}
+          <div className="grid grid-cols-12 bg-slate-50/80 border-b border-slate-100 px-6 py-4 items-center">
+            <div className="col-span-1 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+              #
+            </div>
+            <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Incident & Project
+            </div>
+            <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Blocked Task
+            </div>
+            <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Reporter & Location
+            </div>
+            <div className="col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
+              Status / Date
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {issues.map((issue) => (
-              <motion.div 
+          {/* Data Rows */}
+          <div className="divide-y divide-slate-50">
+            {filteredIssues.map((issue, index) => (
+              <div
                 key={issue.id}
-                layout
-                whileHover={{ x: 4 }}
-                onClick={() => setSelectedIssue(issue)}
-                className={`bg-white border border-slate-200 rounded-3xl p-5 flex items-center gap-6 cursor-pointer hover:border-blue-400 hover:shadow-xl transition-all group ${selectedIssue?.id === issue.id ? 'ring-2 ring-blue-500 border-transparent' : ''}`}
+                className="grid grid-cols-12 items-center px-6 py-6 hover:bg-blue-50/30 transition-all group cursor-default"
               >
-                <div className="flex flex-col items-center gap-1 min-w-[80px]">
-                  <span className="text-[10px] font-black text-slate-400">{issue.id}</span>
-                  <PriorityBadge priority={issue.priority} />
+                {/* 1. Counter */}
+                <div className="col-span-1 text-center">
+                  <span className="text-[10px] font-black text-slate-300 group-hover:text-rose-500 transition-colors">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
                 </div>
 
-                <div className="flex-1 space-y-1">
-                  <h3 className="text-sm font-black text-slate-900 leading-tight">{issue.title}</h3>
-                  <p className="text-xs text-slate-500 line-clamp-1">{issue.description}</p>
-                  <div className="flex items-center gap-4 pt-2">
-                    <MetaItem icon={<User size={10}/>} text={issue.reporter} />
-                    <MetaItem icon={<Clock size={10}/>} text={issue.date} />
-                    <StatusTag status={issue.status} />
+                {/* 2. Incident & Project */}
+                <div className="col-span-3 pr-4">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 truncate">
+                      {issue.project?.projectName}
+                    </span>
+                    <h3 className="text-[13px] font-black text-slate-800 uppercase tracking-tight leading-tight group-hover:text-rose-600 transition-colors">
+                      {issue.title}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 italic italic leading-none">
+                      "{issue.description}"
+                    </p>
                   </div>
                 </div>
 
-                <div className="hidden md:block w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                  {issue.image ? <img src={issue.image} alt="Site" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><ImageIcon size={20}/></div>}
+                {/* 3. Blocked Task */}
+                <div className="col-span-3 pr-4">
+                  <div className="flex items-center gap-2 bg-rose-50 border border-rose-100/50 px-3 py-2 rounded-xl w-fit">
+                    <ExternalLink size={12} className="text-rose-500" />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] font-black text-rose-700 truncate max-w-[180px] uppercase">
+                        {issue.blockedTask?.taskTitle}
+                      </span>
+                      <span className="text-[9px] font-bold text-rose-400 uppercase tracking-widest leading-none">
+                        Impediment
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <ChevronRight className="text-slate-300 group-hover:text-blue-500 transition-all" size={20} />
-              </motion.div>
+
+                {/* 4. Reporter & Location */}
+                <div className="col-span-3 space-y-2">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <User size={13} className="text-slate-300" />
+                    <span className="text-[11px] font-bold uppercase tracking-tight">
+                      {issue.reporter?.firstName} {issue.reporter?.lastName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <MapPin size={13} className="text-slate-300" />
+                    <span className="text-[10px] font-bold uppercase tracking-tight truncate max-w-[200px]">
+                      {issue.location}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 5. Status / Date */}
+                <div className="col-span-2 flex flex-col items-end gap-2 pr-2">
+                  <div
+                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm
+                    ${issue.status === "RESOLVED" ? "bg-emerald-500 text-white border-emerald-100" : "bg-rose-500 text-rose-600 border-rose-100"}`}
+                  >
+                    {issue.status}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-tighter italic">
+                      {new Date(issue.updatedAt).toLocaleDateString()}
+                    </span>
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full ${issue.status === "RESOLVED" ? "bg-emerald-500 shadow-emerald-100 shadow-lg" : "bg-rose-500 shadow-rose-100 shadow-lg"} `}
+                    />
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* DETAILS SIDEBAR */}
-        <aside className="col-span-12 lg:col-span-4">
-          <AnimatePresence mode="wait">
-            {selectedIssue ? (
-              <motion.div 
-                key={selectedIssue.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white border border-slate-200 rounded-[2.5rem] p-8 sticky top-28 shadow-sm"
-              >
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Forensic View</span>
-                    <h2 className="text-2xl font-black tracking-tighter">#{selectedIssue.id}</h2>
-                  </div>
-                  <button onClick={() => setSelectedIssue(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
-                </div>
-
-                <div className="w-full aspect-video rounded-[2rem] bg-slate-100 mb-6 overflow-hidden border border-slate-200 shadow-inner">
-                   {selectedIssue.image ? <img src={selectedIssue.image} alt="Report" className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2"><ImageIcon size={32}/><span className="text-[10px] font-bold uppercase">No Image</span></div>}
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Issue Statement</h4>
-                    <p className="text-xs font-medium text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">{selectedIssue.description}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <DetailBlock label="Sector/Category" value={selectedIssue.category} />
-                    <DetailBlock label="Severity" value={selectedIssue.priority} />
-                  </div>
-
-                  {/* Read Only Notice instead of Management Buttons */}
-                  <div className="pt-6 border-t border-slate-100">
-                    <div className="bg-slate-50 p-4 rounded-2xl flex items-center gap-3 border border-dashed border-slate-200">
-                      <Lock size={16} className="text-slate-400" />
-                      <p className="text-[9px] font-bold text-slate-400 uppercase leading-tight tracking-wider">
-                        Management actions are restricted for Site Engineers. Contact Administrator for updates.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-slate-200 rounded-[3rem] text-slate-400">
-                <AlertCircle size={48} className="mb-4 opacity-10" />
-                <p className="text-[10px] font-black uppercase tracking-widest">Select an incident to review<br/>technical specifications.</p>
-              </div>
-            )}
-          </AnimatePresence>
-        </aside>
-      </main>
+        {/* --- FOOTER --- */}
+        <footer className="flex justify-between items-center px-4 pt-4">
+          <p className="text-[9px] font-bold text-slate-300 uppercase tracking-[0.2em]">
+            Authorized Site Forensics • System Ref: 2026.05.11
+          </p>
+          <div className="flex items-center gap-2 text-slate-400">
+            <History size={12} />
+            <span className="text-[9px] font-black uppercase">
+              Live Update Active
+            </span>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
-
-// UI COMPONENTS (SIMPLIFIED & CLEANED)
-const StatCard = ({ label, value, color }) => (
-  <div className="bg-white border border-slate-200 p-6 rounded-[2rem] shadow-sm">
-    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">{label}</p>
-    <p className={`text-3xl font-black tracking-tighter ${color}`}>{value}</p>
-  </div>
-);
-
-const PriorityBadge = ({ priority }) => {
-  const colors = {
-    Critical: "bg-rose-100 text-rose-600",
-    High: "bg-orange-100 text-orange-600",
-    Routine: "bg-blue-100 text-blue-600"
-  };
-  return (
-    <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${colors[priority]}`}>
-      {priority}
-    </span>
-  );
-};
-
-const StatusTag = ({ status }) => (
-  <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-    <div className={`w-1.5 h-1.5 rounded-full ${status === 'Closed' ? 'bg-emerald-500' : status === 'Investigating' ? 'bg-blue-500' : 'bg-rose-500'}`} />
-    <span className="text-[8px] font-black uppercase text-slate-500">{status}</span>
-  </div>
-);
-
-const MetaItem = ({ icon, text }) => (
-  <div className="flex items-center gap-1 text-slate-400">
-    {icon}
-    <span className="text-[9px] font-bold uppercase tracking-tight">{text}</span>
-  </div>
-);
-
-const DetailBlock = ({ label, value }) => (
-  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-    <p className="text-[8px] font-black uppercase text-slate-400 mb-1">{label}</p>
-    <p className="text-[11px] font-bold text-slate-900 uppercase italic tracking-tight">{value}</p>
-  </div>
-);

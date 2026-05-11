@@ -1,170 +1,262 @@
-import React from 'react';
-import { 
-  Droplets, HardHat, Sun, Maximize2, 
-  MoreHorizontal, Construction, AlertOctagon,
-  TrendingUp, Calendar, Map as MapIcon
-} from 'lucide-react';
+"use client";
+import React, { useState, useEffect } from "react";
+import {
+  CheckCircle2,
+  Clock,
+  AlertOctagon,
+  FileText,
+  LayoutDashboard,
+  Calendar,
+  ChevronRight,
+  TrendingUp,
+  HardHat,
+} from "lucide-react";
+import Axios from "../../../../utils/Axios";
+import summeryApi from "../../../common/summeryApi";
 
 export default function SiteEngineerDashboard() {
+  const [stats, setStats] = useState({
+    tasks: { TODO: 0, DONE: 0 },
+    overdueTaskCount: 0,
+    assignedIssueCount: 0,
+    myReportCount: 0,SiteEngineerDashboard
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await Axios({ ...summeryApi.getDashboardSummary });
+        if (response.data.success) {
+          setStats(response.data.data);
+        }
+      } catch (error) {
+        console.error("Dashboard Fetch Error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-8 font-sans text-slate-900">
-      {/* 1. ARCHITECTURAL HEADER */}
-      <header className="flex justify-between items-start mb-10">
+    <div className="min-h-screen bg-[#F8FAFC] p-6 lg:p-12 font-sans text-slate-900">
+      {/* HEADER SECTION */}
+      <header className="mb-10 flex justify-between items-end">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase">Active Project</span>
-            <p className="text-slate-500 text-xs font-medium tracking-widest uppercase">Sector 4 • Structural Phase II</p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-blue-600 rounded-lg text-white shadow-md shadow-blue-200">
+              <HardHat size={16} />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+              Field Operations
+            </span>
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Overview</h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">
+            ENGINEER <span className="text-blue-600">CONSOLE</span>
+          </h1>
+          <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-widest">
+            Sector Access • Level 04 Control
+          </p>
         </div>
-        
-        {/* Weather/Status Molecule */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-5">
-          <div className="bg-orange-50 p-2 rounded-lg">
-            <Sun className="text-orange-500" size={24} />
+
+        <div className="hidden md:flex bg-white px-6 py-3 rounded-2xl border border-slate-200 items-center gap-4 shadow-sm">
+          <div className="text-right">
+            <p className="text-[9px] font-black text-slate-400 uppercase">
+              System Status
+            </p>
+            <p className="text-xs font-black text-emerald-600 uppercase">
+              Live Connection
+            </p>
           </div>
-          <div className="border-l border-slate-100 pl-5">
-            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Current Weather</p>
-            <p className="text-xl font-bold text-slate-800">24°C Clear</p>
-          </div>
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
         </div>
       </header>
 
-      {/* 2. OPERATIONAL KPI GRID (Atoms & Molecules) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-        <StatCard icon={<Construction />} label="Steel" value="84.2" unit="tn" trend="Stock: Nominal" />
-        <StatCard icon={<Droplets />} label="Concrete" value="12" unit="m³" trend="ETA: 14:30" />
-        <StatCard icon={<HardHat />} label="Labor" value="142" unit="PA" trend="+12 vs Yesterday" />
-        
-        {/* Interactive Map Organism */}
-        <div className="bg-slate-900 rounded-2xl overflow-hidden relative group h-40 shadow-xl shadow-slate-200">
-          <div className="absolute top-4 right-4 z-10 text-white/40 hover:text-white cursor-pointer transition-colors">
-            <Maximize2 size={18} />
-          </div>
-          <div className="p-6 absolute bottom-0 left-0 w-full z-10">
-            <h3 className="text-white font-bold text-lg flex items-center gap-2">
-              <MapIcon size={16} className="text-blue-400" /> Site Map View
-            </h3>
-            <p className="text-[10px] text-white/50 uppercase tracking-widest mt-1">Live Feed • Sector 4</p>
-          </div>
-          <div className="w-full h-full opacity-30 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:12px_12px]"></div>
-        </div>
+      {/* KPI GRID - Direct Backend Mapping */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <EngineerStatCard
+          label="Pending Tasks"
+          value={stats.tasks.TODO}
+          subtext="Assigned to you"
+          icon={<Clock className="text-blue-600" />}
+          color="blue"
+        />
+        <EngineerStatCard
+          label="Critical Issues"
+          value={stats.assignedIssueCount}
+          subtext="Immediate Attention"
+          icon={<AlertOctagon className="text-rose-600" />}
+          color="rose"
+        />
+        <EngineerStatCard
+          label="Reports Filed"
+          value={stats.myReportCount}
+          subtext="Current Cycle"
+          icon={<FileText className="text-slate-600" />}
+          color="slate"
+        />
+        <EngineerStatCard
+          label="Completed"
+          value={stats.tasks.DONE}
+          subtext="Milestones Hit"
+          icon={<CheckCircle2 className="text-emerald-600" />}
+          color="emerald"
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* 3. PRIORITY DIRECTIVES (Task Scheduling Engine) */}
-        <div className="lg:col-span-2">
-          <SectionHeader title="Priority Directives" count="6 Remaining" />
-          <div className="space-y-4">
-            <DirectiveItem title="Foundation Pour - Zone B" time="08:00 — 12:00" status="In Progress" color="bg-blue-600" />
-            <DirectiveItem title="MEP Rough-in Inspection" time="13:30 — 15:00" status="Scheduled" color="bg-slate-900" />
-            <DirectiveItem title="Steel Truss Installation" time="15:00 — 18:00" status="Pending" color="bg-slate-400" />
-          </div>
-        </div>
-
-        {/* 4. CRITICAL ISSUES (Observer Pattern Interface) */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden border-t-4 border-t-red-500">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-red-50/30">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-red-600 flex items-center gap-2">
-              <AlertOctagon size={14} /> Critical Issues
-            </h2>
-            <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">2 ALERTS</span>
-          </div>
-          <div className="p-6 space-y-6">
-            <IssueItem title="Water Main Pressure Drop" desc="Zone C-4 Sector • Reported 24m ago" />
-            <IssueItem title="Tower Crane 2 Sensor Fault" desc="Mechanical Warning • Maintenance Required" />
-          </div>
-        </div>
-      </div>
-
-      {/* 5. PROGRESS VELOCITY (Real-time Metrics) */}
-      <div className="mt-10 bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex justify-between items-end mb-8">
-           <div>
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <TrendingUp size={20} className="text-green-500" /> Progress Velocity
-              </h3>
-              <p className="text-xs text-slate-500 font-medium mt-1">Comparative build efficiency vs. baseline</p>
-           </div>
-           <div className="flex gap-6 text-[10px] font-bold uppercase tracking-widest">
-              <button className="text-slate-900 border-b-2 border-slate-900 pb-1">Weekly</button>
-              <button className="text-slate-400 hover:text-slate-600">Monthly</button>
-           </div>
-        </div>
-        <div className="flex items-end gap-3 h-32">
-          {[40, 65, 45, 90, 55, 70, 85].map((height, i) => (
-            <div key={i} className="flex-1 group relative">
-              <div 
-                style={{ height: `${height}%` }} 
-                className={`w-full rounded-t-lg transition-all duration-500 ${i === 6 ? 'bg-slate-900' : 'bg-slate-200 group-hover:bg-blue-200'}`}
-              ></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* TASK VELOCITY PANEL */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-1">
+                  Weekly Output Velocity
+                </h3>
+                <p className="text-xs text-slate-400 font-bold uppercase">
+                  Efficiency Analysis
+                </p>
+              </div>
+              <div className="bg-slate-50 px-4 py-2 rounded-xl text-[10px] font-black text-slate-500 border border-slate-100 uppercase">
+                Current:{" "}
+                {Math.round(
+                  (stats.tasks.DONE /
+                    (stats.tasks.TODO + stats.tasks.DONE || 1)) *
+                    100,
+                )}
+                %
+              </div>
             </div>
-          ))}
+            {/* Simple Bar Chart Style */}
+            <div className="flex items-end gap-2 h-32 pt-4">
+              {[30, 45, 25, 60, 40, 80, 50].map((h, i) => (
+                <div
+                  key={i}
+                  className="flex-1 bg-slate-100 rounded-lg relative group transition-all hover:bg-blue-100"
+                >
+                  <div
+                    style={{ height: `${h}%` }}
+                    className={`absolute bottom-0 w-full rounded-lg transition-all ${i === 6 ? "bg-blue-600" : "bg-slate-300"}`}
+                  ></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* QUICK ACTIONS TABLE */}
+          <div className="bg-white rounded-[1.5rem] border border-slate-200 overflow-hidden shadow-sm">
+            <div className="px-8 py-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Active Schedule Preview
+              </span>
+              <span className="text-[9px] font-black bg-white text-blue-600 px-3 py-1 rounded-full border border-slate-200">
+                {stats.tasks.TODO} ACTIVE
+              </span>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:border-blue-200 transition-all cursor-pointer group">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                    <Calendar size={18} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 uppercase tracking-tight">
+                      Morning Site Walkthrough
+                    </p>
+                    <p className="text-[10px] font-bold text-slate-400">
+                      Target: 09:00 AM
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={16}
+                  className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"
+                />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  );
-}
 
-// ADVANCED COMPONENT ARCHITECTURE (Reusable Units)
-function StatCard({ icon, label, value, unit, trend }) {
-  return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-center mb-4">
-        <div className="text-slate-400 bg-slate-50 p-2 rounded-lg">{icon}</div>
-        <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">{label}</span>
-      </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-4xl font-black text-slate-900 leading-none">{value}</span>
-        <span className="text-sm font-bold text-slate-400 uppercase tracking-tighter">{unit}</span>
-      </div>
-      <div className="mt-4 pt-4 border-t border-slate-50 flex items-center gap-2">
-        <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{trend}</p>
-      </div>
-    </div>
-  );
-}
-
-function DirectiveItem({ title, time, status, color }) {
-  return (
-    <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group hover:border-blue-300 transition-all cursor-pointer">
-      <div className="flex items-center gap-5">
-        <div className={`w-1.5 h-10 ${color} rounded-full`}></div>
-        <div>
-          <h4 className="font-bold text-slate-800 text-lg leading-tight">{title}</h4>
-          <div className="flex items-center gap-3 mt-1">
-            <span className="flex items-center gap-1 text-xs text-slate-400 font-bold">
-              <Calendar size={12} /> {time}
-            </span>
-            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">• {status}</span>
+        {/* STATUS PANEL */}
+        <div className="space-y-6">
+          <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-slate-300">
+            <div className="flex items-center gap-3 mb-10">
+              <div className="p-3 bg-white/10 rounded-2xl text-rose-400">
+                <AlertOctagon size={24} />
+              </div>
+              <h3 className="font-black text-xs uppercase tracking-widest text-slate-400">
+                Risk Assessment
+              </h3>
+            </div>
+            <div className="space-y-8">
+              <div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">
+                  Overdue Commitments
+                </p>
+                <p className="text-5xl font-black text-white">
+                  {stats.overdueTaskCount}
+                </p>
+              </div>
+              <div className="pt-6 border-t border-white/5">
+                <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">
+                  System audit detects{" "}
+                  <span className="text-rose-400">
+                    {stats.assignedIssueCount} assigned issues
+                  </span>{" "}
+                  requiring resolution signatures.
+                </p>
+              </div>
+              <button className="w-full py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-500 hover:text-white transition-all active:scale-95">
+                Review All Issues
+              </button>
+            </div>
           </div>
         </div>
       </div>
-      <MoreHorizontal size={20} className="text-slate-300 group-hover:text-slate-600 transition-colors" />
     </div>
   );
 }
 
-function IssueItem({ title, desc }) {
+// HUMANIZED COMPONENTS
+function EngineerStatCard({ label, value, subtext, icon, color }) {
+  const colorMap = {
+    blue: "border-blue-100 bg-white group-hover:border-blue-300",
+    rose: "border-rose-100 bg-white group-hover:border-rose-300",
+    slate: "border-slate-100 bg-white group-hover:border-slate-300",
+    emerald: "border-emerald-100 bg-white group-hover:border-emerald-300",
+  };
+
   return (
-    <div className="flex gap-5 group">
-      <div className="w-1 bg-red-100 group-hover:bg-red-500 rounded-full h-14 shrink-0 transition-colors"></div>
-      <div>
-        <h4 className="font-bold text-slate-800 text-sm leading-tight group-hover:text-red-600 transition-colors">{title}</h4>
-        <p className="text-xs text-slate-400 mt-1.5 font-medium leading-relaxed">{desc}</p>
+    <div
+      className={`p-8 rounded-[1.5rem] border-2 shadow-sm transition-all group cursor-default ${colorMap[color]}`}
+    >
+      <div className="flex justify-between items-start mb-6">
+        <div className="p-3 bg-slate-50 rounded-xl group-hover:scale-110 transition-transform">
+          {icon}
+        </div>
+        <div className="text-right">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+            {label}
+          </p>
+          <p className="text-3xl font-black text-slate-900">{value}</p>
+        </div>
       </div>
-    </div>
-  );
-}
-
-function SectionHeader({ title, count }) {
-  return (
-    <div className="flex justify-between items-center mb-6">
-      <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">{title}</h2>
-      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-        {count}
-      </span>
+      <div className="flex items-center gap-2">
+        <div
+          className={`w-1 h-1 rounded-full ${value > 0 ? "bg-orange-500 animate-pulse" : "bg-slate-300"}`}
+        ></div>
+        <p className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">
+          {subtext}
+        </p>
+      </div>
     </div>
   );
 }

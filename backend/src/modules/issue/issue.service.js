@@ -198,6 +198,31 @@ export const issueService = {
     };
   },
 
+  getIssueByAssignee: async (userId) => {
+    // Added return so the data is sent to the controller
+    return await prisma.issue.findMany({
+      where: {
+        blockedTask: {
+          assigneeUserId: parseInt(userId), // Ensure userId is an integer
+        },
+      },
+      include: {
+        reporter: {
+          select: { firstName: true, lastName: true },
+        },
+        project: {
+          select: { projectName: true },
+        },
+        blockedTask: {
+          select: { taskTitle: true, taskStatus: true },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  },
+
   // ── Get single issue with audit trail ──────────────────────────────────────
   getIssue: async ({ issueId, projectId, companyId, userRole, userId }) => {
     const issue = await prisma.issue.findFirst({

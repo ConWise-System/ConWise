@@ -18,41 +18,49 @@ router.use(authenticate);
 // ─── Issue CRUD ───────────────────────────────────────────────────────────────
 
 // POST   /api/projects/:projectId/issues          — Create issue
-router.post("/", validateBody(createIssueSchema), issueController.createIssue);
+router.post(
+  "/:projectId/issues",
+  validateBody(createIssueSchema),
+  issueController.createIssue,
+);
 
 // GET    /api/projects/:projectId/issues          — List issues (paginated)
-router.get("/", issueController.listIssues);
+router.get("/:projectId/issues", issueController.listIssues);
+
+// get issue for the user working on the task teh issue was created for
+// GET /api/projects/issue/assignee
+router.get("/issue/assignee", issueController.getIssueByAssignee);
 
 // GET    /api/projects/:projectId/issues/:issueId — Get single issue + audit trail
-router.get("/:issueId", issueController.getIssue);
+router.get("/:projectId/issues/:issueId", issueController.getIssue);
 
 // PATCH  /api/projects/:projectId/issues/:issueId — Update metadata
 router.patch(
-  "/:issueId",
+  "/:projectId/issues/:issueId",
   validateBody(updateIssueSchema),
   issueController.updateIssue,
 );
 
 // DELETE /api/projects/:projectId/issues/:issueId — Delete (ADMIN only, OPEN only)
-router.delete("/:issueId", issueController.deleteIssue);
+router.delete("/:projectId/issues/:issueId", issueController.deleteIssue);
 
 // ─── Issue actions (specific sub-routes AFTER :issueId wildcard) ─────────────
 
 // PATCH  /api/projects/:projectId/issues/:issueId/assign  — Assign to user
 router.patch(
-  "/:issueId/assign",
+  "/:projectId/issues/:issueId/assign",
   validateBody(assignIssueSchema),
   issueController.assignIssue,
 );
 
 // PATCH  /api/projects/:projectId/issues/:issueId/status  — Drive state machine
 router.patch(
-  "/:issueId/status",
+  "/:projectId/issues/:issueId/status",
   validateBody(updateStatusSchema),
   issueController.updateStatus,
 );
 
 // GET    /api/projects/:projectId/issues/:issueId/audit   — Audit trail only
-router.get("/:issueId/audit", issueController.getAuditTrail);
+router.get("/:projectId/issues/:issueId/audit", issueController.getAuditTrail);
 
 export default router;

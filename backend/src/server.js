@@ -64,7 +64,7 @@ app.use("/api/milestones", milestoneRoutes);
 app.use("/api", taskRoutes);
 app.use("/api", analyticsRoutes);
 app.use("/api/analytics", analyticssRoutes);
-app.use("/api/projects/:projectId/issues", issueRoutes);
+app.use("/api/projects", issueRoutes);
 app.use("/api/notifications", notifcationRoutes);
 app.use("/api/upload", uploadRoute);
 

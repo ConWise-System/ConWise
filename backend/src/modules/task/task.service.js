@@ -97,6 +97,19 @@ export const taskService = {
     return tasks.map(withDaysRemaining);
   },
 
+  getTasksByAssignee: async (userId) => {
+    const tasks = await prisma.task.findMany({
+      where: { assigneeUserId: parseInt(userId) },
+      include: {
+        project: { select: { id: true, projectName: true, status: true } },
+        taskProgress: true,
+        assignee: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    return tasks.map(withDaysRemaining);
+  },
+
   updateTaskStatus: async (id, status) => {
     const task = await prisma.task.update({
       where: { id: parseInt(id) },
