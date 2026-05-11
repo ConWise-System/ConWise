@@ -81,8 +81,11 @@ const getReportsByProject = async (projectId) => {
   });
 };
 
-const getAllReports = async () => {
+const getAllReports = async (companyId) => {
   return await prisma.report.findMany({
+    where: {
+      companyId: Number(companyId),
+    },
     include: {
       user: {
         select: { firstName: true, lastName: true, role: true },

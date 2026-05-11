@@ -4,10 +4,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { 
-  LayoutDashboard, Users, FolderRoot, CheckSquare, 
-  ShieldAlert, BarChart3, MessageSquare, Bell, 
-  Settings, ChevronLeft, LogOut 
+import {
+  LayoutDashboard, Users, FolderRoot, CheckSquare,
+  ShieldAlert, BarChart3, MessageSquare, Bell,
+  Settings, ChevronLeft, LogOut
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -30,11 +30,11 @@ export default function Sidebar() {
 
   return (
     <div className="relative sticky top-0 h-screen z-50">
-      
+
       {/* Toggle Button */}
-      <button 
+      <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3.5 top-12 w-7 h-7 bg-blue-600 rounded-full border-[3px] border-[#070912] 
+        className="absolute -right-3.5 top-12 w-7 h-7 bg-blue-600 rounded-full border-[3px] border-[#070912]
                    flex items-center justify-center text-white z-[70] transition-all duration-300
                    hover:bg-blue-500 hover:shadow-[0_0_15px_rgba(37,99,235,0.5)] active:scale-90"
       >
@@ -46,7 +46,7 @@ export default function Sidebar() {
         </motion.div>
       </button>
 
-      <motion.aside 
+      <motion.aside
         animate={{ width: isCollapsed ? 84 : 288 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="bg-[#070912] text-slate-400 flex flex-col h-full border-r border-white/5 overflow-hidden"
@@ -55,13 +55,13 @@ export default function Sidebar() {
         {/* Header */}
         <div className="p-6 mb-1">
           <div className="flex items-center gap-3">
-            <div className="min-w-[36px] h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
+            <div className="min-w-[28px] h-9 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
               <ShieldAlert size={18} className="text-white" strokeWidth={2.5} />
             </div>
 
             {!isCollapsed && (
-              <motion.div 
-                initial={{ opacity: 0 }} 
+              <motion.div
+                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex flex-col whitespace-nowrap"
               >
@@ -77,8 +77,8 @@ export default function Sidebar() {
           {menuItems.map((item, idx) => {
             const isActive = pathname === item.path;
 return (
-              <Link 
-                key={idx} 
+              <Link
+                key={idx}
                 href={item.path}
                 className={`relative flex items-center rounded-xl transition-all duration-200 group ${
                   isCollapsed ? 'justify-center px-0 h-11' : 'px-4 py-2.5 gap-3'
@@ -89,13 +89,13 @@ return (
                 <span className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'}`}>
                   {item.icon}
                 </span>
-                
+
                 {!isCollapsed && (
                   <span className="text-[11px] font-bold tracking-wide uppercase whitespace-nowrap">
                     {item.label}
                   </span>
                 )}
-                
+
                 {!isCollapsed && isActive && (
                   <motion.div layoutId="activeTab" className="ml-auto w-1 h-1 rounded-full bg-white shadow-[0_0_8px_#fff]" />
                 )}
@@ -111,7 +111,7 @@ return (
             {!isCollapsed && (
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg overflow-hidden border border-white/10">
-                  <img 
+                  <img
                     src="https://api.dicebear.com/7.x/avataaars/svg?seed=Gifti"
                     alt="profile"
                     className="w-full h-full object-cover"
@@ -129,7 +129,7 @@ return (
               </div>
             )}
 
-            <button 
+            <button
               onClick={() => router.push('/login')}
               className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
               title="Logout"

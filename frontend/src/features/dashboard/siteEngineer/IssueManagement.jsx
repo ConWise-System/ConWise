@@ -54,7 +54,7 @@ export default function SiteIssueRegistry() {
       <div className="flex flex-col items-center justify-center py-20 text-slate-400 min-h-screen bg-[#FDFDFD]">
         <Loader2 className="animate-spin mb-2" size={30} />
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-          Syncing Incident Ledger...
+          loading issues...
         </span>
       </div>
     );

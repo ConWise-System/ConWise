@@ -32,7 +32,12 @@ router.get(
 //get all reports
 router.get(
   "/all",
-  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
+  authorizeRoles(
+    ROLES.PROJECT_MANAGER,
+    ROLES.SITE_ENGINEER,
+    ROLES.SITE_SUPERVISOR,
+    ROLES.COMPANY_ADMIN,
+  ),
   reportController.getAllReports,
 );
 
@@ -44,7 +49,7 @@ router.get(
 );
 
 // filter report
-  
+
 router.get(
   "/filter-report-by-type",
   authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),

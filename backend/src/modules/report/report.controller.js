@@ -53,9 +53,12 @@ const getProjectReports = async (req, res) => {
   }
 };
 
+
+// get company report
 const getAllReports = async (req, res) => {
   try {
-    const reports = await reportService.getAllReports();
+    const companyId = req.user?.companyId;
+    const reports = await reportService.getAllReports(companyId);
 
     res.status(200).json({
       success: true,
