@@ -207,15 +207,25 @@ const ensureCompanyScopedActor = (actor) => {
     throw createError(AUTH_MESSAGES.UNAUTHORIZED, 401);
   }
 
-  if (
-    actor.role !== ROLES.COMPANY_ADMIN &&
-    actor.role !== ROLES.PLATFORM_ADMIN
-  ) {
+  // Add PROJECT_MANAGER here
+  const allowedRoles = [
+    ROLES.COMPANY_ADMIN, 
+    ROLES.PLATFORM_ADMIN, 
+    ROLES.PROJECT_MANAGER,
+    ROLES.SITE_ENGINEER,
+    ROLES.SITE_SUPERVISOR
+  ];
+
+  if (!allowedRoles.includes(actor.role)) {
     throw createError(AUTH_MESSAGES.FORBIDDEN, 403);
   }
 
-  if (actor.role === ROLES.COMPANY_ADMIN && !actor.companyId) {
-    throw createError("Company admin must belong to a company.", 400);
+  // Update this to ensure both Admins and PMs have a companyId
+  if (
+    (actor.role === ROLES.COMPANY_ADMIN || actor.role === ROLES.PROJECT_MANAGER) && 
+    !actor.companyId
+  ) {
+    throw createError("User must belong to a company to perform this action.", 400);
   }
 };
 
