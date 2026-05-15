@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
+import passport from "./config/passport.js";
 
 import http from "http"; // 1. Import http
 import { initSocket } from "./socket.js";
@@ -48,6 +49,8 @@ app.use(
 );
 app.use(morgan("dev"));
 app.use(express.json());
+app.use(passport.initialize());
+
 
 // Health check
 app.get("/api/health", (req, res) => {

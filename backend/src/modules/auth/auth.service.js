@@ -90,9 +90,9 @@ const createError = (message, statusCode = 400, errors = null) => {
   return error;
 };
 
-const getDashboardPath = (role) => DASHBOARD_BY_ROLE[role] || "/dashboard";
+export const getDashboardPath = (role) => DASHBOARD_BY_ROLE[role] || "/dashboard";
 
-const sanitizeUser = (user) => {
+export const sanitizeUser = (user) => {
   if (!user) return null;
 
   return {
@@ -253,7 +253,7 @@ const ensureActorCanChangeStatus = (actorRole, targetRole) => {
   }
 };
 
-const issueTokens = async (user, meta = {}) => {
+export const issueTokens = async (user, meta = {}) => {
   const payload = buildAuthPayload(user);
   const accessToken = generateAccessToken(payload, env.jwt.expiresIn);
   const refreshToken = generateRefreshToken(payload, env.jwt.refreshExpiresIn);
@@ -746,7 +746,7 @@ export const loginUser = async (payload, meta = {}) => {
     },
   });
 
-  const tokens = await issueTokens(user, meta);
+   const tokens = await issueTokens(user, meta);
 
   return {
     message: AUTH_MESSAGES.LOGIN_SUCCESS,
