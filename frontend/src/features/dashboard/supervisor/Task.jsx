@@ -16,7 +16,23 @@ export default function TaskManagement() {
   const [currentSupervisor, setCurrentSupervisor] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Clean initialization: Start empty to prevent SSR mismatch errors
   const [logs, setLogs] = useState([]);
+
+  // SAFE CLIENT-SIDE MOUNT HOOK: Hydrate logs from localStorage only after the page loads in the browser
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLogs = localStorage.getItem('supervisor_activity_logs');
+      if (savedLogs) {
+        try {
+          setLogs(JSON.parse(savedLogs));
+        } catch (e) {
+          console.error("Error parsing persisted activity records:", e);
+        }
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -53,24 +69,74 @@ export default function TaskManagement() {
     fetchTasks();
   }, []);
 
-  // Action: Mark a single task item as finalized
-  const handleMarkAsDone = (id) => {
-    setTasks(prev => prev.map(task => 
-      task.id === id ? { ...task, taskStatus: "Done" } : task
-    ));
-    
-    const completedTask = tasks.find(t => t.id === id);
-    if (completedTask) {
-      setLogs(prev => [{
+  // Action: Mark a single task item as finalized (Frontend + Backend Synchronization)
+  const handleMarkAsDone = async (id) => {
+    try {
+      // Dynamic endpoint path construction replacing {id} string pattern
+      const targetUrl = summeryApi.submitTask.url.replace("{id}", id);
+
+      // Dispatch the network call to update state in Neon SQL Database
+      await Axios({
+        url: targetUrl,
+        method: summeryApi.submitTask.method,
+      });
+
+      // Update local state array layout to match backend status mutations instantly
+      setTasks(prev => prev.map(task => 
+        (task.id === id || task._id === id) ? { ...task, taskStatus: "Submitted" } : task
+      ));
+      
+      const completedTask = tasks.find(t => (t.id === id || t._id === id));
+      if (completedTask) {
+        const newLogEntry = {
           id: Date.now(),
           task: completedTask.taskTitle,
           date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
           status: "Submitted",
           user: currentSupervisor || "Supervisor",
           cost: Number(completedTask.taskBudget || 0)
-      }, ...prev]);
+        };
+
+        // Update local state AND push directly to localStorage instantly to ensure it writes down
+        const updatedLogs = [newLogEntry, ...logs];
+        setLogs(updatedLogs);
+        localStorage.setItem('supervisor_activity_logs', JSON.stringify(updatedLogs));
+      }
+    } catch (err) {
+      console.error("Critical: Failed to transmit task submission to server status registry:", err);
+      alert(err.response?.data?.message || "Failed to submit task. Please verify network connectivity.");
     }
   };
+
+  // ==========================================
+  // REAL-DATA PERFORMANCE METRICS CALCULATIONS
+  // ==========================================
+  const totalTasksCount = tasks.length;
+  
+  // Calculate Completion Rate
+  const completedTasksCount = tasks.filter(task => {
+    const status = (task.taskStatus || "").toUpperCase();
+    return status === "SUBMITTED" || status === "DONE" || status === "COMPLETED";
+  }).length;
+
+  const tasksCompletedPercentage = totalTasksCount > 0 
+    ? Math.round((completedTasksCount / totalTasksCount) * 100) 
+    : 0;
+
+  // Calculate Deadline Accuracy Rate
+  const onTimeTasksCount = tasks.filter(task => {
+    const status = (task.taskStatus || "").toUpperCase();
+    const isCompletedStatus = status === "SUBMITTED" || status === "DONE" || status === "COMPLETED";
+    
+    // An active task is on track if daysRemaining >= 0, or if it's already marked complete safely
+    if (isCompletedStatus) return true;
+    return typeof task.daysRemaining === 'number' ? task.daysRemaining >= 0 : true;
+  }).length;
+
+  const deadlineAccuracyPercentage = totalTasksCount > 0 
+    ? Math.round((onTimeTasksCount / totalTasksCount) * 100) 
+    : 100; // Fallback to 100% precision accuracy if ledger is fresh/empty
+  // ==========================================
 
   // DYNAMIC TABS GENERATION: Compile all unique project tracking titles present in the collection
   const dynamicProjects = [
@@ -130,11 +196,20 @@ export default function TaskManagement() {
               <p className="text-[10px] font-medium opacity-90 uppercase">Permission: Submissions Enabled</p>
             </div>
 
+            {/* PERFORMANCE SECTION LINKED DIRECTLY TO BACKEND LEDGER AGGREGATIONS */}
             <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm">
               <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4 text-center">Your Performance</h4>
               <div className="space-y-3">
-                <ResourceStat label="Tasks Completed" value="75%" color="bg-emerald-500" />
-                <ResourceStat label="Deadline Accuracy" value="92%" color="bg-blue-500" />
+                <ResourceStat 
+                  label="Tasks Completed" 
+                  value={`${tasksCompletedPercentage}%`} 
+                  color="bg-emerald-500" 
+                />
+                <ResourceStat 
+                  label="Deadline Accuracy" 
+                  value={`${deadlineAccuracyPercentage}%`} 
+                  color="bg-blue-500" 
+                />
               </div>
             </div>
           </aside>
@@ -157,18 +232,21 @@ export default function TaskManagement() {
                   <p className="text-xs text-red-500/80 font-medium">{error}</p>
                 </div>
               ) : filteredTasks.length > 0 ? filteredTasks.map((task) => {
-                const isDone = task.taskStatus === "Done" || task.taskStatus === "COMPLETED";
+                const statusNormal = (task.taskStatus || "").toUpperCase();
+                const isDone = statusNormal === "SUBMITTED" || statusNormal === "DONE" || statusNormal === "COMPLETED";
                 const cleanDate = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : "N/A";
 
                 return (
                   <motion.div 
-                    layout key={task.id || task._id} // Supports both sequential integers and default Mongo/Postgres auto IDs
+                    layout key={task.id || task._id} 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row gap-6 items-start md:items-center relative overflow-hidden"
                   >
                     {isDone && (
-                      <div className="absolute top-0 right-0 bg-emerald-500 text-white px-8 py-1 rotate-45 translate-x-6 translate-y-2 text-[8px] font-black uppercase">Completed</div>
+                      <div className="absolute top-0 right-0 bg-emerald-500 text-white px-8 py-1 rotate-45 translate-x-6 translate-y-2 text-[8px] font-black uppercase">
+                        {statusNormal === "SUBMITTED" ? "Submitted" : "Completed"}
+                      </div>
                     )}
 
                     <div className={`p-4 rounded-2xl ${isDone ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-50 text-slate-400'}`}>
@@ -200,7 +278,7 @@ export default function TaskManagement() {
                         </button>
                       ) : (
                         <span className="text-[9px] font-black uppercase text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
-                          Task Verified
+                          {statusNormal === "SUBMITTED" ? "Pending Verification" : "Task Verified"}
                         </span>
                       )}
                     </div>

@@ -199,7 +199,7 @@ export default function TaskCenter() {
                             <th className="px-6 py-4 text-left border-r border-slate-800">Description</th>
                             <th className="px-6 py-4 text-left border-r border-slate-800">Priority</th>
                             <th className="px-6 py-4 text-left border-r border-slate-800">Timeline</th>
-                            <th className="px-6 py-4 text-right">Budget</th>
+                            <th className="px-6 py-4 text-right">Status</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-[10px]">
@@ -240,7 +240,7 @@ export default function TaskCenter() {
                                     </div>
                                 </td>
                                 <td className="px-6 py-5 text-right font-black text-[#111827]">
-                                    ${task.taskBudget?.toLocaleString()}
+                                    {task.taskStatus}
                                 </td>
                             </tr>
                           ))
