@@ -137,6 +137,11 @@ const summeryApi = {
   readAllNotifications: {
     url: "/api/notifications/read-all",
     method: "patch",
+  },
+
+  submitTask:{
+    url: `/api/tasks/{id}/submit`,
+    method: "patch",
   }
 
 };

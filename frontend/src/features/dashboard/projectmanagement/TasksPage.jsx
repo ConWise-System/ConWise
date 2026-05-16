@@ -41,6 +41,7 @@ export default function TaskCenter() {
         Axios({...summeryApi.getUsers}),
         Axios({...summeryApi.getAllMaterial}) 
       ]);
+      console.log(projRes.data.data.data)
       setProjectList(projRes.data.data || []);
       const allUsers = userRes.data.data.users || userRes.data.data || [];
       setUserList(allUsers.filter(u => u && (u.id || u._id)));
@@ -198,7 +199,7 @@ export default function TaskCenter() {
                             <th className="px-6 py-4 text-left border-r border-slate-800">Description</th>
                             <th className="px-6 py-4 text-left border-r border-slate-800">Priority</th>
                             <th className="px-6 py-4 text-left border-r border-slate-800">Timeline</th>
-                            <th className="px-6 py-4 text-right">Budget</th>
+                            <th className="px-6 py-4 text-right">Status</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-[10px]">
@@ -239,7 +240,7 @@ export default function TaskCenter() {
                                     </div>
                                 </td>
                                 <td className="px-6 py-5 text-right font-black text-[#111827]">
-                                    ${task.taskBudget?.toLocaleString()}
+                                    {task.taskStatus}
                                 </td>
                             </tr>
                           ))
@@ -296,8 +297,8 @@ export default function TaskCenter() {
                   <textarea name="taskDescription" value={formData.taskDescription} onChange={handleInputChange} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold outline-none focus:border-blue-500 h-24" />
                 </div>
 
-                <FormInput label="startDate" name="startDate" value={formData.startDate} onChange={handleInputChange} type="datetime-local" icon={<Calendar size={16}/>} />
-                <FormInput label="dueDate" name="dueDate" value={formData.dueDate} onChange={handleInputChange} type="datetime-local" icon={<Clock size={16}/>} />
+                <FormInput label="startDate" name="startDate" value={formData.startDate} onChange={handleInputChange} type="date" icon={<Calendar size={16}/>} />
+                <FormInput label="dueDate" name="dueDate" value={formData.dueDate} onChange={handleInputChange} type="date" icon={<Clock size={16}/>} />
                 <FormInput label="taskBudget" name="taskBudget" value={formData.taskBudget} onChange={handleInputChange} type="number" icon={<DollarSign size={16}/>} />
 
                 <div className="space-y-1.5">
