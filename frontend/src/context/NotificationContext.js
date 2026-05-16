@@ -58,38 +58,47 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [user, mapSchemaToUI]);
 
-  // 2. PATCH /api/notifications/:id/read -> Mark a specific notification log item as read
-  const markAsRead = async (id) => {
+// 2. PATCH /api/notifications/:id/read -> Mark a specific notification as read
+  const markAsRead = useCallback(async (id) => {
+    // Optimistic UI updates
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+
     try {
-      // Optimistic UI update: apply changes immediately for premium response speed feel
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      // Resolve the dynamic URL by invoking it as a function execution block
+      const targetUrl = typeof summeryApi.readNotification?.url === 'function'
+        ? summeryApi.readNotification.url(id)
+        : `/api/notifications/${id}/read`;
 
       await Axios({
         method: summeryApi.readNotification?.method || 'PATCH',
-        url: `${summeryApi.readNotification?.url || '/api/notifications'}/${id}/read`,
+        url: targetUrl,
       });
+      
+      console.log(`✅ Notification ${id} marked as read successfully.`);
     } catch (error) {
-      console.error(`Failed to mark notification ${id} as read:`, error);
-      fetchNotifications(); // Fallback to database baseline on unexpected network loss
+      console.error(`❌ Server Patch Failed for notification ${id}:`, error?.response?.data || error.message);
+      // Fallback: reload state from DB if backend explicitly drops or fails
+      fetchNotifications(); 
     }
-  };
+  }, [fetchNotifications]);
 
   // 3. PATCH /api/notifications/read-all -> Flush and mark everything as read
-  const markAllAsRead = async () => {
-    try {
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
+  const markAllAsRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    setUnreadCount(0);
 
+    try {
       await Axios({
         method: summeryApi.readAllNotifications?.method || 'PATCH',
         url: summeryApi.readAllNotifications?.url || '/api/notifications/read-all',
       });
+      console.log("✅ All notifications marked as read.");
     } catch (error) {
-      console.error("Failed to clear and mark all notifications as read:", error);
+      console.error("❌ Failed to clear all notifications on server:", error?.response?.data || error.message);
       fetchNotifications();
     }
-  };
+  }, [fetchNotifications]);
 
   // 4. WebSocket Engine Lifecycle Setup
   useEffect(() => {

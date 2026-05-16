@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Bell, UserCircle, Settings, LogOut } from 'lucide-react';
-
 import { useRouter } from 'next/navigation';
 import { useUser } from '../../../context/UserContext';
-import { useEffect, useRef } from 'react';
+import { useNotifications } from '../../../context/NotificationContext'; // Imported Notification Context
 import SupervisorSideBar from '../../../components/supervisorSideBar';
 
 export function useClickOutside(ref, callback) {
@@ -24,21 +23,16 @@ export function useClickOutside(ref, callback) {
 export default function DashboardLayout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, loading, handleLogout } = useUser();
+  
+  // Destructure the live real-time unread count from the socket stream provider
+  const { unreadCount } = useNotifications();
+  
   const router = useRouter();
   const menuRef = useRef(null);
-  // 2. Use the hook to close the menu
-  useClickOutside(menuRef, () => setShowProfileMenu(false));
   
-
-  const getInitials = (firstName) => {
-    if (!firstName) return "??";
-    return firstName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-  };
+  useClickOutside(menuRef, () => setShowProfileMenu(false));
 
   if (loading) return <div className="h-screen w-full bg-[#f8fafc] animate-pulse" />;
-  
-
-  
 
   const ProfileMenuButton = ({ icon, label, onClick, isRed }) => (
     <button 
@@ -51,12 +45,11 @@ export default function DashboardLayout({ children }) {
     </button>
   );
 
-
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc]">
       {/* SIDEBAR */}
       <aside className="h-full shrink-0 z-[100] shadow-2xl shadow-slate-200">
-        <SupervisorSideBar />
+        <SupervisorSideBar/>
       </aside>
 
       {/* MAIN CONTAINER */}
@@ -81,9 +74,27 @@ export default function DashboardLayout({ children }) {
               <span className="text-[10px] font-black uppercase tracking-widest">System Live</span>
             </div>
 
-            <button className="p-3 bg-white text-slate-500 hover:text-blue-600 rounded-2xl shadow-sm border border-slate-200 relative transition-all active:scale-95">
+            {/* NOTIFICATION BELL WITH SOCIAL MEDIA STYLE UNREAD COUNTER */}
+            <button 
+              onClick={() => router.push('/notifications')} // Adjust link destination to match your routing folder name
+              className="p-3 bg-white text-slate-500 hover:text-slate-900 rounded-2xl shadow-sm border border-slate-200 relative transition-all active:scale-95"
+            >
               <Bell size={20} />
-              <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white" />
+              
+              <AnimatePresence>
+                {unreadCount > 0 && (
+                  <motion.span 
+                    key={unreadCount} // Key binding triggers micro-animations on every new incoming socket push
+                    initial={{ scale: 0.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.4, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                    className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white rounded-full text-[9px] font-black tracking-tight flex items-center justify-center border-2 border-white shadow-sm unselectable"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </button>
 
             {/* PROFILE SECTION */}
@@ -93,7 +104,7 @@ export default function DashboardLayout({ children }) {
                 className="flex items-center gap-3 cursor-pointer p-1.5 pr-5 bg-[#0a1120] rounded-2xl shadow-xl border border-slate-800 transition-transform active:scale-95"
               >
                 <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-indigo-400 rounded-xl flex items-center justify-center text-white font-black text-sm overflow-hidden">
-                  
+                  {user?.firstName ? user.firstName[0].toUpperCase() : "?"}
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black text-white leading-none">
@@ -118,7 +129,7 @@ export default function DashboardLayout({ children }) {
                     >
                       <div className="p-8 pb-4 text-center">
                         <div className="w-16 h-16 bg-slate-100 rounded-3xl mx-auto mb-3 flex items-center justify-center text-slate-800 border-2 border-white shadow-md overflow-hidden">
-                           {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" /> : <UserCircle size={32} />}
+                           {user?.avatar ? <img src={user.avatar} className="w-full h-full object-cover" alt="avatar" /> : <UserCircle size={32} />}
                         </div>
                         <p className="text-sm font-black text-slate-900 leading-none">{user?.firstName}</p>
                         <p className="text-[10px] font-bold text-slate-400 mt-2">{user?.email}</p>

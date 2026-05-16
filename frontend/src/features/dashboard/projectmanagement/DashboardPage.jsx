@@ -1,230 +1,333 @@
-"use client";
-import React from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Plus, ChevronRight, Info, 
-  Droplets, HardHat, Construction, 
-  AlertOctagon, TrendingUp, Sun, Map
-} from 'lucide-react';
+'use client';
 
-// Animation Variants for staggering children
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Briefcase, CheckCircle2, Clock, AlertCircle, 
+  TrendingUp, BarChart3, Landmark, ShieldAlert,
+  Loader2
+} from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+
+import Axios from "../../../../utils/Axios";
+import summeryApi from "../../../common/summeryApi";
+
+// Animation presets for clean premium pacing
 const containerVars = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 }
-  }
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
 };
 
 const itemVars = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { type: "spring", damping: 30 } }
 };
 
-const SiteEngineerDashboard = () => {
+export default function DashboardHome() {
+  const [summaryData, setSummaryData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await Axios({ ...summeryApi.getDashboardSummary });
+      if (response.data.success) {
+        setSummaryData(response.data.data);
+      }
+    } catch (error) {
+      console.error("Dashboard Analytics Sync Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-slate-400 font-sans">
+        <Loader2 className="animate-spin text-blue-600 mb-3" size={24} />
+        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Assembling Financial & Task Intelligence...</span>
+      </div>
+    );
+  }
+
+  if (!summaryData) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-slate-400 font-sans border-2 border-dashed border-slate-100 rounded-[2rem]">
+        <AlertCircle className="text-slate-300 mb-2" size={24} />
+        <span className="text-[11px] font-bold">Failed to load system telemetry. Please refresh.</span>
+      </div>
+    );
+  }
+
+  // Safely extract dataset keys mapping default fallbacks if fields are absent
+  const totalProjects = summaryData.projectsWithStats?.length || 0;
+  const inProgressTasks = summaryData.tasks?.IN_PROGRESS || 0;
+  const doneTasks = summaryData.tasks?.DONE || 0;
+  const totalTasks = inProgressTasks + doneTasks;
+  
+  // Calculate aggregated velocity index across all projects
+  const averageVelocity = totalProjects > 0
+    ? Math.round(summaryData.projectsWithStats.reduce((acc, curr) => acc + (curr.progress?.progressPercent || 0), 0) / totalProjects)
+    : 0;
+
+  // Prepare chart format from projectsWithStats data payload
+  const projectChartData = summaryData.projectsWithStats?.map(p => ({
+    name: p.projectName.length > 20 ? `${p.projectName.substring(0, 18)}...` : p.projectName,
+    allocated: p.projectBudget,
+    utilized: p.totalTaskBudget,
+  })) || [];
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   return (
-    <div className="w-full min-h-screen bg-[#F8F9FA] selection:bg-[#111827] selection:text-white">
-      <motion.main 
-        variants={containerVars}
-        initial="hidden"
-        animate="visible"
-        className="max-w-[1300px] mx-auto px-6 pb-8 w-full mt-4 space-y-6"
-      >
-        
-        {/* 1. HEADER */}
-        <motion.div variants={itemVars} className="flex justify-between items-end">
-          <div>
-            <h1 className="text-2xl font-black text-[#111827] tracking-tighter uppercase italic leading-none">
-              Site Operations Hub
-            </h1>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-70">
-              Sector 4 • Structural Phase II • Day 142
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <motion.div whileHover={{ y: -2 }} className="bg-white px-3 py-2 rounded-xl border border-slate-200 flex items-center gap-3 cursor-default">
-               <Sun size={14} className="text-orange-400" />
-               <span className="text-[9px] font-black uppercase tracking-tighter">24°C Clear</span>
-            </motion.div>
-            <motion.button 
-              whileHover={{ scale: 1.03, backgroundColor: "#1f2937" }}
-              whileTap={{ scale: 0.97 }}
-              className="bg-[#111827] text-white px-4 py-2 rounded-xl flex items-center gap-2 font-black text-[9px] uppercase tracking-[0.15em] shadow-lg transition-colors"
-            >
-              <Plus size={14} /> New Log
-            </motion.button>
-          </div>
-        </motion.div>
-
-        {/* 2. METRICS GRID */}
-        <motion.div variants={containerVars} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard title="Steel Rebar" value="84.2" unit="tn" badge="Nominal" color="bg-slate-100 text-slate-600" />
-          <MetricCard title="Concrete" value="12" unit="m³" badge="ETA 14:00" color="bg-blue-100 text-blue-600" />
-          <MetricCard title="Active Labor" value="142" unit="PA" badge="+12" color="bg-emerald-100 text-emerald-600" />
-          <MetricCard title="Safety Index" value="98%" unit="" badge="Optimal" color="bg-orange-100 text-orange-600" />
-        </motion.div>
-
-        {/* 3. MAIN CONTENT */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          <div className="lg:col-span-2 space-y-6">
-            <motion.section variants={itemVars} className="bg-white rounded-[1.5rem] p-6 border border-slate-200/60 shadow-sm">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-black text-slate-900 text-[10px] uppercase tracking-widest">Priority Directives</h3>
-                <span className="text-[9px] font-black text-slate-400 uppercase">6 Tasks Remaining</span>
-              </div>
-              <div className="space-y-4">
-                <DirectiveRow label="Zone B" task="Foundation Pour" progress={70} />
-                <DirectiveRow label="Sector 4" task="MEP Inspection" progress={45} color="bg-blue-500" />
-                <DirectiveRow label="Roof" task="Truss Installation" progress={15} color="bg-slate-300" />
-              </div>
-            </motion.section>
-
-            <motion.section variants={itemVars} className="bg-white rounded-[1.5rem] p-6 border border-slate-200/60 shadow-sm">
-              <div className="flex justify-between items-center mb-8">
-                <h3 className="font-black text-slate-900 text-[10px] uppercase tracking-widest">Build Velocity</h3>
-                <span className="text-[8px] font-black text-emerald-600 uppercase tracking-tighter">Efficiency +4.2%</span>
-              </div>
-              <div className="h-28 flex items-end justify-between px-4">
-                {[40, 70, 30, 90, 60, 80, 95].map((h, idx) => (
-                  <div key={idx} className="flex flex-col items-center gap-2 group">
-                    <motion.div 
-                      initial={{ height: 0 }}
-                      animate={{ height: h }}
-                      transition={{ delay: 0.5 + (idx * 0.05), duration: 0.8, ease: "circOut" }}
-                      className={`w-10 rounded-t-md transition-all cursor-pointer ${idx === 6 ? 'bg-[#111827]' : 'bg-slate-100 group-hover:bg-slate-300'}`}
-                    />
-                    <span className="text-[8px] font-black text-slate-400">{['M', 'T', 'W', 'T', 'F', 'S', 'S'][idx]}</span>
-                  </div>
-                ))}
-              </div>
-            </motion.section>
-          </div>
-
-          <div className="space-y-6">
-            <motion.section variants={itemVars} className="bg-[#111827] rounded-[1.5rem] p-6 text-white shadow-xl relative overflow-hidden">
-              <div className="relative z-10">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="font-black text-[10px] uppercase tracking-widest text-slate-400">Critical Alerts</h3>
-                  <AlertOctagon size={14} className="text-rose-500 animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <IssueItem title="Water Main Pressure" sub="Zone C-4 Sector" isUrgent />
-                  <IssueItem title="Crane 2 Sensor" sub="Mechanical Warning" dark />
-                </div>
-                <motion.button 
-                  whileHover={{ x: 3 }}
-                  className="w-full mt-4 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors flex items-center justify-center gap-2"
-                >
-                  Open Emergency Protocol <ChevronRight size={10} />
-                </motion.button>
-              </div>
-            </motion.section>
-
-            <motion.div variants={itemVars} className="bg-white rounded-[1.5rem] p-4 border border-slate-200/60 shadow-sm group cursor-crosshair">
-               <div className="flex items-center justify-between mb-4">
-                 <h3 className="font-black text-slate-900 text-[9px] uppercase tracking-[0.2em]">Site Map View</h3>
-                 <Map size={12} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
-               </div>
-               <div className="h-32 bg-slate-100 rounded-xl relative overflow-hidden flex items-center justify-center">
-                  <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:10px_10px]" />
-                  <motion.span 
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="text-[8px] font-black text-slate-400 uppercase tracking-widest"
-                  >
-                    Live Sector Feed
-                  </motion.span>
-               </div>
-            </motion.div>
-
-            <motion.div variants={containerVars} className="space-y-3 pt-2">
-              <ReportItem icon={<Construction size={14} className="text-blue-500" />} title="Logistics Update" time="14m" />
-              <ReportItem icon={<TrendingUp size={14} className="text-emerald-500" />} title="Structural Sign-off" time="2h" />
-            </motion.div>
-          </div>
-
+    <motion.div 
+      variants={containerVars} 
+      initial="hidden" 
+      animate="visible"
+      className="space-y-8 font-sans antialiased text-slate-900"
+    >
+      {/* Structural Header */}
+      <header className="flex justify-between items-end border-b border-slate-100 pb-5">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Portfolio Overview</h1>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
+            Role: {summaryData.role?.replace("_", " ")} — Cross-Project Sync Engine
+          </p>
         </div>
-      </motion.main>
+        <div className="hidden sm:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/60">
+          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Live Ledger Feed</span>
+        </div>
+      </header>
+
+      {/* 4-Column Core Statistics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard 
+          label="Active Projects" 
+          value={totalProjects} 
+          subtext="Under Management" 
+          icon={<Briefcase size={16} />} 
+          color="blue" 
+        />
+        <StatCard 
+          label="Portfolio Allocation" 
+          value={`$${Number(summaryData.managerTotals?.totalProjectBudget || 0).toLocaleString()}`} 
+          subtext="Capital Cap Structure" 
+          icon={<Landmark size={16} />} 
+          color="indigo" 
+        />
+        <StatCard 
+          label="WBS Tasks Allocated" 
+          value={totalTasks} 
+          subtext={`${doneTasks} Finalized Tasks`} 
+          icon={<CheckCircle2 size={16} />} 
+          color="emerald" 
+        />
+        <StatCard 
+          label="Open Issues Raised" 
+          value={summaryData.openIssueCount} 
+          subtext={`${summaryData.recentReportCount} Incident Filings Pending`} 
+          icon={<ShieldAlert size={16} />} 
+          color={summaryData.openIssueCount > 0 ? "rose" : "slate"} 
+        />
+      </div>
+
+      {/* Charts & Analytical Velocity Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Capital vs Task Budget Utilization Bar Chart */}
+        <motion.div 
+          variants={itemVars}
+          className="lg:col-span-2 bg-white p-6 rounded-[2.5rem] border border-slate-200/80 shadow-sm flex flex-col justify-between"
+        >
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 tracking-tight">Financial Allocation vs Utilization</h3>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Project Budget Compared to Task Allotments</p>
+            </div>
+            <BarChart3 className="text-slate-300" size={18} />
+          </div>
+          
+          {projectChartData.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              No Data Matrices Found
+            </div>
+          ) : (
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={projectChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 9, fontWeight: 900, fill: '#94a3b8' }} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 8, fontWeight: 700, fill: '#cbd5e1' }}
+                    tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(241, 245, 249, 0.5)' }} 
+                    contentStyle={{ background: '#0f172a', borderRadius: '12px', border: 'none', fontSize: '10px', color: '#fff', fontWeight: 'bold' }}
+                  />
+                  <Bar dataKey="allocated" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={14} name="Project Cap" />
+                  <Bar dataKey="utilized" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={14} name="Task Assigned" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Global Progress Radial Completion Loop */}
+        <motion.div 
+          variants={itemVars}
+          className="bg-[#0f111a] p-6 rounded-[2.5rem] text-white shadow-xl flex flex-col justify-between"
+        >
+          <div>
+            <h3 className="text-sm font-black tracking-tight uppercase text-slate-200">Portfolio Completion</h3>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.15em] mt-1">Aggregated Progress Velocity</p>
+          </div>
+
+          <div className="relative flex justify-center my-6">
+            <svg className="w-32 h-32 transform -rotate-90">
+              <circle cx="64" cy="64" r="52" stroke="#1e293b" strokeWidth="9" fill="transparent" />
+              <motion.circle 
+                cx="64" cy="64" r="52" stroke="#2563eb" strokeWidth="9" fill="transparent" strokeLinecap="round"
+                strokeDasharray="326.7" initial={{ strokeDashoffset: 326.7 }}
+                animate={{ strokeDashoffset: 326.7 - (326.7 * (averageVelocity / 100)) }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-black text-white tracking-tighter">{averageVelocity}%</span>
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-0.5">Resolved</span>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center text-[9px] font-black uppercase text-slate-400 border-t border-slate-800/80 pt-3">
+            <span>Variance Surplus</span>
+            <span className="text-emerald-400 font-bold">${Number(summaryData.managerTotals?.budgetVariance || 0).toLocaleString()}</span>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Individual Project Trackers Stack */}
+      <motion.div variants={itemVars} className="space-y-4">
+        <div>
+          <h3 className="text-base font-black text-slate-900 tracking-tight">Active Infrastructure Rollouts</h3>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Live Management Nodes</p>
+        </div>
+        
+        <div className="space-y-4">
+          {summaryData.projectsWithStats?.map((project) => (
+            <ProjectRow 
+              key={project.id} 
+              project={project} 
+              formatDate={formatDate}
+            />
+          ))}
+
+          {totalProjects === 0 && (
+            <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">No Projects Configured in Profile</p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Minimalist High-End Stat Card Layout Module
+function StatCard({ label, value, subtext, icon, color }) {
+  const colorMap = {
+    blue: "text-blue-600 bg-blue-50/80 border-blue-100",
+    emerald: "text-emerald-600 bg-emerald-50/80 border-emerald-100",
+    indigo: "text-indigo-600 bg-indigo-50/80 border-indigo-100",
+    rose: "text-rose-600 bg-rose-50/80 border-rose-100",
+    slate: "text-slate-500 bg-slate-50 border-slate-100"
+  };
+
+  return (
+    <motion.div 
+      variants={itemVars}
+      className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200"
+    >
+      <div className={`p-3 rounded-xl border ${colorMap[color] || colorMap.slate}`}>{icon}</div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">{label}</p>
+        <p className="text-xl font-black text-slate-900 tracking-tight mt-0.5 truncate">{value}</p>
+        <p className="text-[9px] font-bold text-slate-400 truncate mt-0.5">{subtext}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+// Clean Enterprise Project Progress Track Component Row
+function ProjectRow({ project, formatDate }) {
+  const progressVal = project.progress?.progressPercent || 0;
+  
+  return (
+    <div className="bg-white border border-slate-200/80 p-6 rounded-[2rem] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-slate-300 transition-all duration-200">
+      <div className="space-y-1.5 max-w-md flex-1">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight leading-none">
+            {project.projectName}
+          </h4>
+          <span className={`text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${
+            project.status === "DONE" ? "text-emerald-600 bg-emerald-50" : "text-blue-600 bg-blue-50"
+          }`}>
+            {project.status}
+          </span>
+        </div>
+        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+          Target Date: <span className="text-slate-600">{formatDate(project.endDate)}</span>
+        </p>
+      </div>
+
+      {/* Budget Allotment Profiles */}
+      <div className="grid grid-cols-2 gap-6 sm:gap-12 shrink-0">
+        <div>
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Project Capital</span>
+          <span className="text-xs font-black text-slate-800">${Number(project.projectBudget).toLocaleString()}</span>
+        </div>
+        <div>
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Task Allocation</span>
+          <span className="text-xs font-black text-slate-500">${Number(project.totalTaskBudget).toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Horizontal Segmented Progress Profile */}
+      <div className="w-full md:w-48 space-y-1.5 shrink-0">
+        <div className="flex justify-between items-baseline text-[9px] font-black uppercase text-slate-400 tracking-wider">
+          <span>Progress</span>
+          <span className="text-slate-800">{progressVal}%</span>
+        </div>
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${progressVal}%` }}
+            transition={{ duration: 1, ease: "easeInOut" }}
+            className="h-full bg-blue-600 rounded-full"
+          />
+        </div>
+        <p className="text-[8px] font-bold text-slate-400 text-right uppercase">
+          {project.progress?.doneTasks || 0}/{project.progress?.totalTasks || 0} Tasks Done
+        </p>
+      </div>
     </div>
   );
-};
-
-// --- OPTIMIZED COMPONENTS ---
-
-const MetricCard = ({ title, value, unit, badge, color }) => (
-  <motion.div 
-    variants={itemVars}
-    whileHover={{ y: -3, transition: { duration: 0.2 } }} 
-    className="bg-white p-4 rounded-2xl border border-slate-200/50 shadow-sm cursor-default"
-  >
-    <div className="flex justify-between items-start mb-2">
-      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{title}</p>
-      <Info size={12} className="text-slate-200 hover:text-slate-400 transition-colors" />
-    </div>
-    <div className="flex items-baseline justify-between">
-      <div className="flex items-baseline gap-1">
-        <h3 className="text-2xl font-black text-[#111827] tracking-tighter italic">{value}</h3>
-        <span className="text-[10px] font-bold text-slate-400 uppercase">{unit}</span>
-      </div>
-      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${color} uppercase`}>
-        {badge}
-      </span>
-    </div>
-  </motion.div>
-);
-
-const DirectiveRow = ({ label, task, progress, color = "bg-[#111827]" }) => (
-  <div className="flex items-center gap-3 group">
-    <span className="text-[9px] font-black text-slate-400 uppercase w-16 truncate group-hover:text-slate-900 transition-colors">{label}</span>
-    <div className="flex-1 relative h-8 bg-slate-50 rounded-lg overflow-hidden border border-slate-100">
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: `${progress}%` }}
-        transition={{ duration: 1.2, ease: "circOut", delay: 0.4 }}
-        className={`absolute h-full ${color} flex items-center px-3 transition-all`}
-      >
-        <span className="text-[8px] text-white font-black uppercase tracking-widest whitespace-nowrap">
-          {task}
-        </span>
-      </motion.div>
-    </div>
-    <span className="text-[8px] font-bold text-slate-300 w-6 text-right">{progress}%</span>
-  </div>
-);
-
-const IssueItem = ({ title, sub, isUrgent, dark }) => (
-  <motion.div 
-    whileHover={{ x: 4 }}
-    className={`group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer 
-    ${isUrgent ? 'border-rose-500/30 bg-rose-500/10' : 
-      dark ? 'border-white/5 bg-white/5 hover:bg-white/10' : 'border-slate-100 bg-slate-50 hover:bg-white'}`}>
-    <div className="flex items-center gap-3">
-      <div className={`w-1 h-6 rounded-full transition-all ${isUrgent ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-slate-600 group-hover:bg-blue-400'}`} />
-      <div>
-        <h4 className={`text-[10px] font-black ${dark || isUrgent ? 'text-white' : 'text-slate-800'}`}>{title}</h4>
-        <p className="text-[8px] text-slate-500 font-bold uppercase tracking-tighter">{sub}</p>
-      </div>
-    </div>
-    <ChevronRight size={12} className="text-slate-500 group-hover:text-white transform group-hover:translate-x-1 transition-all" />
-  </motion.div>
-);
-
-const ReportItem = ({ icon, title, time }) => (
-  <motion.div 
-    variants={itemVars}
-    whileHover={{ scale: 1.01, x: 4 }}
-    className="flex gap-3 items-center p-3 bg-white rounded-xl border border-slate-200/50 shadow-sm hover:shadow-md transition-all group cursor-pointer"
-  >
-    <div className="p-1.5 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-all">{icon}</div>
-    <div className="flex-1">
-      <div className="flex justify-between items-center">
-        <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{title}</h4>
-        <span className="text-[8px] font-bold text-slate-400">{time}</span>
-      </div>
-    </div>
-  </motion.div>
-); 
-
-export default SiteEngineerDashboard;
+}

@@ -1,4 +1,5 @@
-import DashboardHome from "../../../../features/dashboard/admin/DashboardPage"
+import DashboardHome from "../../../../features/dashboard/projectmanagement/DashboardPage"
+
 export default function Home(){
     return(
         <div>

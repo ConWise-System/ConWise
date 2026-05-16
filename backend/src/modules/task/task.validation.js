@@ -9,8 +9,12 @@ const taskPrioritySchema = z.enum(['HIGH', 'MEDIUM', 'LOW', 'CRITICAL'], {
     errorMap: () => ({ message: "Task priority must be one of: HIGH, MEDIUM, LOW, CRITICAL" })
 });
 
-const taskStatusSchema = z.enum(['TODO', 'IN_PROGRESS', 'SUBMITTED', 'UNDER_REVIEW', 'BLOCKED', 'APPROVED', 'REJECTED'], {
-    errorMap: () => ({ message: "Task status must be one of: TODO, IN_PROGRESS, SUBMITTED, UNDER_REVIEW, BLOCKED, APPROVED, REJECTED" })
+// const taskStatusSchema = z.enum(['TODO', 'IN_PROGRESS', 'SUBMITTED', 'UNDER_REVIEW', 'BLOCKED', 'APPROVED', 'REJECTED'], {
+//     errorMap: () => ({ message: "Task status must be one of: TODO, IN_PROGRESS, SUBMITTED, UNDER_REVIEW, BLOCKED, APPROVED, REJECTED" })
+// });
+
+const taskStatusSchema = z.enum(['TODO', 'IN_PROGRESS', 'DONE'], {
+    errorMap: () => ({ message: "Task status must be one of: TODO, IN_PROGRESS, DONE" })
 });
 
 const normalizeAssignee = (data) => {

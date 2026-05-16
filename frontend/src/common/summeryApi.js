@@ -74,6 +74,10 @@ const summeryApi = {
     url: "/api/projects/{projectId}/tasks",
     method: "get",
   },
+  changeTaskStatus: {
+    url: "/api/tasks/{taskId}/status",
+    method: "patch",
+  },  
   uploadImage: {
     url: "/api/upload/image",
     method: "post",
