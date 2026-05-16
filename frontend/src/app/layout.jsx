@@ -1,4 +1,5 @@
 import { UserProvider } from '../context/UserContext';
+import { NotificationProvider } from '../context/NotificationContext';
 import "./globals.css";
 import { Inter } from "next/font/google";
 
@@ -23,7 +24,9 @@ export default function RootLayout({ children }) {
       </head>
       <body className="antialiased selection:bg-slate-900 selection:text-white">
         <UserProvider>
+          <NotificationProvider>
           {children}
+          </NotificationProvider>
         </UserProvider>
       </body>
     </html>

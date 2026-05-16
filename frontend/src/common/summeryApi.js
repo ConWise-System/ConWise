@@ -118,7 +118,23 @@ const summeryApi = {
     url: "/api/projects/issue/assignee",
     method: "get",
   },
+
+  //notification apis
+  getNotifications: {
+    url: "/api/notifications",
+    method: "get",
+  },
+
+  readNotification: {
+    url: (notificationId) => `/api/notifications/${notificationId}/read`,
+    method: "patch",
+  },
   
+  readAllNotifications: {
+    url: "/api/notifications/read-all",
+    method: "patch",
+  }
+
 };
 
 export default summeryApi;
