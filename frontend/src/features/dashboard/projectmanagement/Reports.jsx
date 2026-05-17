@@ -1,248 +1,429 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FileDown, Sparkles, TrendingUp, ShieldCheck, 
-  ChevronRight, BarChart3, PieChart, Layout, Plus,
-  Calendar, Zap, ArrowLeft, Loader2, CheckCircle2, Download
+  FileText, Download, Trash2, Calendar, Search, 
+  AlertCircle, FileDown, RefreshCw, Layers,
+  CloudSun, HardHat, X
 } from 'lucide-react';
+import summeryApi from '../../../common/summeryApi';
+import Axios from '../../../../utils/Axios';
 
-export default function PerformanceIntelligence() {
-  const [view, setView] = useState('dashboard'); // dashboard | generator
-  const [genStep, setGenStep] = useState(0); // 0: Config, 1: Processing, 2: Final
-  const [selectedType, setSelectedType] = useState('Operational');
+// --- Helper Utilities ---
+function formatDateString(isoString) {
+  if (!isoString) return '---';
+  return new Date(isoString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+}
 
-  // Logic to simulate the 'System Generates Report' event from your flow
-  const triggerGeneration = () => {
-    setGenStep(1);
-    setTimeout(() => setGenStep(2), 2500); // Simulate system synthesis delay
+export default function ReportManagementEngine() {
+  // Primary data storage arrays
+  const [reports, setReports] = useState([]);
+  
+  // Navigation Routing Simulation View State ('INDEX')
+  const [activeView, setActiveView] = useState('INDEX');
+  
+  // UI Interaction triggers
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('ALL');
+  const [activeInspectionReport, setActiveInspectionReport] = useState(null);
+  
+  // System operational states
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessingId, setIsProcessingId] = useState(null);
+
+  // Structural contextual lookup states
+  const [projectsList, setProjectsList] = useState([]);
+  const [materialsList, setMaterialsList] = useState([]);
+
+  // --- 1. GET ALL COMPONENT LOOKUP DICTIONARIES ---
+  const fetchLookupData = async () => {
+    try {
+      const projectRes = await Axios({
+        url: summeryApi.getAllProjects.url,
+        method: summeryApi.getAllProjects.method,
+        withCredentials: true
+      });
+      if (projectRes.data?.success) {
+        setProjectsList(projectRes.data.data || []);
+      }
+
+      const materialRes = await Axios({
+        url: summeryApi.getAllMaterial.url,
+        method: summeryApi.getAllMaterial.method,
+        withCredentials: true
+      });
+      if (materialRes.data?.success) {
+        setMaterialsList(materialRes.data.data || []);
+      }
+    } catch (error) {
+      console.error("Critical fault reading structural contextual lookup indexes:", error);
+    }
   };
 
+  // --- 2. GET ALL REPORTS DATA METRICS ---
+  const fetchAllReports = async () => {
+    setIsLoading(true);
+    try {
+      const response = await Axios({
+        url: summeryApi.reports.url,
+        method: summeryApi.reports.method,
+        withCredentials: true
+      });
+
+      if (response.data?.success) {
+        setReports(response.data.data || []);
+      }
+    } catch (error) {
+      console.error("Critical error reading core intelligence repository logs:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLookupData();
+    fetchAllReports();
+  }, []);
+
+  const handleInspectReport = (report) => {
+    setActiveInspectionReport(report);
+  };
+
+  // --- 3. DOWNLOAD REPORT PDF BLOB STREAM INTEGRATION ---
+  const handleDownloadPDF = async (report, e) => {
+    if (e) e.stopPropagation(); 
+    const reportId = report.id || report._id || report.reportId;
+    setIsProcessingId(reportId);
+    
+    try {
+      const response = await Axios({
+        url: summeryApi.downloadReport.url(reportId),
+        method: summeryApi.downloadReport.method,
+        responseType: 'blob',
+        withCredentials: true
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const anchorElement = document.createElement('a');
+      
+      anchorElement.href = downloadUrl;
+      anchorElement.download = `${String(report.reportTitle || report.title || 'System_Report').replace(/\s+/g, '_')}_${reportId}.pdf`;
+      document.body.appendChild(anchorElement);
+      anchorElement.click();
+      
+      document.body.removeChild(anchorElement);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("PDF engine document compilation connection fault:", error);
+    } finally {
+      setIsProcessingId(null);
+    }
+  };
+
+  // --- 4. DELETE REPORT RECORD DATA NODE INTEGRATION ---
+  const handleDeleteReport = async (report, e) => {
+    if (e) e.stopPropagation();
+    const reportId = report.id || report._id;
+
+    if (!window.confirm(`Permanently Delete ${reportId}?`)) return;
+
+    try {
+      const response = await Axios({
+        url: summeryApi.deleteReport.url(reportId),
+        method: summeryApi.deleteReport.method,
+        withCredentials: true
+      });
+
+      if (response.data?.success) {
+        setReports(prev => prev.filter(item => (item.id || item._id) !== reportId));
+        if ((activeInspectionReport?.id || activeInspectionReport?._id) === reportId) {
+          setActiveInspectionReport(null);
+        }
+      }
+    } catch (error) {
+      console.error("Server failure clearing data node from database pipeline:", error);
+    }
+  };
+
+  const filteredReports = reports.filter(item => {
+    const titleText = item.reportTitle || item.title || '';
+    const idText = String(item.id || item._id || '');
+    const typeText = item.reportType || 'DAILY_SITE_REPORT';
+
+    const matchesSearch = titleText.toLowerCase().includes(searchQuery.toLowerCase()) || idText.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = selectedFilter === 'ALL' ? true : typeText === selectedFilter;
+    return matchesSearch && matchesFilter;
+  });
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#111827] font-sans antialiased p-4 md:p-10">
-      <AnimatePresence mode="wait">
-        {view === 'dashboard' ? (
-          /* --- STAGE 1: EXECUTIVE OVERSIGHT (Precondition Check) --- */
-          <motion.div 
-            key="dash" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
-            className="max-w-[1400px] mx-auto space-y-10"
-          >
-            <header className="flex justify-between items-end">
-              <div>
-                <h1 className="text-5xl font-black tracking-tighter uppercase italic leading-none text-[#111827]">
-                  Intel<span className="text-blue-600">.</span>Core
-                </h1>
-                <p className="text-[10px] font-black text-slate-400 mt-4 uppercase tracking-[0.3em]">Sovereign Project Analysis — Q2 2026</p>
+    <div className="min-h-screen bg-[#F8FAFC] text-[#111827] font-sans antialiased p-6 md:p-12 text-left relative">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* --- DASHBOARD HEADER --- */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-6 gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tighter uppercase text-[#111827]">
+              Project Reports
+            </h1>
+          </div>
+        </header>
+
+        {/* --- FILTER AND SEARCH PIPELINE --- */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-3.5 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 text-xs font-bold rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-blue-600 uppercase tracking-tight placeholder-slate-400"
+            />
+          </div>
+
+          {/* --- DROP-DOWN SELECTION COMPONENT --- */}
+          <div className="w-full md:w-64">
+            <select
+              value={selectedFilter}
+              onChange={(e) => setSelectedFilter(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 text-xs font-black uppercase tracking-wider rounded-xl px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-blue-600 appearance-none cursor-pointer text-[#111827]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%2364748B' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
+                backgroundPosition: 'right 1rem center',
+                backgroundSize: '1.25rem',
+                backgroundRepeat: 'no-repeat',
+                paddingRight: '2.5rem'
+              }}
+            >
+              <option value="ALL">ALL REPORTS</option>
+              <option value="DAILY_SITE_REPORT">DAILY SITE REPORT</option>
+              <option value="INCIDENT_REPORT">INCIDENT REPORT</option>
+              <option value="PROGRESS_REPORT">PROGRESS REPORT</option>
+            </select>
+          </div>
+        </div>
+
+        {/* --- MAIN LEDGER VAULT VIEW GRID --- */}
+        <main className="w-full">
+          <section className="space-y-4">
+            <div className="flex justify-between items-center px-2">
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                Reports ({filteredReports.length})
+              </h3>
+            </div>
+
+            {isLoading ? (
+              <div className="bg-white p-16 rounded-[2rem] border border-slate-100 text-center flex items-center justify-center">
+                <RefreshCw size={24} className="animate-spin text-slate-400" />
               </div>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setView('generator')}
-                  className="bg-[#111827] text-white px-8 py-4 rounded-2xl flex items-center gap-3 font-black text-[10px] uppercase tracking-widest shadow-2xl hover:bg-blue-600 transition-all active:scale-95"
+            ) : filteredReports.length === 0 ? (
+              <div className="bg-white p-16 rounded-[2rem] border border-dashed border-slate-200 text-center">
+                <AlertCircle className="mx-auto text-slate-300 mb-3" size={24} />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  No Report
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredReports.map((report) => {
+                  const currentId = report.id || report._id;
+                  const currentType = report.reportType || 'DAILY_SITE_REPORT';
+                  return (
+                    <div
+                      key={currentId}
+                      onClick={() => handleInspectReport(report)}
+                      className={`bg-white p-6 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-4 hover:shadow-md group ${
+                        (activeInspectionReport?.id || activeInspectionReport?._id) === currentId ? 'border-blue-500 shadow-sm' : 'border-slate-100'
+                      }`}
+                    >
+                      <div className="flex items-start gap-4 truncate">
+                        <div className={`p-3.5 rounded-xl shrink-0 ${
+                          currentType === 'INCIDENT_REPORT' ? 'bg-rose-50 text-rose-600' :
+                          currentType === 'PROGRESS_REPORT' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
+                        }`}>
+                          <FileText size={18} />
+                        </div>
+                        <div className="truncate">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                              ID: {String(currentId).slice(-6).toUpperCase()}
+                            </span>
+                            <span className="text-[7px] font-black px-2 py-0.5 bg-slate-100 rounded text-slate-500 uppercase tracking-wider">
+                              {currentType.replace('_', ' ')}
+                            </span>
+                          </div>
+                          <h4 className="text-[13px] font-black text-[#111827] uppercase tracking-tight mt-1 group-hover:text-blue-600 transition-colors truncate">
+                            {report.reportTitle || report.title || 'Untitled Performance Abstract'}
+                          </h4>
+                          <div className="flex items-center gap-4 text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-wide">
+                            <span className="flex items-center gap-1">
+                              <Calendar size={10} /> {formatDateString(report.reportDate || report.createdAt)}
+                            </span>
+                            <span>Project Context ID: {report.projectId}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* OPERATION ACTIONS TARGET */}
+                      <div className="flex items-center gap-1 justify-end border-t pt-3 border-slate-100">
+                        <button
+                          type="button"
+                          onClick={(e) => handleDownloadPDF(report, e)}
+                          disabled={isProcessingId !== null}
+                          className="p-2.5 bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-xl transition-all"
+                          title="Download Document Node PDF"
+                        >
+                          {isProcessingId === currentId ? (
+                            <RefreshCw size={14} className="animate-spin text-blue-600" />
+                          ) : (
+                            <Download size={14} />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteReport(report, e)}
+                          className="p-2.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-all"
+                          title="Purge From Server Records"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
+
+      {/* --- OVERLAY MODAL: DEEP EXTRACTION INSPECTOR --- */}
+      <AnimatePresence>
+        {activeInspectionReport && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+            {/* Dark Backdrop Layer */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveInspectionReport(null)}
+              className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm"
+            />
+
+            {/* Modal Box Window Layout */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 12 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="relative w-full max-w-lg max-h-[85vh] flex flex-col bg-white rounded-[2rem] border border-slate-100 shadow-2xl z-10 text-left overflow-hidden"
+            >
+              {/* Header Panel Node (Sticky Top) */}
+              <div className="p-6 md:p-8 pb-4 border-b border-slate-50 shrink-0 flex justify-between items-start gap-4">
+                <div className="space-y-1 truncate">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest">Selected Object Identity</span>
+                    <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Active Log
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-[#111827] uppercase tracking-tighter italic mt-1.5 leading-tight truncate">
+                    {activeInspectionReport.reportTitle || activeInspectionReport.title || 'Performance Intelligence Metric Node'}
+                  </h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    System Reference Token: {activeInspectionReport.id || activeInspectionReport._id}
+                  </p>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => setActiveInspectionReport(null)}
+                  className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl transition-all shrink-0 mt-0.5"
                 >
-                  <Sparkles size={16} /> Generate Intelligence
+                  <X size={14} />
                 </button>
               </div>
-            </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <HealthCard />
-              <div className="space-y-6">
-                <MetricBox label="Cumulative Savings" value="$1.24M" trend="+4.2%" dark />
-                <MetricBox label="Risk Exposure" value="Low" subValue="(04)" icon={<ShieldCheck className="text-rose-500" />} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
-                <h3 className="text-[11px] font-black uppercase tracking-widest mb-10 text-[#111827]">Fiscal Allocation vs. Actuals</h3>
-                <div className="space-y-8">
-                  <AllocationRow label="Quantum Cloud Migration" percent={84} />
-                  <AllocationRow label="Global Supply Chain Audit" percent={109} isOver />
-                  <AllocationRow label="AI Ethics Framework" percent={56} />
+              {/* Data Field Stream (Scrollable Center) */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 pt-4 space-y-4 text-xs font-bold text-slate-700 uppercase tracking-tight">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block flex items-center gap-1">
+                    <HardHat size={10} /> Completed Execution Logic
+                  </span>
+                  <p className="text-[11px] font-medium text-slate-600 lowercase first-letter:uppercase normal-case tracking-normal leading-relaxed">
+                    {activeInspectionReport.workCompleted || "No recorded completion description notes."}
+                  </p>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                <ReportAccessCard icon={<Layout size={20}/>} title="Exec Quarterly Brief" sub="Board-level visibility" />
-                <ReportAccessCard icon={<PieChart size={20}/>} title="Financial Variance" sub="Audit overrun analysis" />
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          /* --- STAGE 2: ADVANCED REPORT GENERATOR (The Scenario Flow) --- */
-          <motion.div 
-            key="gen" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }}
-            className="max-w-3xl mx-auto pt-10"
-          >
-            <button onClick={() => {setView('dashboard'); setGenStep(0);}} className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 mb-10 hover:text-black transition-colors">
-              <ArrowLeft size={14} /> Return to Oversight
-            </button>
-
-            <div className="bg-white rounded-[3.5rem] shadow-2xl border border-slate-100 overflow-hidden">
-              <div className="p-12 bg-[#111827] text-white">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="px-3 py-1 bg-blue-500 text-[8px] font-black uppercase rounded-full tracking-widest">Active Scenario</span>
-                    <h2 className="text-3xl font-black italic uppercase tracking-tighter mt-4">Project Report Creation</h2>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase mt-2">Actor: Project Manager</p>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="text-[7px] font-black text-slate-400 block mb-0.5">Workers Present</span>
+                    <span className="font-black text-slate-800">{activeInspectionReport.workersPresent || 0} Operators</span>
                   </div>
-                  <Zap className="text-blue-500" size={32} />
+                  <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <span className="text-[7px] font-black text-slate-400 block mb-0.5">Weather Metrics</span>
+                    <span className="font-black text-slate-800 flex items-center gap-1">
+                      <CloudSun size={11} /> {activeInspectionReport.weatherCondition || 'N/A'}
+                    </span>
+                  </div>
                 </div>
+
+                {activeInspectionReport.materialsUsed && (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 block mb-1">Materials Vector Logs</span>
+                    <p className="text-[10px] font-black text-slate-700">{activeInspectionReport.materialsUsed}</p>
+                  </div>
+                )}
+
+                {activeInspectionReport.challenges && (
+                  <div className="p-3 bg-rose-50/50 rounded-xl border border-rose-100/60">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-rose-500 block mb-1 flex items-center gap-1">
+                      <AlertCircle size={10} /> Active Deployment Impediments
+                    </span>
+                    <p className="text-[11px] text-slate-600 lowercase first-letter:uppercase normal-case tracking-normal font-medium leading-relaxed">
+                      {activeInspectionReport.challenges}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <div className="p-12 min-h-[450px] flex flex-col justify-center">
-                <AnimatePresence mode="wait">
-                  {genStep === 0 && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-10">
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-blue-600">1. Select Intelligence Type</label>
-                        <div className="grid grid-cols-2 gap-4">
-                          <TypeOption 
-                            active={selectedType === 'Operational'} 
-                            onClick={() => setSelectedType('Operational')} 
-                            icon={<BarChart3 />} label="Tasks & Progress" 
-                          />
-                          <TypeOption 
-                            active={selectedType === 'Fiscal'} 
-                            onClick={() => setSelectedType('Fiscal')} 
-                            icon={<PieChart />} label="Costs & Materials" 
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-blue-600">2. Temporal Parameters</label>
-                        <div className="flex items-center gap-4 bg-slate-50 p-6 rounded-3xl border border-slate-100">
-                          <Calendar className="text-slate-400" />
-                          <span className="text-xs font-black uppercase tracking-tighter">Apr 01, 2026 — Jun 30, 2026</span>
-                        </div>
-                      </div>
-
-                      <button 
-                        onClick={triggerGeneration}
-                        className="w-full bg-[#111827] text-white py-6 rounded-3xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-blue-600 transition-all shadow-xl active:scale-95"
-                      >
-                        Initialize Generation
-                      </button>
-                    </motion.div>
+              {/* Action Layout Row (Sticky Bottom Footer) */}
+              <div className="p-6 md:p-8 pt-4 border-t border-slate-50 shrink-0 space-y-2 bg-white">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPDF(activeInspectionReport)}
+                  disabled={isProcessingId !== null}
+                  className="w-full bg-[#111827] text-white py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-blue-600 transition-colors shadow-sm"
+                >
+                  {isProcessingId === (activeInspectionReport.id || activeInspectionReport._id) ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" /> Compiling Document Node...
+                    </>
+                  ) : (
+                    <>
+                      <FileDown size={14} /> Download PDF
+                    </>
                   )}
-
-                  {genStep === 1 && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center text-center">
-                      <Loader2 size={48} className="text-blue-600 animate-spin mb-6" />
-                      <h3 className="text-xl font-black uppercase italic tracking-tighter text-[#111827]">Synthesizing Datasets</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Aggregating tasks, materials, and cost variances...</p>
-                    </motion.div>
-                  )}
-
-                  {genStep === 2 && (
-                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
-                      <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-[2.5rem] flex items-center gap-6">
-                        <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center text-white">
-                          <CheckCircle2 size={32} />
-                        </div>
-                        <div>
-                          <h3 className="text-emerald-900 font-black uppercase italic tracking-tight">Intelligence Ready</h3>
-                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">Postcondition: Available for review</p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <button className="flex-1 bg-[#111827] text-white py-6 rounded-3xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3">
-                          <Layout size={16} /> View Online
-                        </button>
-                        <button className="flex-1 border-2 border-slate-100 py-6 rounded-3xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all">
-                          <Download size={16} /> Download PDF
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => handleDeleteReport(activeInspectionReport)}
+                  className="w-full border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-100 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                >
+                  <Trash2 size={14} /> Delete
+                </button>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-// --- HELPER COMPONENTS ---
-
-function HealthCard() {
-  return (
-    <div className="lg:col-span-2 bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm group">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4">Portfolio Health Score</p>
-          <h2 className="text-8xl font-black text-[#111827] tracking-tighter italic">94.8<span className="text-xl text-slate-200 ml-2">/100</span></h2>
-          <div className="flex items-center gap-2 mt-6 text-emerald-500 font-black text-[10px] uppercase tracking-widest">
-            <TrendingUp size={14} /> +12.4% Project Velocity
-          </div>
-        </div>
-        <div className="flex items-end gap-2 h-32">
-          {[40, 70, 45, 90, 60, 85, 100].map((h, i) => (
-            <div key={i} className="w-3 bg-[#111827] rounded-full transition-all group-hover:bg-blue-600" style={{ height: `${h}%`, opacity: 0.1 + (i * 0.15) }} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MetricBox({ label, value, subValue, icon, trend, dark }) {
-  return (
-    <div className={`p-8 rounded-[2.5rem] shadow-sm flex flex-col justify-between h-[calc(50%-12px)] ${dark ? 'bg-[#111827] text-white' : 'bg-white border border-slate-100'}`}>
-      <p className={`text-[9px] font-black uppercase tracking-[0.2em] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{label}</p>
-      <div className="flex items-center justify-between mt-4">
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-3xl font-black italic tracking-tighter">{value}</h3>
-          {subValue && <span className="text-xs font-bold opacity-30">{subValue}</span>}
-        </div>
-        {icon ? icon : trend && <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full">{trend}</span>}
-      </div>
-    </div>
-  );
-}
-
-function AllocationRow({ label, percent, isOver }) {
-  return (
-    <div className="space-y-3">
-      <div className="flex justify-between text-[10px] font-black uppercase">
-        <span className="text-slate-500">{label}</span>
-        <span className={isOver ? 'text-rose-500' : 'text-[#111827]'}>{percent}%</span>
-      </div>
-      <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden">
-        <motion.div 
-          initial={{ width: 0 }} animate={{ width: `${Math.min(percent, 100)}%` }}
-          className={`h-full ${isOver ? 'bg-rose-500' : 'bg-[#111827]'}`} 
-        />
-      </div>
-    </div>
-  );
-}
-
-function ReportAccessCard({ icon, title, sub }) {
-  return (
-    <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 flex items-center gap-6 hover:shadow-xl hover:border-blue-100 transition-all cursor-pointer group">
-      <div className="p-4 bg-slate-50 rounded-2xl text-slate-400 group-hover:text-blue-600 transition-colors">{icon}</div>
-      <div>
-        <h4 className="text-[11px] font-black uppercase tracking-tight text-[#111827]">{title}</h4>
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{sub}</p>
-      </div>
-    </div>
-  );
-}
-
-function TypeOption({ active, onClick, icon, label }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`p-8 rounded-[2rem] border-2 transition-all flex flex-col items-center gap-4 ${active ? 'bg-[#111827] border-[#111827] text-white shadow-xl' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}
-    >
-      {React.cloneElement(icon, { size: 24 })}
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
-    </button>
   );
 }

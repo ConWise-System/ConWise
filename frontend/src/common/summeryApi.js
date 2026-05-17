@@ -41,6 +41,10 @@ const summeryApi = {
     url: "/api/projects",
     method: "delete",
   },
+  createReport:{
+    url: "/api/reports",
+    method: "post",
+  },
   reports: {
     url: "/api/reports/all",
     method: "get",
@@ -64,6 +68,10 @@ const summeryApi = {
   },
   getAllProjects: {
     url: "/api/projects",
+    method: "get",
+  },
+  projectMilestones: {
+    url: (projectId) => `/api/milestones/${projectId}`,
     method: "get",
   },
   assignTask: {

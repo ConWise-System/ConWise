@@ -6,13 +6,14 @@ import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Users, FolderRoot, CheckSquare, 
   ShieldAlert, BarChart3, MessageSquare, Bell, 
-  Settings, ChevronLeft
+  Settings, ChevronLeft,Milestone
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const menuItems = [
   { icon: <LayoutDashboard size={16} />, label: 'Project Manager Home', path: '/projectManager/Home' },
   { icon: <Users size={16} />, label: 'Projects', path: '/projectManager/projects' },
+  {icon: <Milestone size={16} />, label: 'Project Milestone', path: '/projectManager/projectMilestone' },
   { icon: <FolderRoot size={16} />, label: 'Task Center', path: '/projectManager/taskCenter' },
   { icon: <CheckSquare size={16} />, label: 'Issue Tracking', path: '/projectManager/issueTracking' },
   { icon: <BarChart3 size={16} />, label: 'Reports', path: '/projectManager/reports' },
