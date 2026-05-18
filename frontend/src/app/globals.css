@@ -34,7 +34,110 @@
     scrollbar-width: none !important;
   }
 }
+button {
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
 
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  outline: none;
+  border: none;
+  animation: button-pop 180ms ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #2563EB;
+  color: #FFFFFF;
+  box-shadow: 0 18px 40px rgba(37, 99, 235, 0.12);
+}
+
+.btn-primary:hover {
+  background: #1D4ED8;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-muted {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  color: #0F172A;
+}
+
+.btn-muted:hover {
+  background: #E2E8F0;
+}
+
+.btn-danger {
+  background: #DC2626;
+  color: #FFFFFF;
+  box-shadow: 0 18px 40px rgba(220, 38, 38, 0.12);
+}
+
+.btn-danger:hover {
+  background: #B91C1C;
+}
+
+.btn-link {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.14em;
+  color: #64748B;
+  transition: color 0.2s ease;
+  background: transparent;
+  padding: 0;
+}
+
+.btn-link:hover {
+  color: #0F172A;
+}
+
+@keyframes button-pop {
+  from {
+    transform: scale(0.98);
+    opacity: 0.96;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 /* 4. EXCEPTION: If you specifically WANT a scrollbar, use this class */
 /* Note: I've wrapped this so it only shows if you explicitly use .custom-scrollbar */
 .custom-scrollbar::-webkit-scrollbar {

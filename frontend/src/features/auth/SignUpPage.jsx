@@ -202,7 +202,7 @@ const SignUpPage = () => {
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
                         disabled={isSubmitting}
-                        className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 shadow-lg disabled:opacity-50"
+                        className="btn btn-primary w-full py-4 gap-3 disabled:opacity-50"
                     >
                         {isSubmitting ? "Processing Node..." : ( <> Establish Organization <ArrowRight size={16} /> </> )}
                     </motion.button>
@@ -241,7 +241,7 @@ const SignUpPage = () => {
                             whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.99 }}
                             disabled={isSubmitting}
-                            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl disabled:opacity-50"
+                            className="btn btn-primary w-full py-4 disabled:opacity-50"
                         >
                             {isSubmitting ? "Authenticating..." : "Finalize Registration"}
                         </motion.button>
@@ -249,7 +249,7 @@ const SignUpPage = () => {
                         <button 
                             type="button"
                             onClick={() => setStep(1)}
-                            className="text-[10px] font-bold text-slate-400 hover:text-slate-900 uppercase tracking-widest"
+                            className="btn-link"
                         >
                             Edit registration details
                         </button>

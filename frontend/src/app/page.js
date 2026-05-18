@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation';
+// src/app/page.js
+import ConWiseLanding from '../features/landpage';
 
 export default function Home() {
-  redirect('/login');
+  return <ConWiseLanding />;
 }

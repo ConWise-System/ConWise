@@ -146,7 +146,7 @@ export default function LoginForm() {
               </label>
               <button
                 type="button"
-                className="text-[11px] font-medium text-slate-400 hover:text-slate-900 transition-colors"
+                className="btn-link"
               >
                 Forgot?
               </button>
@@ -178,7 +178,7 @@ export default function LoginForm() {
             whileHover={{ scale: 1.005 }}
             whileTap={{ scale: 0.995 }}
             disabled={isSubmitting}
-            className="w-full bg-slate-900 text-white py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all group overflow-hidden"
+            className="btn btn-primary w-full py-3.5 gap-2 shadow-sm transition-all group overflow-hidden disabled:opacity-50"
           >
             <AnimatePresence mode="wait">
               {isSubmitting ? (
@@ -221,7 +221,7 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="w-full bg-white border border-slate-200 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2.5 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm text-xs font-semibold"
+            className="btn btn-muted w-full py-3 gap-2.5 text-xs font-semibold disabled:opacity-50"
           >
             <svg width="16" height="16" viewBox="0 0 48 48">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -233,7 +233,7 @@ export default function LoginForm() {
           </button>
 
           <Link href="/register" className="block">
-            <button className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 py-3 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 text-xs font-semibold">
+            <button className="btn btn-muted w-full py-3 text-xs font-semibold">
               Create an account
             </button>
           </Link>
