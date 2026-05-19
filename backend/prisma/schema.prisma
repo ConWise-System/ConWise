@@ -146,6 +146,7 @@ model User {
   assignedIssues Issue[]            @relation("IssueAssignee")
   issueAuditLogs IssueAuditLog[]
   sentMessages   Chat[]             @relation("ChatSender")
+  receivedMessages Chat[]             @relation("ChatReceiver")
   sessions       Session[]
   verifications  VerificationCode[]
 
@@ -400,15 +401,20 @@ model IssueAuditLog {
 model Chat {
   id             Int      @id @default(autoincrement())
   senderUserId   Int
-  projectId      Int
+  receiverUserId Int      // Added field for direct 1-to-1 tracking
+  projectId      Int?     // Made optional so private chats can have null values
   messageContent String
   timestamp      DateTime @default(now())
+  isRead         Boolean  @default(false) 
   chatType       ChatType @default(TEXT)
 
-  sender  User    @relation("ChatSender", fields: [senderUserId], references: [id])
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Explicit, separated relation actions matching your application architecture
+  sender   User     @relation("ChatSender", fields: [senderUserId], references: [id])
+  receiver User     @relation("ChatReceiver", fields: [receiverUserId], references: [id])
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([senderUserId])
+  @@index([receiverUserId])
   @@index([projectId])
   @@map("chats")
 }

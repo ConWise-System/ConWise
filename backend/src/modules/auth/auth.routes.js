@@ -309,7 +309,7 @@ router.post(
  */
 router.get(
   "/users",
-  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN,ROLES.PROJECT_MANAGER),
+  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN,ROLES.SITE_ENGINEER, ROLES.SITE_SUPERVISOR, ROLES.PROJECT_MANAGER),
   validate(companyUsersQuerySchema, "query"),
   authController.listCompanyUsers,
 );

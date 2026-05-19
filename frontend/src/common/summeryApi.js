@@ -25,10 +25,10 @@ const summeryApi = {
     url: "/api/auth/users",
     method: "post",
   },
-  getUsers: {
-    url: "/api/auth/users",
-    method: "get",
-  },
+    getUsers: {
+      url: "/api/auth/users",
+      method: "get",
+    },
   createProject: {
     url: "/api/projects",
     method: "post",
@@ -150,6 +150,16 @@ const summeryApi = {
   submitTask:{
     url: `/api/tasks/{id}/submit`,
     method: "patch",
+  },
+
+  // messaging apis
+  sendChatMessage: {
+    url: "/api/messaging/send",
+    method: "post",
+  },
+  getChatHistory: {
+    url: "/api/messaging/history/private",
+    method: "get"
   }
 
 };

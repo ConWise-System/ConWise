@@ -4,7 +4,7 @@ import validate from "../../middlewares/validate.middleware.js";
 import authenticate from "../../middlewares/auth.middleware.js";
 import {
   sendMessageSchema,
-  getChatHistorySchema,
+  getPrivateChatHistorySchema,
 } from "./messaging.validation.js";
 
 const router = express.Router();
@@ -15,14 +15,14 @@ router.use(authenticate);
 // Send a message (Project Group Chat)
 router.post(
   "/send",
-  validate(sendMessageSchema),
+  validate(sendMessageSchema, "body"),
   messagingController.sendMessage,
 );
 
-// Get history for a specific project
+// Get history for a specific person
 router.get(
-  "/history/:projectId",
-  validate(getChatHistorySchema),
+  "/history/private",
+  validate(getPrivateChatHistorySchema, "query"),
   messagingController.getChatHistory,
 );
 
