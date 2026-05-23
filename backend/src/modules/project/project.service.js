@@ -128,39 +128,49 @@ export const projectService = {
   },
 
   // Get single project — role-based visibility
-  getProjectById: async ({ projectId, companyId, userId, role }) => {
-    let where = { id: projectId, companyId };
+ getAllProjects: async ({ companyId, userId, role }) => {
+    let where = { companyId };
 
     if (role === ROLES.SITE_ENGINEER || role === ROLES.SITE_SUPERVISOR) {
       where = {
-        id: projectId,
         companyId,
         tasks: { some: { assigneeUserId: userId } },
       };
     }
 
-    const project = await prisma.project.findFirst({
+    const projects = await prisma.project.findMany({
       where,
       include: {
         projectProgress: true,
-        owner: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            role: true,
-          },
-        },
-        costSummary: true,
         _count: {
-          select: { tasks: true, issues: true, reports: true },
+          select: { tasks: true } // 👈 Prisma accurately calculates your relation rows here
+        },
+        owner: {
+          select: { id: true, firstName: true, lastName: true, email: true, role: true },
         },
       },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (!project) return null;
-    return serializeProject(project);
+    return projects.map(project => {
+      const actualLiveCount = project._count?.tasks ?? 0;
+
+      const serialized = serializeProject(project);
+      
+      if (!serialized.projectProgress) {
+        serialized.projectProgress = {
+          id: project.id,
+          projectId: project.id,
+          completionPercentage: "0",
+          tasksCompleted: 0,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      
+      serialized.projectProgress.totalTasks = actualLiveCount;
+      
+      return serialized;
+    });
   },
 
   // Delete project

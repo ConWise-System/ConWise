@@ -9,6 +9,7 @@ import { useNotifications } from '../../../context/NotificationContext';
 import { MessagingProvider } from '../../../context/MessagingContext'; // 1. Imported Provider
 import Sidebar  from '../../../components/sidebar';
 
+
 export function useClickOutside(ref, callback) {
   useEffect(() => {
     function handleClickOutside(event) {
@@ -77,7 +78,7 @@ export default function DashboardLayout({ children }) {
 
               {/* NOTIFICATION BELL */}
               <button 
-                onClick={() => router.push('/notifications')} 
+                onClick={() => router.push('/admin/notification')} 
                 className="p-3 bg-white text-slate-500 hover:text-slate-900 rounded-2xl shadow-sm border border-slate-200 relative transition-all active:scale-95"
               >
                 <Bell size={20} />

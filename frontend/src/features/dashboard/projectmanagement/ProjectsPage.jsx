@@ -3,16 +3,19 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Plus, MoreVertical, Briefcase, Filter, ChevronRight, 
-  Calendar, MapPin, User, DollarSign, ArrowLeft, Loader2, AlertCircle 
+  Plus, MoreVertical, Briefcase, Calendar, MapPin, 
+  User, DollarSign, ArrowLeft, Loader2, AlertCircle 
 } from 'lucide-react';
 import summeryApi from '../../../common/summeryApi';
 import Axios from '../../../../utils/Axios';
+import Table from '../../../components/dashboard/Table';
+import Loader from '../../../components/dashboard/Loader';
+
 
 export default function ProjectPortfolio() {
   const [view, setView] = useState('list'); // 'list' | 'create'
   const [isLoading, setIsLoading] = useState(false);
-  const [projects, setProjects] = useState([])
+  const [projects, setProjects] = useState([]);
 
   // --- 1. Form State Management ---
   const [formData, setFormData] = useState({
@@ -33,7 +36,6 @@ export default function ProjectPortfolio() {
   const handleCreate = async (e) => {
     e.preventDefault();
     
-    // 1. Precise Frontend Validation
     const budgetNum = Number(formData.projectBudget);
     if (isNaN(budgetNum) || budgetNum <= 0) {
       alert("Please enter a valid positive budget.");
@@ -43,23 +45,20 @@ export default function ProjectPortfolio() {
     setIsLoading(true);
   
     try {
-      // 2. Explicit Payload (No spread operator)
       const payload = {
         projectName: formData.projectName,
         location: formData.location,
         clientName: formData.clientName,
-        projectBudget: budgetNum, // Guaranteed to be a Number
+        projectBudget: budgetNum,
         startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
         endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
       };
-  
-      console.log("Sending Payload:", payload); // Verify in console that it's a number, not string
   
       const response = await Axios({
         method: summeryApi.createProject.method,
         url: summeryApi.createProject.url,
         data: payload,
-        withCredentials: true // Ensure session/cookies are sent
+        withCredentials: true
       });
   
       const result = response.data;
@@ -67,7 +66,6 @@ export default function ProjectPortfolio() {
       if (result.success) {
         alert("Project Initialized Successfully");
         setView('list');
-        // Fix the state reset keys to match your state definition
         setFormData({ 
           projectName: '', 
           location: '', 
@@ -81,14 +79,8 @@ export default function ProjectPortfolio() {
       }
     } catch (error) {
       if (error.response?.data?.errors) {
-        error.response.data.errors.forEach(err => {
-          // Zod paths are arrays, join them to read them easily
-          console.error("FIELD:", err.path?.join('.') || "Unknown");
-          console.error("MESSAGE:", err.message);
-        });
         alert(`Validation Error: ${error.response.data.errors[0].message}`);
       } else {
-        console.error("General Error:", error);
         alert(error.response?.data?.message || "Internal Server Error");
       }
     } finally {
@@ -98,12 +90,15 @@ export default function ProjectPortfolio() {
 
   const fetchProjects = async () => {
     try {
-      const response = await Axios({...summeryApi.getAllProjects}); // Adjust to your actual GET endpoint
+      setIsLoading(true);
+      const response = await Axios({...summeryApi.getAllProjects});
       if (response.data.success) {
         setProjects(response.data.data);
       }
     } catch (error) {
       console.error("Error fetching projects:", error);
+    }finally{
+      setIsLoading(false);
     }
   };
 
@@ -113,121 +108,157 @@ export default function ProjectPortfolio() {
     }
   }, [view]);
 
+  // --- 3. Table Column Schema Architecture Configuration ---
+  const tableColumns = [
+    {
+      header: "No.",
+      width: "50px",
+      align: "center",
+      // Use the absolute number context passed up from the base component iteration engine
+      cell: (_, rowNumber) => (
+        <span className="text-slate-400 font-bold font-mono">
+          {rowNumber}
+        </span>
+      )
+    },
+    { 
+      header: "Project Details", 
+      accessor: "projectName",
+      cell: (row) => (
+        <div>
+          <div className="text-slate-900 font-bold text-xs">{row.projectName}</div>
+          <div className="text-[10px] text-slate-400 font-medium mt-0.5">ID: {row.id} • Client: {row.clientName}</div>
+        </div>
+      )
+    },
+    { 
+      header: "Location", 
+      accessor: "location" 
+    },
+    {
+      header: "Operational Status",
+      accessor: "status",
+      cell: (row) => (
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+          {row.status}
+        </span>
+      )
+    },
+    { 
+      header: "Allocated Budget", 
+      accessor: "projectBudget",
+      cell: (row) => {
+        const value = Number(row.projectBudget);
+        return (
+          <span className="font-bold text-slate-900">
+            {isNaN(value) ? "$0" : `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          </span>
+        );
+      }
+    },
+    {
+      header: "Action",
+      align: "right",
+      width: "60px",
+      cell: (row) => (
+        <button className="p-1.5 hover:bg-slate-100 rounded border border-transparent hover:border-slate-200 transition-colors">
+          <MoreVertical size={13} className="text-slate-400" />
+        </button>
+      )
+    }
+  ];
+
   return (
-    <div className="w-full min-h-screen bg-[#F3F4F6] text-[#111827] font-sans antialiased p-4 md:p-8">
+    <div className="w-full min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased p-4 md:p-8">
       <AnimatePresence mode="wait">
         {view === 'list' ? (
           <motion.div 
-            key="list" initial="hidden" animate="visible" exit={{ opacity: 0, y: -10 }}
+            key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="max-w-[1300px] mx-auto space-y-6"
           >
-            <div className="flex justify-between items-end">
+            {/* Humanized, Clean Dashboard Header Area */}
+            <div className="flex justify-between items-center border-b border-slate-200 pb-5">
               <div>
-                <h1 className="text-2xl font-black tracking-tight uppercase leading-none">Project Management</h1>
-                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-70">Industrial & Infrastructure Assets</p>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">Project Directory</h1>
+                <p className="text-xs text-slate-500 mt-1 font-medium">Overview and track active infrastructure development projects.</p>
               </div>
               <button 
                 onClick={() => setView('create')}
-                className="bg-[#111827] text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-blue-600 transition-all"
+                className="bg-slate-900 text-white px-4 py-3 rounded-lg text-xs font-bold transition-all hover:bg-slate-800 flex items-center gap-1.5 shadow-sm"
               >
-                <Plus size={14} className="inline mr-1" /> New Project
+                <Plus size={14} /> Create New Project
               </button>
             </div>
 
-            <div className="bg-white rounded-3xl border border-slate-200/60 shadow-xl overflow-hidden">
-  {projects.length > 0 ? (
-    <table className="w-full text-left border-collapse">
-      <thead className="bg-slate-50 border-b border-slate-100">
-        <tr>
-          <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Project Name</th>
-          <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Location</th>
-          <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Budget</th>
-          <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {projects.map((proj,index) => (
-          <tr key={proj.id || index} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-            <td className="p-5 text-sm font-bold text-slate-800">{proj.projectName}</td>
-            <td className="p-5 text-xs text-slate-500 font-medium">{proj.location}</td>
-            <td className="p-5 text-xs font-black text-blue-600">
-              ${proj.projectBudget?.toLocaleString()}
-            </td>
-            <td className="p-5 text-right">
-              <button className="p-2 hover:bg-white rounded-lg transition-all shadow-sm">
-                <MoreVertical size={14} className="text-slate-400" />
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  ) : (
-    <div className="p-20 text-center">
-       <p className="text-slate-400 text-xs font-bold uppercase italic">No industrial assets found in database.</p>
-    </div>
-  )}
-</div>
+            {/* Global Reusable Table Call */}
+            {isLoading ? (
+              <Loader message="Loading system data..." />
+            ) : (
+              <Table 
+                columns={tableColumns} 
+                data={projects} 
+                searchPlaceholder="Filter project records..." 
+              />
+            )}
           </motion.div>
         ) : (
           <motion.div 
-            key="create" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+            key="create" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="max-w-[800px] mx-auto"
           >
             <button 
               onClick={() => setView('list')}
-              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-black mb-6 transition-colors"
+              className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 mb-6 transition-colors"
             >
-              <ArrowLeft size={14} /> Return to Portfolio
+              <ArrowLeft size={14} /> Return to Directory
             </button>
 
-            <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden">
-              <div className="p-10 border-b border-slate-50 bg-slate-50/30">
-                <h2 className="text-xl font-black uppercase italic tracking-tighter">Project Initialization</h2>
-                <p className="text-[11px] text-slate-400 font-bold uppercase mt-1">Fill in the technical specifications below</p>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-200 bg-slate-50">
+                <h2 className="text-base font-bold text-slate-900 uppercase">Project Initialization</h2>
+                <p className="text-xs text-slate-500 mt-1 font-medium">Input specifications to establish a new managed system project record.</p>
               </div>
 
-              <form onSubmit={handleCreate} className="p-10 space-y-8">
-                <div className="grid grid-cols-2 gap-6">
+              <form onSubmit={handleCreate} className="p-8 space-y-6">
+                <div className="grid grid-cols-2 gap-5">
                   <InputGroup 
-                    label="Project Identity" name="projectName" placeholder="e.g. Neo-Industrial Hub" 
-                    icon={<Briefcase size={14}/>} value={formData.projectName} onChange={handleInputChange} 
+                    label="Project Name" name="projectName" placeholder="e.g. ASTU Lab Infrastructure Expansion" 
+                    icon={<Briefcase size={13}/>} value={formData.projectName} onChange={handleInputChange} 
                   />
                   <InputGroup 
-                    label="Geographic Location" name="location" placeholder="City, Country" 
-                    icon={<MapPin size={14}/>} value={formData.location} onChange={handleInputChange} 
+                    label="Geographic Location" name="location" placeholder="e.g. Adama" 
+                    icon={<MapPin size={13}/>} value={formData.location} onChange={handleInputChange} 
                   />
                   <InputGroup 
-                    label="Lead Client" name="clientName" placeholder="Corporation Name" 
-                    icon={<User size={14}/>} value={formData.clientName} onChange={handleInputChange} 
+                    label="Lead Client Organization" name="clientName" placeholder="e.g. ASTU Administration" 
+                    icon={<User size={13}/>} value={formData.clientName} onChange={handleInputChange} 
                   />
                   <InputGroup 
-                    label="Allocated Budget" name="projectBudget" type="number" placeholder="0.00" 
-                    icon={<DollarSign size={14}/>} value={formData.projectBudget} onChange={handleInputChange} 
+                    label="Allocated Funding Budget" name="projectBudget" type="number" placeholder="0.00" 
+                    icon={<DollarSign size={13}/>} value={formData.projectBudget} onChange={handleInputChange} 
                   />
                   <InputGroup 
-                    label="Commencement" name="startDate" type="date" 
-                    icon={<Calendar size={14}/>} value={formData.startDate} onChange={handleInputChange} 
+                    label="Commencement Date" name="startDate" type="date" 
+                    icon={<Calendar size={13}/>} value={formData.startDate} onChange={handleInputChange} 
                   />
                   <InputGroup 
-                    label="Target Completion" name="endDate" type="date" 
-                    icon={<Calendar size={14}/>} value={formData.endDate} onChange={handleInputChange} 
+                    label="Target Completion Date" name="endDate" type="date" 
+                    icon={<Calendar size={13}/>} value={formData.endDate} onChange={handleInputChange} 
                   />
                 </div>
 
-                <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 flex items-center gap-3">
-                  <div className="p-2 bg-white rounded-lg shadow-sm text-blue-600"><AlertCircle size={16}/></div>
-                  <p className="text-[10px] font-bold text-blue-800 uppercase tracking-tight">System will perform automatic fiscal risk assessment upon submission.</p>
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 flex items-center gap-3">
+                  <AlertCircle size={15} className="text-slate-500 shrink-0" />
+                  <p className="text-[11px] font-medium text-slate-600">The system record will process initial parameter entries into active states automatically.</p>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <button type="button" onClick={() => setView('list')} className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-50">Cancel</button>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button type="button" onClick={() => setView('list')} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
                   <button 
                     type="submit" disabled={isLoading}
-                    className="bg-[#111827] text-white px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-50"
+                    className="bg-slate-900 text-white px-6 py-2 rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5 hover:bg-slate-800 transition-all disabled:opacity-50"
                   >
-                    {isLoading ? <Loader2 size={14} className="animate-spin" /> : "Initialize Site"}
-                    <ChevronRight size={14} />
+                    {isLoading ? <Loader2 size={13} className="animate-spin" /> : "Save Project"}
                   </button>
                 </div>
               </form>
@@ -241,10 +272,10 @@ export default function ProjectPortfolio() {
 
 function InputGroup({ label, placeholder, icon, type = "text", name, value, onChange }) {
   return (
-    <div className="space-y-2 text-left">
-      <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">{label}</label>
+    <div className="space-y-1.5 text-left">
+      <label className="text-xs font-semibold text-slate-600">{label}</label>
       <div className="relative group">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-600 transition-colors">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-700 transition-colors">
           {icon}
         </div>
         <input 
@@ -254,7 +285,7 @@ function InputGroup({ label, placeholder, icon, type = "text", name, value, onCh
           onChange={onChange}
           type={type} 
           placeholder={placeholder}
-          className="w-full bg-slate-50 border border-slate-200/60 rounded-xl pl-10 pr-4 py-2.5 text-[11px] font-bold outline-none focus:bg-white focus:border-blue-600 transition-all placeholder:text-slate-300"
+          className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-xs font-medium text-slate-800 outline-none focus:border-slate-400 focus:ring-1 focus:ring-slate-400 transition-all placeholder:text-slate-300"
         />
       </div>
     </div>

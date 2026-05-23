@@ -22,6 +22,7 @@ const menuItems = [
   { icon: <Bell size={16} />, label: 'Settings', path: '/projectManager/settings' },
 ];
 
+
 export default function ProjectManagerSideBar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -47,7 +48,7 @@ export default function ProjectManagerSideBar() {
       </button>
 
       <motion.aside 
-        animate={{ width: isCollapsed ? 84 : 288 }}
+        animate={{ width: isCollapsed ? 84 : 255 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="bg-[#070912] text-slate-400 flex flex-col h-full border-r border-white/5 overflow-hidden"
       >

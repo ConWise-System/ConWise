@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }) {
 
               {/* NOTIFICATION BELL */}
               <button 
-                onClick={() => router.push('/notifications')} 
+                onClick={() => router.push('/supervisor/Notification')} 
                 className="p-3 bg-white text-slate-500 hover:text-slate-900 rounded-2xl shadow-sm border border-slate-200 relative transition-all active:scale-95"
               >
                 <Bell size={20} />
