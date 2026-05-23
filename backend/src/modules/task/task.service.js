@@ -1,5 +1,6 @@
 // src/modules/task/task.service.js
 import prisma from "../../config/prisma.js";
+import * as notificationService from "../notification/notification.service.js";
 
 const calculateDaysRemaining = (dueDate) => {
   if (!dueDate) return 0;
@@ -16,34 +17,55 @@ const withDaysRemaining = (task) => ({
 });
 
 export const taskService = {
-    createTask: async (data) => {
-        const { materials, ...taskData } = data ?? {};
-        const materialIds = materials?.length
-            ? [...new Set(materials.map((id) => Number(id)))]
-            : [];
+  createTask: async (data) => {
+    const { materials, ...taskData } = data ?? {};
+    const materialIds = materials?.length
+      ? [...new Set(materials.map((id) => Number(id)))]
+      : [];
 
-        const task = await prisma.$transaction(async (tx) => {
-          const createdTask = await tx.task.create({
-            data: {
-              ...taskData,
+    const task = await prisma.$transaction(async (tx) => {
+      const createdTask = await tx.task.create({
+        data: {
+          ...taskData,
+        },
+        include: {
+          project: {
+            select: {
+              projectName: true,
             },
-          });
+          },
+        },
+      });
 
-          if (materialIds.length) {
-            const updated = await tx.materialUsed.updateMany({
-              where: { id: { in: materialIds } },
-              data: { taskId: createdTask.id },
-            });
-
-            if (updated.count !== materialIds.length) {
-              throw new Error("One or more material IDs were not found.");
-            }
-          }
-
-          return createdTask;
+      if (materialIds.length) {
+        const updated = await tx.materialUsed.updateMany({
+          where: { id: { in: materialIds } },
+          data: { taskId: createdTask.id },
         });
-        return withDaysRemaining(task);
-    },
+
+        if (updated.count !== materialIds.length) {
+          throw new Error("One or more material IDs were not found.");
+        }
+      }
+
+      return createdTask;
+    });
+
+    // sendnotification to site engineer
+    try {
+      await notificationService.createNotification({
+        recipientUserId: task.assigneeUserId,
+        notificationTitle: "New Task Assigned",
+        notificationDescription: `You have been assigned to: ${task.taskTitle} in project ${task.project?.projectName}`,
+        relatedEntityType: "TASK",
+        relatedEntityId: task.id,
+      });
+    } catch (err) {
+      console.error("Notification failed in task service", err.message);
+    }
+
+    return withDaysRemaining(task);
+  },
 
   getTasksByProject: async (projectId) => {
     const id = parseInt(projectId);
@@ -75,46 +97,72 @@ export const taskService = {
     return tasks.map(withDaysRemaining);
   },
 
+  getTasksByAssignee: async (userId) => {
+    const tasks = await prisma.task.findMany({
+      where: { assigneeUserId: parseInt(userId) },
+      include: {
+        project: { select: { id: true, projectName: true, status: true } },
+        taskProgress: true,
+        assignee: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+
+    return tasks.map(withDaysRemaining);
+  },
+
   updateTaskStatus: async (id, status) => {
     const task = await prisma.task.update({
       where: { id: parseInt(id) },
       data: { taskStatus: status },
     });
+
+    // send notification
+    try {
+      await notificationService.createNotification({
+        recipientUserId: task.assigneeUserId,
+        notificationTitle: "Task Status Updated",
+        notificationDescription: `The status of your task "${task.taskTitle}" has been updated to "${status}".`,
+        relatedEntityType: "TASK",
+        relatedEntityId: task.id,
+      });
+    } catch (error) {
+      console.error("Failed to send notification:", error);
+    }
     return withDaysRemaining(task);
   },
 
-    updateTask: async (id, data) => {
-        const { materials, ...taskData } = data ?? {};
-        const taskId = Number(id);
-        const materialIds = materials?.length
-            ? [...new Set(materials.map((materialId) => Number(materialId)))]
-            : [];
+  updateTask: async (id, data) => {
+    const { materials, ...taskData } = data ?? {};
+    const taskId = Number(id);
+    const materialIds = materials?.length
+      ? [...new Set(materials.map((materialId) => Number(materialId)))]
+      : [];
 
-        const task = await prisma.$transaction(async (tx) => {
-          const updatedTask = await tx.task.update({
-            where: { id: taskId },
-            data: {
-              ...taskData,
-            }
+    const task = await prisma.$transaction(async (tx) => {
+      const updatedTask = await tx.task.update({
+        where: { id: taskId },
+        data: {
+          ...taskData,
+        },
+      });
+
+      if (materials) {
+        if (materialIds.length) {
+          const updated = await tx.materialUsed.updateMany({
+            where: { id: { in: materialIds } },
+            data: { taskId },
           });
 
-          if (materials) {
-            if (materialIds.length) {
-              const updated = await tx.materialUsed.updateMany({
-                where: { id: { in: materialIds } },
-                data: { taskId },
-              });
-
-              if (updated.count !== materialIds.length) {
-                throw new Error("One or more material IDs were not found.");
-              }
-            }
+          if (updated.count !== materialIds.length) {
+            throw new Error("One or more material IDs were not found.");
           }
+        }
+      }
 
-          return updatedTask;
-        });
-        return withDaysRemaining(task);
-    },
+      return updatedTask;
+    });
+    return withDaysRemaining(task);
+  },
 
   deleteTask: async (id) => {
     return prisma.task.delete({ where: { id: parseInt(id) } });
@@ -126,6 +174,19 @@ export const taskService = {
       where: { id: parseInt(taskId) },
       data: { assigneeUserId: parseInt(userId) },
     });
+
+    try {
+      await notificationService.createNotification({
+        recipientUserId: task.assigneeUserId,
+        notificationTitle: "New Task Assignment",
+        notificationDescription: `You have been assigned to: ${task.taskTitle}`,
+        relatedEntityType: "TASK",
+        relatedEntityId: task.id,
+      });
+    } catch (err) {
+      console.error("Notification failed in task service:", err.message);
+    }
+
     return withDaysRemaining(task);
   },
 
@@ -133,7 +194,28 @@ export const taskService = {
     const task = await prisma.task.update({
       where: { id: parseInt(taskId) },
       data: { taskStatus: "DONE" },
+      include: {
+        project: {
+          select: {
+            projectName: true,
+            ownerUserId: true,
+          },
+        },
+      },
     });
+
+    try {
+      await notificationService.createNotification({
+        recipientUserId: task.project.ownerUserId,
+        notificationTitle: "Task Submitted",
+        notificationDescription: `A task in ${task.project.projectName} is waiting for your review.`,
+        relatedEntityType: "TASK",
+        relatedEntityId: task.id,
+      });
+    } catch (err) {
+      console.error("Notification failed in task service:", err.message);
+    }
+
     return withDaysRemaining(task);
   },
 };

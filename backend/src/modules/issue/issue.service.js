@@ -1,6 +1,7 @@
 // src/modules/issue/issue.service.js
 import prisma from "../../config/prisma.js";
 import { ROLES } from "../../config/constants.js";
+import * as notificationService from "../notification/notification.service.js";
 
 // ─── State machine: valid transitions ────────────────────────────────────────
 // OPEN → IN_PROGRESS → RESOLVED → CLOSED
@@ -68,16 +69,16 @@ export const issueService = {
     }
 
     // Verify project belongs to this company
-    const project = await prisma.project.findFirst({
+    const projectCheck = await prisma.project.findFirst({
       where: { id: projectId, companyId },
     });
-    if (!project) {
+    if (!projectCheck) {
       const err = new Error("Project not found or access denied");
       err.statusCode = 404;
       throw err;
     }
 
-    // If linking to a task, verify task belongs to this project
+    // Verification for blocked task...
     if (data.blockedTaskId) {
       const task = await prisma.task.findFirst({
         where: { id: data.blockedTaskId, projectId },
@@ -89,7 +90,8 @@ export const issueService = {
       }
     }
 
-    return prisma.$transaction(async (tx) => {
+    // 1. Capture the result of the transaction
+    const newIssue = await prisma.$transaction(async (tx) => {
       const issue = await tx.issue.create({
         data: {
           companyId,
@@ -107,7 +109,13 @@ export const issueService = {
           reporter: {
             select: { id: true, firstName: true, lastName: true, role: true },
           },
-          project: { select: { id: true, projectName: true } },
+          project: {
+            select: {
+              id: true,
+              projectName: true,
+              ownerUserId: true, // CRITICAL: Need this for notification recipient
+            },
+          },
         },
       });
 
@@ -121,8 +129,25 @@ export const issueService = {
 
       return issue;
     });
-  },
 
+    // 2. Notify Project Manager (Now outside the transaction and before the final return)
+    try {
+      if (newIssue.project?.ownerUserId) {
+        await notificationService.createNotification({
+          recipientUserId: newIssue.project?.ownerUserId,
+          notificationTitle: "🚨 New Issue Reported",
+          notificationDescription: `${newIssue.reporter.firstName} reported: "${newIssue.title}" in ${newIssue.project.projectName}`,
+          relatedEntityType: "ISSUE",
+          relatedEntityId: newIssue.id,
+        });
+      }
+    } catch (err) {
+      console.error("Notification failed in createIssue:", err.message);
+    }
+
+    // 3. Final return
+    return newIssue;
+  },
   // ── List issues (paginated + filtered) ─────────────────────────────────────
   listIssues: async ({ projectId, companyId, userRole, userId, query }) => {
     const page = Math.max(1, parseInt(query.page) || 1);
@@ -171,6 +196,31 @@ export const issueService = {
       data: issues,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
+  },
+
+  getIssueByAssignee: async (userId) => {
+    // Added return so the data is sent to the controller
+    return await prisma.issue.findMany({
+      where: {
+        blockedTask: {
+          assigneeUserId: parseInt(userId), // Ensure userId is an integer
+        },
+      },
+      include: {
+        reporter: {
+          select: { firstName: true, lastName: true },
+        },
+        project: {
+          select: { projectName: true },
+        },
+        blockedTask: {
+          select: { taskTitle: true, taskStatus: true },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
   },
 
   // ── Get single issue with audit trail ──────────────────────────────────────
@@ -313,6 +363,7 @@ export const issueService = {
     assigneeId,
     note,
   }) => {
+    // 1. Validations (Permission & Existence)
     if (!CAN_ASSIGN.includes(userRole)) {
       const err = new Error("You do not have permission to assign issues");
       err.statusCode = 403;
@@ -335,7 +386,6 @@ export const issueService = {
       throw err;
     }
 
-    // Verify assignee exists in same company
     const assignee = await prisma.user.findFirst({
       where: { id: assigneeId, companyId },
       select: { id: true, firstName: true, lastName: true, role: true },
@@ -347,28 +397,51 @@ export const issueService = {
       throw err;
     }
 
-    return prisma.$transaction(async (tx) => {
-      const previousAssigneeId = issue.assigneeId;
+    // 2. Transaction: Save the result to a variable instead of returning it immediately
+    const transactionResult = await prisma.$transaction(
+      async (tx) => {
+        const previousAssigneeId = issue.assigneeId;
 
-      const updated = await tx.issue.update({
-        where: { id: issueId },
-        data: { assigneeId, updatedAt: new Date() },
-        include: {
-          assignee: { select: { id: true, firstName: true, lastName: true } },
-        },
+        const updated = await tx.issue.update({
+          where: { id: issueId },
+          data: { assigneeId, updatedAt: new Date() },
+          include: {
+            assignee: { select: { id: true, firstName: true, lastName: true } },
+          },
+        });
+
+        await writeAuditLog(tx, {
+          issueId,
+          actorId,
+          action: "ASSIGNED",
+          fromValue: previousAssigneeId ? String(previousAssigneeId) : null,
+          toValue: String(assigneeId),
+          note: note ?? null,
+        });
+
+        return updated; // This return only exits the transaction block
+      },
+      {
+        timeout: 15000, // Extended timeout for Neon database connections
+      },
+    );
+
+    // 3. Notification: Now outside the transaction and reachable!
+    try {
+      await notificationService.createNotification({
+        recipientUserId: assigneeId,
+        notificationTitle: "🚨 Issue Assigned",
+        notificationDescription: `You have been assigned to issue "${transactionResult.title}"`,
+        relatedEntityType: "ISSUE",
+        relatedEntityId: issueId,
       });
+    } catch (error) {
+      // We catch this so the API doesn't fail even if the notification server is slow
+      console.error("Notification failed in assignIssue:", error.message);
+    }
 
-      await writeAuditLog(tx, {
-        issueId,
-        actorId,
-        action: "ASSIGNED",
-        fromValue: previousAssigneeId ? String(previousAssigneeId) : null,
-        toValue: String(assigneeId),
-        note: note ?? null,
-      });
-
-      return { issue: updated, assignee };
-    });
+    // 4. Final Return for the entire function
+    return { issue: transactionResult, assignee };
   },
 
   // ── Update status (state machine enforced) ──────────────────────────────────
@@ -413,32 +486,72 @@ export const issueService = {
     const timestamps = {};
     if (newStatus === "RESOLVED") timestamps.resolvedAt = now;
     if (newStatus === "CLOSED") timestamps.closedAt = now;
-    // Re-opening clears resolved timestamp
     if (newStatus === "IN_PROGRESS" && issue.status === "RESOLVED") {
       timestamps.resolvedAt = null;
     }
 
-    return prisma.$transaction(async (tx) => {
-      const updated = await tx.issue.update({
-        where: { id: issueId },
-        data: { status: newStatus, ...timestamps, updatedAt: now },
-        include: {
-          assignee: { select: { id: true, firstName: true, lastName: true } },
-          reporter: { select: { id: true, firstName: true, lastName: true } },
-        },
-      });
+    // 1. Capture the transaction result
+    const updatedIssue = await prisma.$transaction(
+      async (tx) => {
+        const updated = await tx.issue.update({
+          where: { id: issueId },
+          data: { status: newStatus, ...timestamps, updatedAt: now },
+          include: {
+            assignee: { select: { id: true, firstName: true, lastName: true } },
+            reporter: { select: { id: true, firstName: true, lastName: true } },
+            project: { select: { projectName: true, ownerUserId: true } }, // Include project info for the noti
+          },
+        });
 
-      await writeAuditLog(tx, {
-        issueId,
-        actorId,
-        action: "STATUS_CHANGED",
-        fromValue: issue.status,
-        toValue: newStatus,
-        note: note ?? null,
-      });
+        await writeAuditLog(tx, {
+          issueId,
+          actorId,
+          action: "STATUS_CHANGED",
+          fromValue: issue.status,
+          toValue: newStatus,
+          note: note ?? null,
+        });
 
-      return updated;
-    });
+        return updated;
+      },
+      {
+        timeout: 15000, // Handling potential Neon latency
+      },
+    );
+
+    // 2. Send notification to relevant parties
+    try {
+      const recipients = new Set();
+
+      // Use ?. to prevent "Cannot read properties of null" if assignee is null
+      const reporterId = updatedIssue.reporter?.id;
+      const assigneeId = updatedIssue.assignee?.id;
+
+      if (reporterId && reporterId !== actorId) {
+        recipients.add(reporterId);
+      }
+
+      // Only add if assigneeId exists (is not null)
+      if (assigneeId && assigneeId !== actorId) {
+        recipients.add(assigneeId);
+      }
+
+      for (const recipientId of recipients) {
+        await notificationService.createNotification({
+          recipientUserId: recipientId,
+          notificationTitle: "🔄 Issue Status Updated",
+          notificationDescription: `Issue "${updatedIssue.title}" changed from ${issue.status} to ${newStatus} in project ${updatedIssue.project.projectName}`,
+          relatedEntityType: "ISSUE",
+          relatedEntityId: issueId,
+        });
+      }
+    } catch (error) {
+      // This catch now correctly handles any remaining notification issues
+      console.error("Notification failed in updateStatus:", error.message);
+    }
+
+    // 3. Final return
+    return updatedIssue;
   },
 
   // ── Get audit trail only ────────────────────────────────────────────────────

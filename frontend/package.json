@@ -8,15 +8,22 @@
     "start": "next start"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.100.10",
     "axios": "^1.15.0",
+    "cloudinary": "^2.10.0",
     "emoji-picker-react": "^4.18.0",
     "framer-motion": "^12.38.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-hot-toast": "^2.6.0",
     "react-is": "^19.2.4",
-    "recharts": "^3.8.0"
+    "react-toast": "^1.0.3",
+    "recharts": "^3.8.0",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

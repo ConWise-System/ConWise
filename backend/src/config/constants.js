@@ -68,10 +68,10 @@ export const TOKEN_TYPES = {
 
 export const DASHBOARD_BY_ROLE = {
   [ROLES.PLATFORM_ADMIN]: "/platform/dashboard",
-  [ROLES.COMPANY_ADMIN]: "/company/dashboard",
-  [ROLES.PROJECT_MANAGER]: "/manager/dashboard",
-  [ROLES.SITE_ENGINEER]: "/site-engineer/dashboard",
-  [ROLES.SITE_SUPERVISOR]: "/site-supervisor/dashboard",
+  [ROLES.COMPANY_ADMIN]: "/admin/dashboardHome",
+  [ROLES.PROJECT_MANAGER]: "/projectManager/Home",
+  [ROLES.SITE_ENGINEER]: "/siteEngineer/dashboardHome",
+  [ROLES.SITE_SUPERVISOR]: "/supervisor/Home",
 };
 
 export const PUBLIC_AUTH_ROUTES = [

@@ -1,4 +1,5 @@
 import { UserProvider } from '../context/UserContext';
+import { NotificationProvider } from '../context/NotificationContext';
 import "./globals.css";
 import { Inter } from "next/font/google";
 
@@ -8,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Horizon Executive Terminal",
+  title: "ConWise Admin Dashboard",
   description: "Sovereign Executive Dashboard",
   icons: {
     icon: [],
@@ -23,7 +24,9 @@ export default function RootLayout({ children }) {
       </head>
       <body className="antialiased selection:bg-slate-900 selection:text-white">
         <UserProvider>
+          <NotificationProvider>
           {children}
+          </NotificationProvider>
         </UserProvider>
       </body>
     </html>

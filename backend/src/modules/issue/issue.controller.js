@@ -119,6 +119,16 @@ export const issueController = {
     }
   },
 
+  getIssueByAssignee: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const issues = await issueService.getIssueByAssignee(userId);
+      return res.status(200).json({ success: true, data: issues });
+    } catch (error) {
+      return handleError(res, error, "getIssueByAssignee");
+    }
+  },
+
   /**
    * @swagger
    * /api/projects/{projectId}/issues/{issueId}:

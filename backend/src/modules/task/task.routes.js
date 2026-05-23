@@ -1,7 +1,12 @@
-import express from 'express';
-import { taskController } from './task.controller.js';
-import { validateBody, createTaskSchema, updateTaskStatusSchema, updateTaskSchema } from './task.validation.js';
-import authenticate from '../../middlewares/auth.middleware.js';
+import express from "express";
+import { taskController } from "./task.controller.js";
+import {
+  validateBody,
+  createTaskSchema,
+  updateTaskStatusSchema,
+  updateTaskSchema,
+} from "./task.validation.js";
+import authenticate from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
@@ -37,7 +42,11 @@ router.use(authenticate);
  *       500:
  *         description: Internal server error
  */
-router.post('/tasks', validateBody(createTaskSchema), taskController.createTask);
+router.post(
+  "/tasks",
+  validateBody(createTaskSchema),
+  taskController.createTask,
+);
 
 /**
  * @swagger
@@ -70,7 +79,9 @@ router.post('/tasks', validateBody(createTaskSchema), taskController.createTask)
  *       500:
  *         description: Internal server error
  */
-router.get('/projects/:projectId/tasks', taskController.getTasksByProject);
+router.get("/projects/:projectId/tasks", taskController.getTasksByProject);
+
+router.get("/assignee/tasks", taskController.getTasksByAssignee);
 
 /**
  * @swagger
@@ -104,7 +115,11 @@ router.get('/projects/:projectId/tasks', taskController.getTasksByProject);
  *       500:
  *         description: Internal server error
  */
-router.patch('/tasks/:id/status', validateBody(updateTaskStatusSchema), taskController.updateTaskStatus);
+router.patch(
+  "/tasks/:id/status",
+  validateBody(updateTaskStatusSchema),
+  taskController.updateTaskStatus,
+);
 
 /**
  * @swagger
@@ -163,9 +178,13 @@ router.patch('/tasks/:id/status', validateBody(updateTaskStatusSchema), taskCont
  *       500:
  *         description: Internal server error
  */
-router.patch('/tasks/:id', validateBody(updateTaskSchema), taskController.updateTask);
+router.patch(
+  "/tasks/:id",
+  validateBody(updateTaskSchema),
+  taskController.updateTask,
+);
 
-router.delete('/tasks/:id', taskController.deleteTask);
+router.delete("/tasks/:id", taskController.deleteTask);
 
 /**
  * @swagger
@@ -196,7 +215,7 @@ router.delete('/tasks/:id', taskController.deleteTask);
  *       500:
  *         description: Internal server error
  */
-router.patch('/tasks/:id/assign/:userId', taskController.assignTask);
+router.patch("/tasks/:id/assign/:userId", taskController.assignTask);
 
 /**
  * @swagger
@@ -225,6 +244,6 @@ router.patch('/tasks/:id/assign/:userId', taskController.assignTask);
  *       500:
  *         description: Internal server error
  */
-router.patch('/tasks/:id/submit', taskController.submitTask);
+router.patch("/tasks/:id/submit", taskController.submitTask);
 
 export default router;

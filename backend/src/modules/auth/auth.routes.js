@@ -4,6 +4,8 @@ import authController from "./auth.controller.js";
 import validate from "../../middlewares/validate.middleware.js";
 import authenticate from "../../middlewares/auth.middleware.js";
 import authorizeRoles from "../../middlewares/role.middleware.js";
+import { googleLogin, googleCallback } from "./auth.google.controller.js";
+
 
 import {
   registerCompanySchema,
@@ -113,6 +115,12 @@ router.post("/login", validate(loginSchema), authController.login);
  *             schema:
  *               $ref: '#/components/schemas/VerifyAccountResponse'
  */
+
+// GET /api/auth/google
+router.get("/google", googleLogin);
+// GET /api/auth/google/callback
+router.get("/google/callback", googleCallback);
+
 router.post(
   "/verify-account",
   validate(verifyAccountSchema),
@@ -301,7 +309,7 @@ router.post(
  */
 router.get(
   "/users",
-  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN),
+  authorizeRoles(ROLES.COMPANY_ADMIN, ROLES.PLATFORM_ADMIN,ROLES.SITE_ENGINEER, ROLES.SITE_SUPERVISOR, ROLES.PROJECT_MANAGER),
   validate(companyUsersQuerySchema, "query"),
   authController.listCompanyUsers,
 );

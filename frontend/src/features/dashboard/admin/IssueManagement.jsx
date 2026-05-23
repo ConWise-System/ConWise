@@ -78,7 +78,7 @@ function IssueList({ issues, onReportClick, onDelete, onResolve }) {
           <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-blue-600 mb-1">
             <span>Operations</span> <ChevronRight size={10} strokeWidth={3} /> <span className="text-slate-400">Audit Trail</span>
           </nav>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">Issue <span className="text-slate-400 italic font-medium tracking-normal">Log</span></h1>
+          <h1 className="text-2xl tracking-tight text-slate-900 uppercase">Issue Log</h1>
         </div>
         
         <div className="flex items-center gap-3 w-full md:w-auto">
