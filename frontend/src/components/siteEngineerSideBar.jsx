@@ -61,7 +61,7 @@ export default function SiteEngineerSideBar() {
                 className="flex flex-col whitespace-nowrap"
               >
                 <h1 className="text-base font-black text-white tracking-tighter leading-none">ConWise</h1>
-                <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">Admin</p>
+                <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em] mt-1">Site Engineer</p>
               </motion.div>
             )}
           </div>
