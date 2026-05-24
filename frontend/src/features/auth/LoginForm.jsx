@@ -178,7 +178,7 @@ export default function LoginForm() {
             whileHover={{ scale: 1.005 }}
             whileTap={{ scale: 0.995 }}
             disabled={isSubmitting}
-            className="btn btn-primary w-full py-3.5 gap-2 shadow-sm transition-all group overflow-hidden disabled:opacity-50"
+            className="btn bg-slate-900 w-full py-3.5 gap-2 text-white shadow-sm transition-all group overflow-hidden disabled:opacity-50"
           >
             <AnimatePresence mode="wait">
               {isSubmitting ? (
@@ -198,9 +198,9 @@ export default function LoginForm() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex items-center gap-1.5"
+                  className="flex items-center  gap-1.5"
                 >
-                  <span className="text-xs font-semibold tracking-wide">Sign In</span>
+                  <span className="text-xs font-semibold tracking-wide ">Sign In</span>
                   <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                 </motion.div>
               )}

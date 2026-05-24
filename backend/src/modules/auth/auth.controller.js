@@ -36,27 +36,37 @@
   };
 
   const login = async (req, res) => {
-    try {
-      const result = await authService.loginUser(req.body, {
-        ipAddress: req.ip,
-        userAgent: req.get("user-agent"),
-      });
+  try {
+    const result = await authService.loginUser(req.body, {
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+    });
 
-      return res.status(200).json({
-        success: true,
-        message: result.message,
-        data: {
-          accessToken: result.accessToken,
-          refreshToken: result.refreshToken,
-          refreshTokenExpiresAt: result.refreshTokenExpiresAt,
-          user: result.user,
-          redirectTo: result.redirectTo,
-        },
+    return res.status(200).json({
+      success: false, // Matches your common frontend validation schemas
+      success: true,
+      message: result.message,
+      data: {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        refreshTokenExpiresAt: result.refreshTokenExpiresAt,
+        user: result.user,
+        redirectTo: result.redirectTo,
+      },
+    });
+  } catch (error) {
+    // Intercept expected custom authentication or validation errors
+    if (error.statusCode === 401 || error.isOperational) {
+      return res.status(error.statusCode || 401).json({
+        success: false,
+        message: error.message || "Invalid email or password.",
       });
-    } catch (error) {
-      return handleError(res, error, "login");
     }
-  };
+    
+    // Fall back to your default logger for real unhandled exceptions (e.g. Database down)
+    return handleError(res, error, "login");
+  }
+};
 
   
 

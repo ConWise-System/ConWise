@@ -2,11 +2,10 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, Building2, Mail, Lock, ArrowRight, 
-  ShieldCheck, Globe, Phone, MapPin, CheckCircle2,
-  KeyRound, RefreshCcw 
+  ShieldCheck, Globe, Phone, MapPin, KeyRound 
 } from 'lucide-react';
 import Axios from '../../../utils/Axios'; 
 import summeryApi from '../../common/summeryApi';
@@ -31,27 +30,6 @@ const SignUpPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // --- MAGNETIC TILT LOGIC ---
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const mouseXSpring = useSpring(x);
-  const mouseYSpring = useSpring(y);
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["7deg", "-7deg"]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-7deg", "7deg"]);
-
-  const handleMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const xPct = (e.clientX - rect.left) / rect.width - 0.5;
-    const yPct = (e.clientY - rect.top) / rect.height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
-
   // --- API INTEGRATION: REGISTER ---
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,7 +49,6 @@ const SignUpPage = () => {
       });
       
       if (response.data.success) {
-        // We keep the email in formData state to use in the next step
         setStep(2); 
       }
     } catch (err) {
@@ -93,7 +70,6 @@ const SignUpPage = () => {
       const response = await Axios({
         ...summeryApi.verifyAccount,
         data: {
-          // email: formData.email, // Passing email silently to identify the user
           code: verificationCode
         }
       });
@@ -114,166 +90,203 @@ const SignUpPage = () => {
     newOtp[index] = element.value;
     setOtp(newOtp);
     
-    // Auto-focus logic
     if (element.nextSibling && element.value !== "") {
       element.nextSibling.focus();
     }
   };
 
-  const containerVars = {
-    hidden: { opacity: 0, y: 60, scale: 0.95 },
-    visible: { 
-      opacity: 1, y: 0, scale: 1,
-      transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1], staggerChildren: 0.08, delayChildren: 0.2 }
-    }
-  };
-
-  const itemVars = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
-
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center py-16 px-4 relative overflow-x-hidden">
+    <div className="w-full h-screen max-h-screen bg-[#F8FAFC] flex flex-col items-center justify-between p-4 md:p-5 text-slate-900 font-sans antialiased overflow-hidden select-none">
       
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <motion.div animate={{ x: [0, 30, 0], y: [0, -30, 0], scale: [1, 1.1, 1] }} transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] bg-blue-100/40 rounded-full blur-[120px]" />
-      </div>
-
-      <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="z-10 flex flex-col items-center gap-3 mb-8">
-        <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
-          <Globe size={24} className="text-slate-900" />
+      {/* Top Professional Header */}
+      <header className="w-full max-w-[1100px] flex items-center justify-between border-b border-slate-200 pb-2.5 shrink-0">
+        <div className="flex items-center gap-2">
+          <Globe size={16} className="text-slate-700" />
+          <span className="text-xs font-bold tracking-wider uppercase text-slate-800">ConWise Platform</span>
         </div>
-        <h1 className="text-[10px] font-black tracking-[0.5em] text-slate-400 uppercase">ConWise Executive Terminal</h1>
-      </motion.header>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Corporate Portal</span>
+      </header>
 
-      <motion.div 
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-        variants={containerVars}
-        initial="hidden"
-        animate="visible"
-        className="z-10 w-full max-w-[700px] bg-white/90 backdrop-blur-xl rounded-[2.5rem] border border-white p-8 md:p-12 relative shadow-2xl overflow-hidden"
-      >
-        <AnimatePresence mode="wait">
-          {step === 1 ? (
-            <motion.div key="form" exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.5 }}>
-                <div className="text-center mb-10 relative z-10">
-                    <motion.div variants={itemVars} className="inline-flex items-center gap-2 bg-slate-900 text-white px-3 py-1 rounded-full mb-4 shadow-lg shadow-slate-900/20">
-                        <ShieldCheck size={12} className="animate-pulse" />
-                        <span className="text-[8px] font-bold tracking-widest uppercase">Secured Node Registration</span>
-                    </motion.div>
-                    <motion.h2 variants={itemVars} className="text-4xl font-black text-slate-900 tracking-tighter mb-2">Create Account</motion.h2>
+      {/* Main Container Card Area - Strictly constrained to stop scrolling */}
+      <main className="w-full max-w-[1100px] max-h-[calc(100vh-110px)] bg-white border border-slate-200 rounded-xl shadow-2xs flex flex-col md:flex-row my-auto overflow-hidden shrink-0">
+        
+        {/* Left Side: Premium Construction Visual Panel */}
+        <div 
+          className="hidden md:flex w-5/12 p-8 flex-col justify-between relative text-white bg-cover bg-center border-r border-slate-200 shrink-0"
+          style={{ 
+            backgroundImage: `linear-gradient(to right, rgba(7, 12, 30, 0.6) 5%, rgba(15, 23, 42, 0.5)), url('/image/home.jpg')` 
+          }}
+        >
+          <div className="space-y-4">
+            <span className="px-2.5 py-0.5 bg-white/10 border border-white/20 text-slate-200 text-[9px] font-bold rounded uppercase tracking-wider inline-block backdrop-blur-xs">
+              Onboarding
+            </span>
+            <h2 className="text-2xl font-bold tracking-tight uppercase leading-snug">
+              Register Your Construction Company
+            </h2>
+            <p className="text-xs text-slate-300 leading-relaxed font-medium">
+              Manage your architectural workflows, coordinate physical site operations, generate daily safety or progress reports, and communicate directly with your staff engineers in real-time.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <ShieldCheck size={14} className="text-emerald-500" />
+            <span>Secure Enterprise Data Architecture</span>
+          </div>
+        </div>
+
+        {/* Right Side: Execution Forms Section */}
+        <div className="w-full md:w-7/12 p-6 md:p-8 flex flex-col justify-center bg-white min-h-0 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            {step === 1 ? (
+              <motion.div 
+                key="register-form-step" 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }}
+                className="space-y-4"
+              >
+                <div>
+                  <h3 className="text-lg flex text-center justify-center font-bold uppercase text-slate-900 tracking-tight">Create Account</h3>
+                  <p className="text-[11px] text-slate-500 flex text-center justify-center  mt-0.5 font-medium">Provide registration attributes below to initialize your company.</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
-                    <motion.div variants={itemVars} className="space-y-4">
-                        <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b pb-2 flex justify-between items-center">Company Details</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <InputField label="Company Name" icon={<Building2 size={16}/>} placeholder="ABC Construction" value={formData.companyName} onChange={(val) => setFormData({...formData, companyName: val})} />
-                            <InputField label="Company Email" icon={<Mail size={16}/>} type="email" placeholder="corp@company.com" value={formData.companyEmail} onChange={(val) => setFormData({...formData, companyEmail: val})} />
-                            <InputField label="Company Phone" icon={<Phone size={16}/>} placeholder="+251..." value={formData.companyPhone} onChange={(val) => setFormData({...formData, companyPhone: val})} />
-                            <InputField label="Address" icon={<MapPin size={16}/>} placeholder="Addis Ababa" value={formData.companyAddress} onChange={(val) => setFormData({...formData, companyAddress: val})} />
-                        </div>
-                    </motion.div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Grid Section: Corporate Parameters */}
+                  <div className="space-y-2">
+                    {/* <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block border-b border-slate-100 pb-0.5">
+                      Company Profile Settings
+                    </span> */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <InputField label="Company Name" icon={<Building2 size={13}/>} placeholder="Example Construction Ltd." value={formData.companyName} onChange={(val) => setFormData({...formData, companyName: val})} />
+                      <InputField label="Company Corporate Email" icon={<Mail size={13}/>} type="email" placeholder="corporate@company.com" value={formData.companyEmail} onChange={(val) => setFormData({...formData, companyEmail: val})} />
+                      <InputField label="Company Contact Line" icon={<Phone size={13}/>} placeholder="+251..." value={formData.companyPhone} onChange={(val) => setFormData({...formData, companyPhone: val})} />
+                      <InputField label="HQ Physical Address" icon={<MapPin size={13}/>} placeholder="Addis Ababa, Ethiopia" value={formData.companyAddress} onChange={(val) => setFormData({...formData, companyAddress: val})} />
+                    </div>
+                  </div>
 
-                    <motion.div variants={itemVars} className="space-y-4">
-                        <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b pb-2 flex justify-between items-center">Administrator Details</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <InputField label="First Name" icon={<User size={16}/>} placeholder="John" value={formData.firstName} onChange={(val) => setFormData({...formData, firstName: val})} />
-                            <InputField label="Last Name" icon={<User size={16}/>} placeholder="Doe" value={formData.lastName} onChange={(val) => setFormData({...formData, lastName: val})} />
-                            <div className="md:col-span-2">
-                                <InputField label="Admin Email" icon={<Mail size={16}/>} type="email" placeholder="admin@email.com" value={formData.email} onChange={(val) => setFormData({...formData, email: val})} />
-                            </div>
-                            <InputField label="Password" icon={<Lock size={16}/>} type="password" placeholder="••••••••" value={formData.password} onChange={(val) => setFormData({...formData, password: val})} />
-                            <InputField label="Confirm Password" icon={<Lock size={16}/>} type="password" placeholder="••••••••" value={formData.confirmPassword} onChange={(val) => setFormData({...formData, confirmPassword: val})} />
-                        </div>
-                    </motion.div>
+                  {/* Grid Section: Admin Parameters */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block border-b border-slate-100 pb-0.5">
+                      Primary Administrator Credentials
+                    </span>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <InputField label="First Name" icon={<User size={13}/>} placeholder="John" value={formData.firstName} onChange={(val) => setFormData({...formData, firstName: val})} />
+                      <InputField label="Last Name" icon={<User size={13}/>} placeholder="Doe" value={formData.lastName} onChange={(val) => setFormData({...formData, lastName: val})} />
+                      <div className="col-span-2">
+                        <InputField label="Account Access Email" icon={<Mail size={13}/>} type="email" placeholder="admin@domain.com" value={formData.email} onChange={(val) => setFormData({...formData, email: val})} />
+                      </div>
+                      <InputField label="Security Password" icon={<Lock size={13}/>} type="password" placeholder="••••••••" value={formData.password} onChange={(val) => setFormData({...formData, password: val})} />
+                      <InputField label="Verify Password" icon={<Lock size={13}/>} type="password" placeholder="••••••••" value={formData.confirmPassword} onChange={(val) => setFormData({...formData, confirmPassword: val})} />
+                    </div>
+                  </div>
 
-                    {error && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-red-50 border-l-4 border-red-500 p-3 rounded-r-xl">
-                          <p className="text-red-600 text-[10px] font-black uppercase tracking-tighter">{error}</p>
-                      </motion.div>
-                    )}
+                  {/* Operational Status Messages */}
+                  {error && (
+                    <div className="bg-rose-50 border border-rose-200 p-2 rounded-lg">
+                      <p className="text-rose-900 text-[10px] font-bold uppercase tracking-tight">{error}</p>
+                    </div>
+                  )}
 
-                    <motion.button
-                        variants={itemVars}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        disabled={isSubmitting}
-                        className="btn btn-primary w-full py-4 gap-3 disabled:opacity-50"
+                  {/* Redirection Link & Action Button Block */}
+                  <div className="space-y-3 pt-1">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg py-3 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm"
                     >
-                        {isSubmitting ? "Processing Node..." : ( <> Establish Organization <ArrowRight size={16} /> </> )}
-                    </motion.button>
-                </form>
-            </motion.div>
-          ) : (
-            <motion.div key="verify" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="text-center py-10 relative z-10">
-                <div className="flex justify-center mb-6">
-                    <div className="p-4 bg-slate-900 rounded-3xl shadow-xl">
-                        <KeyRound size={32} className="text-white" />
-                    </div>
-                </div>
-                <h2 className="text-3xl font-black text-slate-900 tracking-tighter mb-2 italic">Verify Your Node</h2>
-                <p className="text-slate-400 text-xs font-medium mb-8">
-                    Security code sent to <span className="text-slate-900 font-bold underline italic">{formData.email}</span>
-                </p>
+                      {isSubmitting ? "Compiling System Node..." : ( <> Register Company <ArrowRight size={13} /> </> )}
+                    </button>
 
-                <form onSubmit={handleVerifyOTP} className="space-y-10">
-                    <div className="flex justify-center gap-2">
-                        {otp.map((data, index) => (
-                            <input
-                                key={index}
-                                type="text"
-                                maxLength="1"
-                                className="w-10 h-14 md:w-14 md:h-16 bg-slate-50 border-2 border-slate-100 rounded-2xl text-center text-xl font-black text-slate-900 focus:border-slate-900 outline-none transition-all"
-                                value={data}
-                                onChange={e => handleOtpChange(e.target, index)}
-                                onFocus={e => e.target.select()}
-                                required
-                            />
-                        ))}
-                    </div>
-
-                    <div className="space-y-4">
-                        <motion.button
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.99 }}
-                            disabled={isSubmitting}
-                            className="btn btn-primary w-full py-4 disabled:opacity-50"
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500 font-medium">
+                        Already have an operational account?{' '}
+                        <button
+                          type="button"
+                          onClick={() => router.push('/login')}
+                          className="text-slate-900 font-bold hover:underline bg-transparent border-none outline-none inline p-0 cursor-pointer"
                         >
-                            {isSubmitting ? "Authenticating..." : "Finalize Registration"}
-                        </motion.button>
-
-                        <button 
-                            type="button"
-                            onClick={() => setStep(1)}
-                            className="btn-link"
-                        >
-                            Edit registration details
+                          Sign In Here
                         </button>
+                      </p>
                     </div>
+                  </div>
                 </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="otp-verification-step" 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="text-center max-w-sm mx-auto space-y-5 py-4"
+              >
+                <div className="space-y-1.5">
+                  <div className="w-10 h-10 bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center rounded-lg mx-auto mb-1">
+                    <KeyRound size={16} />
+                  </div>
+                  <h3 className="text-sm font-bold uppercase text-slate-900 tracking-tight">Security Code Verification</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    A confirmation string vector has been distributed to <span className="text-slate-900 font-bold font-mono">{formData.email}</span>
+                  </p>
+                </div>
 
-      <footer className="mt-10 text-[9px] font-black text-slate-400 tracking-[0.3em] uppercase">
-        © 2026 CONWISE GLOBAL // SECURED NODE
+                <form onSubmit={handleVerifyOTP} className="space-y-4">
+                  <div className="flex justify-center gap-2">
+                    {otp.map((data, index) => (
+                      <input
+                        key={index}
+                        type="text"
+                        maxLength="1"
+                        className="w-10 h-12 bg-slate-50 border border-slate-200 rounded-lg text-center text-sm font-bold font-mono text-slate-900 focus:border-slate-400 focus:bg-white outline-none transition-all shadow-2xs"
+                        value={data}
+                        onChange={e => handleOtpChange(e.target, index)}
+                        onFocus={e => e.target.select()}
+                        required
+                      />
+                    ))}
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg py-3 text-xs font-bold uppercase tracking-wider transition-all shadow-sm"
+                    >
+                      {isSubmitting ? "Verifying..." : "Finalize Infrastructure Boot"}
+                    </button>
+
+                    <button 
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="text-[10px] font-bold text-slate-400 hover:text-slate-900 uppercase tracking-wider transition-colors bg-transparent border-none outline-none block mx-auto py-1"
+                    >
+                      Return to configuration parameters
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </main>
+
+      {/* Low-Contrast Dashboard Footer */}
+      <footer className="w-full text-center text-[10px] font-medium text-slate-400 tracking-wide shrink-0 border-t border-slate-200 pt-2.5">
+        System Core Metrics Directory // Authorized Corporate Accounts Only
       </footer>
     </div>
   );
 };
 
+// Isolated Clean Input Utility Subcomponent with custom py-3 parameters
 const InputField = ({ label, icon, placeholder, type = "text", value, onChange }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-[9px] font-black tracking-widest text-slate-900 uppercase ml-1">
+  <div className="flex flex-col gap-0.5 text-left">
+    <label className="text-[10px] font-bold tracking-tight text-slate-500 uppercase pl-0.5">
       {label}
     </label>
-    <div className="relative group">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors z-10">
+    <div className="relative">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
         {icon}
       </div>
       <input
@@ -281,7 +294,7 @@ const InputField = ({ label, icon, placeholder, type = "text", value, onChange }
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl py-3 pl-11 pr-4 text-sm focus:outline-none focus:border-slate-900 transition-all"
+        className="w-full bg-slate-50/60 border border-slate-200/80 rounded-lg py-3 pl-8 pr-3 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-slate-400 focus:bg-white transition-all shadow-2xs"
         required
       />
     </div>

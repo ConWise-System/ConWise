@@ -118,12 +118,10 @@ return (
                 </div>
 
                 <div>
-                  <p className="text-[11px] font-bold text-white uppercase">
-                    Firomsa Hika
+                  <p className="text-[11px] font-bold text-red-400 uppercase">
+                    Logout
                   </p>
-                  <p className="text-[9px] text-slate-500 uppercase">
-                    Admin
-                  </p>
+            
                 </div>
               </div>
             )}
