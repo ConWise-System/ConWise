@@ -5,8 +5,10 @@ import summeryApi from '../../../common/summeryApi'
 import { 
   Search, UserPlus, Edit3, Trash2, Shield, User, 
   Upload, Mail, Briefcase, Phone, Lock, X, ShieldCheck,
-  Loader2
+  Loader2, ArrowLeft
 } from 'lucide-react';
+import Table from '../../../components/dashboard/Table';
+import Loader from '../../../components/dashboard/Loader';
 
 export default function UserManagementSystem() {
   const [users, setUsers] = useState([]);
@@ -21,14 +23,12 @@ export default function UserManagementSystem() {
     try {
       const response = await Axios({...summeryApi.getUsers});
       if(response.data.success) {
-        // Updated to handle the specific data structure from your console.log
         setUsers(response.data.data.users || []);
       }
     } catch (error) {
       console.error("Authorization Protocol: Failed to load personnel", error);
     } finally {
-      // Small delay to ensure smooth transition of skeleton states
-      setTimeout(() => setIsLoading(false), 600);
+      setTimeout(() => setIsLoading(false), 300);
     }
   };
 
@@ -63,6 +63,72 @@ export default function UserManagementSystem() {
     deactivated: users.filter(u => u.status === 'Deactivated' || u.status === 'Revoked').length
   }), [users]);
 
+  // --- SYSTEM TABLE COLUMN DEFINITIONS ---
+  const columns = [
+    {
+      header: "No.",
+      width: "60px",
+      align: "center",
+      cell: (_, rowIndex) => <span className="text-slate-400 font-bold font-mono">{rowIndex}</span>
+    },
+    {
+      header: "Identity Details",
+      accessor: "firstName",
+      cell: (row) => (
+        <div className="flex items-center gap-3 text-left">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-[10px] text-slate-500 uppercase shrink-0 border border-slate-200/40">
+            {row.firstName?.[0] || '?'}{row.lastName?.[0] || '?'}
+          </div>
+          <div className="min-w-0">
+            <span className="font-bold text-slate-900 block text-xs truncate">{row.firstName} {row.lastName}</span>
+            <span className="text-[10px] text-slate-400 font-medium block truncate">{row.email}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: "System Role",
+      accessor: "role",
+      cell: (row) => (
+        <span className="px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-[10px] font-bold text-slate-600 uppercase tracking-tight">
+          {row.role?.replace('_', ' ')}
+        </span>
+      )
+    },
+    {
+      header: "Auth Status",
+      accessor: "status",
+      align: "center",
+      width: "140px",
+      cell: (row) => {
+        const isActive = row.status === 'Active';
+        return (
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-tight ${
+            isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+          }`}>
+            <span className={`w-1 h-1 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            {row.status || 'Pending'}
+          </span>
+        );
+      }
+    },
+    {
+      header: "Actions",
+      align: "right",
+      width: "100px",
+      cell: (row) => (
+        <div className="flex justify-end gap-1.5 text-slate-400" onClick={(e) => e.stopPropagation()}>
+          <button className="p-1.5 hover:bg-slate-100 rounded border border-slate-200/60 hover:text-slate-900 transition-colors shadow-2xs">
+            <Edit3 size={12}/>
+          </button>
+          <button className="p-1.5 hover:bg-rose-50 rounded border border-slate-200/60 hover:text-rose-600 hover:border-rose-100 transition-colors shadow-2xs">
+            <Trash2 size={12}/>
+          </button>
+        </div>
+      )
+    }
+  ];
+
   if (isCreating) return (
     <CreateUserPage 
       onCancel={() => setIsCreating(false)} 
@@ -71,49 +137,48 @@ export default function UserManagementSystem() {
   )
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500">
+    <div className="p-4 md:p-8 max-w-[1300px] mx-auto space-y-6 text-left">
       {/* --- HEADER --- */}
-      <header className="flex flex-col md:flex-row justify-between items-end gap-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-200 pb-5">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="bg-blue-600 h-1 w-4 rounded-full"></span>
-            <span className="text-[8px] font-black tracking-[0.25em] text-blue-600 uppercase">Identity Access</span>
-          </div>
-          <h1 className="text-xl tracking-tight text-slate-900 uppercase font-bold">Personnel Directory</h1>
+          <h1 className="text-xl tracking-tight text-slate-900 uppercase font-bold">User Directory</h1>
+          <p className="text-xs text-slate-500 mt-1 font-medium">Manage Company Users .</p> 
         </div>
         <button 
           onClick={() => setIsCreating(true)} 
-          className="bg-[#0F172A] text-white px-5 py-2.5 rounded-xl font-bold text-[11px] flex items-center gap-2 hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-slate-200"
+          className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-[11px] uppercase tracking-wider flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 shadow-sm"
         >
-          <UserPlus size={14} strokeWidth={3} /> Authorize Personnel
+          <UserPlus size={14} /> Create Staff User
         </button>
       </header>
 
       {/* --- METRICS --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard label="Total Workforce" value={stats.total} icon={<User size={14}/>} />
-        <MetricCard label="Authenticated" value={stats.active} hasPulse icon={<ShieldCheck size={14}/>} />
-        <MetricCard label="Revoked / Pending" value={stats.deactivated} isWarning icon={<Lock size={14}/>} />
+        <MetricCard label="Total Company Users" value={stats.total} icon={<User size={14}/>} />
+        <MetricCard label="Authenticated Terminals" value={stats.active} hasPulse icon={<ShieldCheck size={14}/>} />
+        <MetricCard label="Revoked / Pending Users" value={stats.deactivated} isWarning icon={<Lock size={14}/>} />
       </div>
 
       {/* --- CONTROLS --- */}
-      <div className="bg-white p-2 rounded-xl border border-slate-200 flex flex-col xl:flex-row gap-4 items-center justify-between shadow-sm">
-        <div className="relative w-full xl:w-80">
+      <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
+        <div className="relative w-full md:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           <input 
-            type="text" placeholder="Search Identity..."
-            className="w-full pl-9 pr-3 py-2 bg-slate-50 border-none rounded-lg text-xs font-bold outline-none focus:bg-white transition-all"
+            type="text" placeholder="Search Identity details..."
+            className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200/50 rounded-lg text-xs font-medium outline-none focus:bg-white focus:border-slate-300 transition-all text-slate-800"
             value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {['All', 'ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER'].map(role => (
             <button
               key={role}
               onClick={() => setActiveRoleFilter(role)}
-              className={`px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all ${
-                activeRoleFilter === role ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-50'
+              className={`px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider rounded-md border transition-all ${
+                activeRoleFilter === role 
+                  ? 'bg-slate-900 text-white border-slate-900 shadow-xs' 
+                  : 'text-slate-500 bg-white border-slate-200 hover:bg-slate-50'
               }`}
             >
               {role.replace('_', ' ')}
@@ -122,88 +187,19 @@ export default function UserManagementSystem() {
         </div>
       </div>
 
-      {/* --- DATA TABLE --- */}
-      <div className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden text-[11px]">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="bg-slate-50/50 border-b border-slate-100">
-              <th className="px-6 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Identity Details</th>
-              <th className="px-6 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Auth Status</th>
-              <th className="px-6 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {isLoading ? (
-              // --- SKELETON LOADING STATE ---
-              [1, 2, 3, 4, 5].map((n) => (
-                <tr key={n} className="animate-pulse">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100" />
-                      <div className="space-y-2">
-                        <div className="h-3 w-32 bg-slate-100 rounded" />
-                        <div className="h-2 w-20 bg-slate-50 rounded" />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="h-4 w-16 bg-slate-50 rounded-md mx-auto" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-end gap-2">
-                      <div className="h-6 w-6 bg-slate-50 rounded" />
-                      <div className="h-6 w-6 bg-slate-50 rounded" />
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : filteredUsers.length === 0 ? (
-              // --- EMPTY STATE ---
-              <tr>
-                <td colSpan="3" className="px-6 py-20 text-center">
-                  <div className="flex flex-col items-center opacity-40">
-                    <Shield size={32} className="text-slate-300 mb-3" />
-                    <p className="font-black text-[10px] uppercase tracking-widest text-slate-400">
-                      No matching records in database
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              // --- ACTUAL DATA ---
-              filteredUsers.map((user) => (
-                <tr key={user.id || user._id} className="group hover:bg-slate-50/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-[10px] text-slate-500 uppercase">
-                        {user.firstName?.[0] || '?'}{user.lastName?.[0] || '?'}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800 text-xs">{user.firstName} {user.lastName}</p>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">{user.role}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[8px] font-black uppercase tracking-tighter ${
-                      user.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-500 border-rose-100'
-                    }`}>
-                      <div className={`w-1 h-1 rounded-full ${user.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                      {user.status || 'Pending'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2 text-slate-400">
-                      <button className="p-1.5 hover:bg-slate-100 rounded hover:text-slate-900 transition-colors"><Edit3 size={12}/></button>
-                      <button className="p-1.5 hover:bg-rose-50 rounded hover:text-rose-600 transition-colors"><Trash2 size={12}/></button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* --- CENTRALIZED COMPONENT DATA TABLE INTERACTION LAYER --- */}
+      {isLoading ? (
+        <div className="w-full min-h-[350px] flex flex-col items-center justify-center gap-2 bg-white border border-slate-200 rounded-xl shadow-sm">
+          <Loader2 size={24} className="animate-spin text-slate-700" />
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loading User Profiles...</span>
+        </div>
+      ) : (
+        <Table 
+          columns={columns}
+          data={filteredUsers}
+          searchPlaceholder="Filter personnel identities..."
+        />
+      )}
     </div>
   );
 }
@@ -254,31 +250,32 @@ function CreateUserPage({ onCancel, onSuccess }) {
   };
 
   return (
-    <div className="min-h-screen p-6 bg-[#F8FAFC] flex items-center justify-center animate-in zoom-in-98">
-      <div className="w-full max-w-5xl bg-white rounded-[2rem] border border-slate-200 shadow-xl overflow-hidden flex flex-col lg:flex-row">
-        <div className="flex-1 p-8 space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+    <div className="p-4 md:p-6 bg-[#F8FAFC] flex  justify-center animate-in zoom-in-98 text-left">
+      <div className="w-full max-w-5xl bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden flex flex-col lg:flex-row">
+        <div className="flex-1 p-6 md:p-8 space-y-6">
+                      <button onClick={onCancel} className="p-1.5 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors flex gap-x-3 text-slate-400"><ArrowLeft size={16}/> Return back</button>
+
+          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
             <div>
-              <h2 className="text-lg font-black text-slate-900 uppercase tracking-tighter">New Personnel Auth</h2>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">Protocol ID: {formData.createdAt.split('T')[0]}</p>
+              <h2 className="text-base font-bold text-slate-900 uppercase tracking-tight">New User Authentication Token</h2>
+              <p className="text-[10px] text-slate-400 font-medium mt-0.5">Filing Date: {formData.createdAt.split('T')[0]}</p>
             </div>
-            <button onClick={onCancel} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"><X size={18}/></button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <InputGroup label="First Name" value={formData.firstName} onChange={(v) => handleChange('firstName', v)} icon={<User size={12}/>} />
             <InputGroup label="Last Name" value={formData.lastName} onChange={(v) => handleChange('lastName', v)} icon={<User size={12}/>} />
             <InputGroup label="Professional Email" value={formData.email} onChange={(v) => handleChange('email', v)} type="email" icon={<Mail size={12}/>} />
             <InputGroup label="Phone Number" value={formData.phone} onChange={(v) => handleChange('phone', v)} icon={<Phone size={12}/>} />
             
             <div className="space-y-1.5">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">System Role</label>
-              <div className="relative group">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">System Role Profile</label>
+              <div className="relative">
                 <Briefcase size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <select 
                   value={formData.role}
                   onChange={(e) => handleChange('role', e.target.value)}
-                  className="w-full pl-9 pr-3 py-3 bg-slate-50 border-none rounded-xl font-bold text-[11px] outline-none focus:ring-2 focus:ring-blue-100 appearance-none cursor-pointer"
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold text-xs outline-none focus:border-slate-400 appearance-none cursor-pointer text-slate-800"
                 >
                   <option value="ADMIN">Platform Admin</option>
                   <option value="PROJECT_MANAGER">Project Manager</option>
@@ -289,53 +286,51 @@ function CreateUserPage({ onCancel, onSuccess }) {
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <input 
-                  type="checkbox" 
-                  id="isVerified"
-                  checked={formData.isVerified}
-                  onChange={(e) => handleChange('isVerified', e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
-                />
-                <label htmlFor="isVerified" className="text-[10px] font-black text-slate-600 uppercase tracking-tighter cursor-pointer">Verify Immediately</label>
-              </div>
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox" 
+                id="isVerified"
+                checked={formData.isVerified}
+                onChange={(e) => handleChange('isVerified', e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 cursor-pointer" 
+              />
+              <label htmlFor="isVerified" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">Verify Profile Automatically</label>
             </div>
             
-            <div className="flex gap-3 w-full md:w-auto">
-              <button onClick={onCancel} disabled={isSubmitting} className="px-6 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-slate-50 transition-all disabled:opacity-50">Discard</button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={onCancel} disabled={isSubmitting} className="px-4 py-2 bg-white border border-slate-200 text-slate-500 rounded-lg font-bold text-xs hover:bg-slate-50 transition-all disabled:opacity-50">Discard</button>
               <button 
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="flex-1 md:flex-none px-10 py-3 bg-[#0F172A] text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-slate-200 hover:bg-blue-600 active:scale-95 transition-all disabled:bg-slate-400"
+                className="flex-1 sm:flex-none px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold text-xs uppercase tracking-wider shadow-sm active:scale-95 transition-all disabled:bg-slate-400"
               >
-                {isSubmitting ? "Finalizing..." : "Finalize Auth"}
+                {isSubmitting ? "Committing Entry..." : "Finalize Authorization"}
               </button>
             </div>
           </div>
         </div>
 
-        <div className="w-full lg:w-72 bg-[#0F172A] p-8 flex flex-col justify-between items-center text-center text-white">
-          <div className="space-y-4 w-full">
-            <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center border border-white/10 mx-auto overflow-hidden relative group">
+        <div className="w-full lg:w-64 bg-slate-900 p-6 flex flex-col justify-between items-center text-center text-white border-t lg:border-t-0 lg:border-l border-slate-800">
+          <div className="space-y-4 w-full my-auto">
+            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 mx-auto overflow-hidden relative group shadow-inner">
               {imagePreview ? (
                 <img src={imagePreview} className="w-full h-full object-cover" />
               ) : (
-                <Shield size={32} className="text-blue-500" />
+                <Shield size={24} className="text-slate-400" />
               )}
-              <div onClick={() => fileInputRef.current.click()} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity bg-black/40">
-                <Upload size={20} />
+              <div onClick={() => fileInputRef.current.click()} className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity bg-black/50">
+                <Upload size={16} />
               </div>
             </div>
-            <div>
-              <p className="font-black text-sm tracking-tight truncate">{formData.firstName || 'New'} {formData.lastName || 'Personnel'}</p>
-              <p className="text-blue-500 font-black text-[8px] uppercase tracking-[0.2em] mt-1">Identity Node</p>
+            <div className="space-y-0.5">
+              <p className="font-bold text-xs truncate max-w-[200px] mx-auto">{formData.firstName || 'Identity'} {formData.lastName || 'Node'}</p>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Unsaved Profile Buffer</p>
             </div>
           </div>
           <input type="file" ref={fileInputRef} onChange={(e) => setImagePreview(URL.createObjectURL(e.target.files[0]))} className="hidden" accept="image/*" />
-          <div className="mt-8 pt-6 border-t border-white/5 w-full">
-             <p className="text-[8px] font-black text-slate-500 uppercase tracking-[0.3em]">© 2026 Sovereign Auth</p>
+          <div className="pt-4 border-t border-white/5 w-full hidden lg:block">
+             <p className="text-[9px] font-medium tracking-wider text-slate-500">© 2026 Platform System Module</p>
           </div>
         </div>
       </div>
@@ -345,15 +340,15 @@ function CreateUserPage({ onCancel, onSuccess }) {
 
 function InputGroup({ label, value, onChange, type = "text", icon }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
+    <div className="space-y-1.5 w-full">
+      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</label>
       <div className="relative">
         {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
         <input 
           type={type} 
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full ${icon ? 'pl-9' : 'px-4'} pr-3 py-3 bg-slate-50 border-none rounded-xl font-bold text-[11px] outline-none focus:bg-white focus:ring-2 focus:ring-blue-50 transition-all text-slate-800`} 
+          className={`w-full ${icon ? 'pl-9' : 'px-3'} pr-3 py-2 bg-white border border-slate-200 rounded-lg font-medium text-xs outline-none focus:border-slate-400 transition-all text-slate-800`} 
         />
       </div>
     </div>
@@ -363,14 +358,14 @@ function InputGroup({ label, value, onChange, type = "text", icon }) {
 function MetricCard({ label, value, hasPulse, isWarning, icon }) {
   return (
     <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm">
-      <div>
-        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className={`text-xl font-black tracking-tighter ${isWarning ? 'text-rose-500' : 'text-slate-900'}`}>{value}</span>
-          {hasPulse && <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />}
+      <div className="space-y-0.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+        <div className="flex items-center gap-2">
+          <span className={`text-xl font-bold tracking-tight ${isWarning ? 'text-rose-600' : 'text-slate-900'}`}>{value}</span>
+          {hasPulse && <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />}
         </div>
       </div>
-      <div className="p-2 rounded-lg bg-slate-50 text-slate-400">{icon}</div>
+      <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-400">{icon}</div>
     </div>
   );
 }

@@ -19,7 +19,6 @@ const menuItems = [
   { icon: <ShieldAlert size={16} />, label: 'Issue Management', path: '/admin/issueManagement' },
   { icon: <BarChart3 size={16} />, label: 'Reports & Analytics', path: '/admin/report' },
   { icon: <MessageSquare size={16} />, label: 'Messaging', path: '/admin/messaging' },
-  { icon: <Bell size={16} />, label: 'Notifications', path: '/admin/notification' },
   { icon: <Settings size={16} />, label: 'Settings', path: '/admin/setting' },
 ];
 

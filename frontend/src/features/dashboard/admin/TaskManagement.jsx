@@ -1,268 +1,543 @@
-"use client";
-import React, { useState, useEffect, useMemo } from 'react';
-import Axios from 'axios';
-import { 
-  Plus, Search, Trash2, CheckCircle, Clock, 
-  AlertCircle, Briefcase, ArrowLeft, Save, X, ChevronRight, Layout, Loader2
-} from 'lucide-react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Plus, Trash2, Rocket, CheckSquare, ChevronRight,
+  ArrowLeft, DollarSign, Box, Loader2, Hash, Calendar, 
+  Clock, AlertCircle, Layout, User, Briefcase, ChevronDown, X
+} from 'lucide-react';
+import Axios from '../../../../utils/Axios';
+import summeryApi from '../../../common/summeryApi';
+import Table from '../../../components/dashboard/Table';
+import Loader from '../../../components/dashboard/Loader';
 
-export default function IntegratedTaskSystem({ projectId = 2 }) {
+export default function TaskCenter() {
   const [view, setView] = useState('list'); 
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
+  
+  const [projectList, setProjectList] = useState([]);
+  const [userList, setUserList] = useState([]); 
+  const [materialList, setMaterialList] = useState([]);
+  
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [tasksForProject, setTasksForProject] = useState([]); 
 
-  // --- API CONFIGURATION ---
-  const summeryApi = {
-    getTasks: {
-      // Transforming the string into a function to inject the projectId
-      url: (id) => `/api/projects/${id}/tasks`,
-      method: "get"
-    },
-    // Assuming these exist for full functionality
-    createTask: { url: `/api/tasks`, method: "post" },
-    deleteTask: { url: (id) => `/api/tasks/${id}`, method: "delete" }
+  const [formData, setFormData] = useState({
+    projectId: 0,
+    taskAssigneeID: 0, 
+    taskTitle: '',
+    taskDescription: '',
+    startDate: '',
+    dueDate: '',
+    taskBudget: 0,
+    taskPriority: 'HIGH',
+    taskStatus: 'TODO',
+    materials: [] 
+  });
+
+  const loadInitialData = async () => {
+    try {
+      const [projRes, userRes, matRes] = await Promise.all([
+        Axios({...summeryApi.getAllProjects}),
+        Axios({...summeryApi.getUsers}),
+        Axios({...summeryApi.getAllMaterial}) 
+      ]);
+      setProjectList(projRes.data.data || []);
+      const allUsers = userRes.data.data.users || userRes.data.data || [];
+      setUserList(allUsers.filter(u => u && (u.id || u._id)));
+      setMaterialList(matRes.data.data || []); 
+    } catch (error) {
+      console.error("Initial Load Error:", error);
+    }
   };
 
-  // --- FETCH LOGIC ---
-  const fetchTasks = async () => {
+  useEffect(() => { loadInitialData(); }, []);
+
+  const handleProjectClick = async (project) => {
+    setSelectedProject(project);
+    setView('tasks');
+    setIsLoadingTasks(true);
+    setTasksForProject([]); 
+
     try {
-      setLoading(true);
       const response = await Axios({
         method: summeryApi.getTasks.method,
-        // Ensure you use your backend base URL (e.g., localhost:8000)
-        url: `http://localhost:8000${summeryApi.getTasks.url(projectId)}`
+        url: summeryApi.getTasks.url.replace("{projectId}", project.id)
       });
+      if (response.data.success) {
+        setTasksForProject(response.data.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tasks:", error);
+    } finally {
+      setIsLoadingTasks(false);
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    const numericFields = ['projectId', 'taskAssigneeID', 'taskBudget'];
+    setFormData(prev => ({
+      ...prev,
+      [field]: numericFields.includes(field) ? Number(value) : value
+    }));
+  };
+
+  const handleTaskSubmission = async(e) => {
+    e.preventDefault();
+    if (formData.projectId === 0 || formData.taskAssigneeID === 0 || !formData.taskTitle.trim()) {
+      alert("Please ensure Project, Assignee User, and Task Title fields are accurately filled out.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...formData,
+        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
+        dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null,
+      };
+
+      const response = await Axios({ ...summeryApi.assignTask, data: payload });
 
       if (response.data.success) {
-        setTasks(Array.isArray(response.data.data) ? response.data.data : []);
+        alert("Task Successfully Assigned");
+        await loadInitialData(); 
+        setView('list');
+        setFormData({
+          projectId: 0, taskAssigneeID: 0, taskTitle: '', taskDescription: '',
+          startDate: '', dueDate: '', taskBudget: 0, taskPriority: 'HIGH',
+          taskStatus: 'TODO', materials: []
+        });
       }
-    } catch (err) {
-      console.error("Task Sync Error:", err);
-      setTasks([]);
+    } catch (error) {
+      alert(error.response?.data?.message || "Submission failed");
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    if (projectId) fetchTasks();
-  }, [projectId]);
-
-  // Client-side search logic
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => 
-      task.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.assignee?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm, tasks]);
-
-  const addNewTask = async (taskData) => {
-    try {
-      // In a real app, you'd call your POST API here
-      // For now, updating local state for immediate feedback
-      setTasks([{ id: Date.now(), ...taskData, projectId }, ...tasks]);
-      setView('list');
-    } catch (err) {
-      alert("Failed to create task");
+  // --- Column Configuration 1: Project List Directory ---
+  const projectColumns = [
+    {
+      header: "Project Details",
+      accessor: "projectName",
+      cell: (row) => (
+        <div className="flex items-center gap-3 text-left">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 border border-slate-200/40">
+            <Briefcase size={14} />
+          </div>
+          <div>
+            <span className="font-bold text-slate-900 block text-xs truncate uppercase">{row.projectName}</span>
+            <span className="text-[10px] text-slate-400 font-medium block">System ID: {row.id}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: "Task Distribution Density",
+      accessor: "projectProgress.totalTasks",
+      cell: (row) => {
+        const taskCount = row.projectProgress?.totalTasks ?? 0;
+        return (
+          <span className="px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-[10px] font-bold text-slate-600 uppercase tracking-tight">
+            {taskCount} {taskCount === 1 ? 'Task Assigned' : 'Tasks Assigned'}
+          </span>
+        );
+      }
+    },
+    {
+      header: "Action Node",
+      align: "right",
+      width: "120px",
+      cell: (row) => (
+        <button 
+          onClick={(e) => { e.stopPropagation(); handleProjectClick(row); }}
+          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-tight shadow-2xs"
+        >
+          View Tasks <ChevronRight size={12} />
+        </button>
+      )
     }
-  };
+  ];
+
+  // --- Column Configuration 2: Task Details Manifest ---
+  const taskColumns = [
+    {
+      header: "Task Title & Scope",
+      accessor: "taskTitle",
+      cell: (row) => (
+        <div className="flex items-center gap-3 text-left">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0 border border-slate-200/40">
+            <Layout size={14} />
+          </div>
+          <div>
+            <span className="font-bold text-slate-900 block text-xs uppercase">{row.taskTitle}</span>
+            <span className="text-[10px] text-slate-400 font-medium line-clamp-1 max-w-sm block">{row.taskDescription || "No objective descriptions specified."}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: "Priority Metric",
+      accessor: "taskPriority",
+      align: "center",
+      cell: (row) => {
+        const isHigh = row.taskPriority === 'HIGH';
+        return (
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-bold uppercase ${
+            isHigh ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-slate-50 text-slate-600 border-slate-100'
+          }`}>
+            <span className={`w-1 h-1 rounded-full ${isHigh ? 'bg-rose-500 animate-pulse' : 'bg-slate-400'}`} />
+            {row.taskPriority}
+          </span>
+        );
+      }
+    },
+    {
+      header: "Timeline Framework",
+      accessor: "startDate",
+      cell: (row) => (
+        <div className="flex flex-col text-[10px] text-left font-semibold">
+          <span className="text-slate-400">Start: {row.startDate ? new Date(row.startDate).toLocaleDateString() : 'N/A'}</span>
+          <span className="text-slate-900 mt-0.5">Limit: {row.dueDate ? new Date(row.dueDate).toLocaleDateString() : 'N/A'}</span>
+        </div>
+      )
+    },
+    {
+      header: "Status",
+      accessor: "taskStatus",
+      align: "right",
+      cell: (row) => (
+        <span className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight">
+          {row.taskStatus || "TODO"}
+        </span>
+      )
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 font-sans antialiased">
+    <div className="w-full min-h-screen bg-[#F8FAFC] p-4 md:p-8 text-slate-900 font-sans antialiased text-left">
       <AnimatePresence mode="wait">
-        {view === 'list' ? (
-          <motion.div 
-            key="list" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}
-            className="max-w-6xl mx-auto space-y-6"
-          >
-            {/* Header Area */}
-            <header className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-slate-200 pb-6">
-              <div className="space-y-1">
-                <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-blue-600">
-                  <span>Operations</span> <ChevronRight size={10} strokeWidth={3} /> <span className="text-slate-400">Project Workspace</span>
-                </nav>
-                <h1 className="text-xl text-slate-900 tracking-tight uppercase">Task Repository</h1>
-                <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-bold text-slate-500 uppercase">PID: {projectId}</span>
-                </div>
+        
+        {/* VIEW 1: PROJECTS HUB DIRECTORY LIST */}
+        {view === 'list' && (
+          <motion.div key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-[1300px] mx-auto space-y-6">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-200 pb-5">
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">Task Assignment Center</h1>
+                <p className="text-xs text-slate-500 mt-1 font-medium">Select an active project infrastructure asset node below to manage workflows.</p>
               </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setView('add')}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all active:scale-95"
-                >
-                  <Plus size={14} strokeWidth={3} /> Initiate Task
-                </button>
-              </div>
+              <button onClick={() => setView('create')} className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-[11px] uppercase tracking-wider flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 shadow-sm">
+                <Plus size={14} /> New Assignment
+              </button>
             </header>
 
-            {/* Dynamic Stats Section */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard label="Total Tasks" value={tasks.length} icon={<Briefcase size={14}/>} color="black" />
-              <StatCard label="In Motion" value={tasks.filter(t => t.status === 'In Progress').length} icon={<Clock size={14}/>} color="blue" />
-              <StatCard label="Finalized" value={tasks.filter(t => t.status === 'Completed').length} icon={<CheckCircle size={14}/>} color="blue" />
-              <StatCard label="Critical" value={tasks.filter(t => t.priority === 'High').length} icon={<AlertCircle size={14}/>} color="black" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <MiniMetric label="Total Active Projects" value={projectList.length} subtext="Registered Framework Systems" icon={<Briefcase size={14}/>} />
+              <MiniMetric label="System Matrix Pipeline" value="Operational" subtext="All context routers online" icon={<Rocket size={14}/>} />
+              <MiniMetric label="Global Resource Pools" value={`${materialList.length} Nodes`} subtext="Inventory structural units" icon={<Box size={14}/>} />
             </div>
-
-            {/* Task Table Container */}
-            <div className="bg-white border border-slate-200 rounded-[1.5rem] shadow-sm overflow-hidden">
-              <div className="p-4 border-b border-slate-50 bg-slate-50/30">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                  <input 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search strategic tasks..." 
-                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-100 rounded-xl text-[11px] font-bold outline-none focus:ring-4 focus:ring-blue-50 transition-all" 
-                  />
-                </div>
+          
+            {isLoadingTasks ? (
+              <div className="w-full min-h-[350px] flex flex-col items-center justify-center gap-2 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <Loader2 size={24} className="animate-spin text-slate-700" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Accessing Enterprise Directory...</span>
               </div>
-              
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-                    <Loader2 className="animate-spin mb-4 text-blue-600" size={32} />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Querying Project Task-Cloud...</p>
-                </div>
-              ) : tasks.length === 0 ? (
-                <div className="py-24 text-center">
-                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">No Tasks Found for this Project</p>
-                </div>
-              ) : (
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50/80 border-b border-slate-100">
-                    <tr className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                      <th className="px-8 py-4">Activity Description</th>
-                      <th className="px-8 py-4">Assignee</th>
-                      <th className="px-8 py-4">Status</th>
-                      <th className="px-8 py-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {filteredTasks.map((task) => (
-                      <tr key={task.id} className="hover:bg-blue-50/30 transition-colors group">
-                        <td className="px-8 py-5">
-                          <div className="text-[12px] font-black text-slate-800 tracking-tight">{task.name}</div>
-                          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter italic">Due: {task.deadline}</div>
-                        </td>
-                        <td className="px-8 py-5 text-[11px] font-bold text-slate-500 uppercase">{task.assignee}</td>
-                        <td className="px-8 py-5">
-                          <StatusBadge status={task.status} />
-                        </td>
-                        <td className="px-8 py-5 text-right">
-                          <button 
-                            onClick={() => setTasks(tasks.filter(t => t.id !== task.id))}
-                            className="p-2 text-slate-200 hover:text-rose-500 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </motion.div>
-        ) : (
-          /* Add Task Form (Updated to handle Project Context) */
-          <motion.div 
-            key="add" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
-            className="max-w-xl mx-auto py-8"
-          >
-            <button onClick={() => setView('list')} className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-blue-600 mb-6 transition-all">
-              <ArrowLeft size={14} /> Back to Project List
-            </button>
-            
-            <div className="bg-white border border-slate-200 rounded-[2rem] shadow-2xl overflow-hidden">
-              <div className="p-8 border-b border-slate-100 bg-slate-50/50 text-center">
-                <div className="p-2 bg-blue-50 w-fit mx-auto rounded-lg text-blue-600 mb-2"><Layout size={16}/></div>
-                <h2 className="text-xl font-black text-slate-900 uppercase">Create Task</h2>
-                <p className="text-slate-400 font-bold text-[7px] uppercase tracking-[0.4em] mt-1">Assigning to Project {projectId}</p>
-              </div>
-              
-              <form className="p-8 space-y-6" onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                addNewTask({
-                  name: formData.get('name'),
-                  assignee: formData.get('assignee'),
-                  deadline: formData.get('deadline'),
-                  priority: formData.get('priority'),
-                  status: 'Pending',
-                  materials: [Number(formData.get('materialId'))]
-                });
-              }}>
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Task Title</label>
-                  <input required name="name" className="w-full px-5 py-3.5 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none focus:ring-4 focus:ring-blue-100 transition-all" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Assignee</label>
-                    <select name="assignee" className="w-full px-5 py-3.5 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none cursor-pointer">
-                      <option>Eng. Solomon</option>
-                      <option>Sup. Kedir</option>
-                      <option>Eng. Chala</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Priority</label>
-                    <select name="priority" className="w-full px-5 py-3.5 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none cursor-pointer">
-                      <option>Low</option>
-                      <option>Medium</option>
-                      <option>High</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 ml-1">Target Date</label>
-                  <input required name="deadline" type="date" className="w-full px-5 py-3.5 bg-slate-50 rounded-xl border-none text-[11px] font-bold outline-none" />
-                </div>
-
-                <div className="pt-6 flex gap-3">
-                  <button type="submit" className="flex-1 py-4 bg-[#0F172A] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2">
-                    <Save size={14} fill="currentColor" /> Deploy Task
-                  </button>
-                </div>
-              </form>
-            </div>
+            ) : (
+              <Table 
+                columns={projectColumns}
+                data={projectList}
+                searchPlaceholder="Filter managed systems..."
+              />
+            )}
           </motion.div>
         )}
+
+        {/* VIEW 2: PROJECTS EXPANDED GRID TASK DETAIL WORKPLACE */}
+        {view === 'tasks' && selectedProject && (
+          <motion.div key="tasks" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-[1300px] mx-auto space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-slate-200 pb-5">
+              <div>
+                <button onClick={() => setView('list')} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-900 mb-2 transition-colors">
+                    <ArrowLeft size={12} /> Back to Directory
+                </button>
+                <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">{selectedProject.projectName}</h2>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">Displaying operational workflows mapping to Project Context ID: {selectedProject.id}</p>
+              </div>
+              <button 
+                onClick={() => { setFormData(prev => ({...prev, projectId: selectedProject.id})); setView('create'); }}
+                className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold text-[11px] uppercase tracking-wider flex items-center gap-2 hover:bg-slate-800 transition-all active:scale-95 shadow-sm"
+              >
+                <Plus size={14} /> Assign New Task
+              </button>
+            </div>
+
+            {isLoadingTasks ? (
+              <div className="w-full min-h-[350px] flex flex-col items-center justify-center gap-2 bg-white border border-slate-200 rounded-xl shadow-sm">
+                <Loader2 size={24} className="animate-spin text-slate-700" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loading project tasks metadata...</span>
+              </div>
+            ) : (
+              <Table 
+                columns={taskColumns}
+                data={tasksForProject}
+                searchPlaceholder="Search assigned workflows..."
+              />
+            )}
+          </motion.div>
+        )}
+
+        {/* VIEW 3: EXACT TASK DYNAMIC CREATION FORM PRESET */}
+        {view === 'create' && (
+          <motion.div key="create" initial={{ opacity: 0, scale: 0.99 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.99 }} className="max-w-[900px] mx-auto py-4">
+            <form onSubmit={handleTaskSubmission} className="bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden space-y-6">
+              
+              {/* Form Branding Top Header Header Bar */}
+              <div className="p-6 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+                <div>
+                  <button 
+                    type="button" 
+                    onClick={() => setView('list')} 
+                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-900 mb-1.5 transition-colors"
+                  >
+                    <ArrowLeft size={12} /> Cancel Assigning Workflow
+                  </button>
+                  <h2 className="text-base font-bold text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                    <Layout size={16} className="text-slate-900" /> Operational Task Assignment Form
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5 font-medium">Input precise runtime data values to initialize deployment pipeline records.</p>
+                </div>
+                <div className="bg-white p-2 rounded-lg border border-slate-200 text-slate-400 shadow-sm"><Hash size={16} /></div>
+              </div>
+
+              {/* Form Structural Elements Grid Section */}
+              <div className="p-6 md:p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  
+                  {/* DYNAMIC COMPONENT 1: SELECT PROJECT PIPELINE ARRAY */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Select Project Target Framework</label>
+                    <div className="relative">
+                      <Briefcase size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
+                      <select 
+                        name="projectId" 
+                        value={formData.projectId} 
+                        onChange={(e) => handleInputChange('projectId', e.target.value)} 
+                        className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs outline-none focus:border-slate-400 focus:bg-white appearance-none cursor-pointer text-slate-800 transition-all"
+                      >
+                        <option value={0}>SELECT ENTERPRISE PROJECT NODE</option>
+                        {projectList.map(p => (
+                          <option key={p.id} value={p.id}>ID: {p.id} — {p.projectName.toUpperCase()}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* DYNAMIC COMPONENT 2: SELECT USER ASSIGNEE POOL */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Select Task Assignee Operational User</label>
+                    <div className="relative">
+                      <User size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
+                      <select 
+                        name="taskAssigneeID" 
+                        value={formData.taskAssigneeID} 
+                        onChange={(e) => handleInputChange('taskAssigneeID', e.target.value)} 
+                        className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs outline-none focus:border-slate-400 focus:bg-white appearance-none cursor-pointer text-slate-800 transition-all"
+                      >
+                        <option value={0}>SELECT WORKFORCE TARGET OPERATOR</option>
+                        {userList.map(u => (
+                          <option key={u.id || u._id} value={u.id || u._id}>ID: {u.id || u._id} — {(u.name || u.firstName || "").toUpperCase()}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <FormInputGroup 
+                      label="Task Identifier Title" 
+                      name="taskTitle" 
+                      value={formData.taskTitle} 
+                      onChange={(v) => handleInputChange('taskTitle', v)} 
+                      icon={<Layout size={13} />} 
+                      placeholder="e.g. Integrate Structural Engineering Schematics Framework"
+                    />
+                  </div>
+                  
+                  <div className="md:col-span-2 space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Task Objective Scope Description</label>
+                    <textarea 
+                      name="taskDescription" 
+                      value={formData.taskDescription} 
+                      onChange={(e) => handleInputChange('taskDescription', e.target.value)} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:border-slate-400 focus:bg-white text-slate-800 transition-all h-24 resize-none" 
+                      placeholder="Describe target goals, sprint criteria and execution bounds..."
+                    />
+                  </div>
+
+                  <FormInputGroup 
+                    label="Operation Execution Start Date" 
+                    name="startDate" 
+                    value={formData.startDate} 
+                    onChange={(v) => handleInputChange('startDate', v)} 
+                    type="date" 
+                    icon={<Calendar size={13} />}
+                  />
+                  
+                  <FormInputGroup 
+                    label="Operation Execution Limit Due Date" 
+                    name="dueDate" 
+                    value={formData.dueDate} 
+                    onChange={(v) => handleInputChange('dueDate', v)} 
+                    type="date" 
+                    icon={<Calendar size={13} />}
+                  />
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Allocated Fiscal Capital Budget (ETB)</label>
+                    <div className="relative">
+                      <DollarSign size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        type="number" 
+                        name="taskBudget" 
+                        value={formData.taskBudget} 
+                        onChange={(e) => handleInputChange('taskBudget', e.target.value)} 
+                        className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs outline-none focus:border-slate-400 focus:bg-white text-slate-800 transition-all" 
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Severity Priority Metric Tier</label>
+                    <div className="relative">
+                      <AlertCircle size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
+                      <select 
+                        name="taskPriority" 
+                        value={formData.taskPriority} 
+                        onChange={(e) => handleInputChange('taskPriority', e.target.value)} 
+                        className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs outline-none focus:border-slate-400 focus:bg-white appearance-none cursor-pointer text-slate-800 transition-all"
+                      >
+                        <option value="LOW font-bold">LOW DEPLOYMENT VALUE</option>
+                        <option value="MEDIUM font-bold">MEDIUM STANDARD RUNTIME</option>
+                        <option value="HIGH font-bold">HIGH CRITICAL SEVERITY PATH</option>
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* MATERIALS MANAGEMENT SYSTEM SECTOR SUBSYSTEM LAYER */}
+                <div className="pt-6 border-t border-slate-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <Box size={13} /> Required Logistical Material Assets
+                    </h3>
+                    <button 
+                      type="button" 
+                      onClick={() => setFormData(p => ({...p, materials: [...p.materials, 0]}))} 
+                      className="text-[10px] font-bold text-slate-900 hover:text-slate-600 flex items-center gap-1 transition-colors uppercase tracking-wider"
+                    >
+                      <Plus size={12} /> Add Allocation Row
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {formData.materials.map((matId, idx) => (
+                      <div key={idx} className="flex gap-2 bg-slate-50 p-2 border border-slate-200 rounded-lg items-center animate-in fade-in duration-700">
+                        <div className="relative flex-1">
+                          <Box size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
+                          <select 
+                            value={matId} 
+                            onChange={(e) => {
+                              const newMats = [...formData.materials];
+                              newMats[idx] = Number(e.target.value);
+                              setFormData(p => ({...p, materials: newMats}));
+                            }} 
+                            className="w-full pl-8 pr-8 py-1.5 bg-white border border-slate-200 rounded-md text-[11px] font-semibold text-slate-800 outline-none focus:border-slate-300 appearance-none cursor-pointer"
+                          >
+                            <option value={0}>SELECT INVENTORY MATERIAL</option>
+                            {materialList.map(m => (
+                              <option key={m.id} value={m.id}>ID: {m.id} — {(m.materialName || m.name || '').toUpperCase()}</option>
+                            ))}
+                          </select>
+                          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData(p => ({ ...p, materials: p.materials.filter((_, i) => i !== idx) }))} 
+                          className="text-slate-400 hover:text-rose-600 p-1.5 hover:bg-rose-50 rounded border border-transparent hover:border-rose-100 transition-all"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Lower Layout Interaction Processing Layer */}
+                <div className="pt-4 flex flex-col sm:flex-row gap-4 items-center justify-end p-4 bg-slate-50 border border-slate-200/60 rounded-xl">
+                  <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                    <button 
+                      type="button"
+                      onClick={() => setView('list')} 
+                      disabled={isSubmitting}
+                      className="px-4 py-2 bg-white border border-slate-200 text-slate-500 rounded-lg font-bold text-xs hover:bg-slate-50 hover:text-slate-800 transition-all disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={isSubmitting} 
+                      className="flex-1 sm:flex-none px-6 py-2 bg-slate-900 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex justify-center items-center gap-2 hover:bg-slate-800 transition-all disabled:opacity-50 shadow-sm"
+                    >
+                      {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <><CheckSquare size={14} /> Assign Workflow Task</>}
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </form>
+          </motion.div>
+        )}
+
       </AnimatePresence>
     </div>
   );
 }
 
-// Support Components
-function StatCard({ label, value, icon, color }) {
-  const styles = {
-    black: "text-white bg-[#0F172A] border-slate-800",
-    blue: "text-blue-700 bg-blue-50 border-blue-100"
-  };
+// Shared Form Component Atom standard layout
+function FormInputGroup({ label, name, value, onChange, placeholder, type = "text" , icon }) {
   return (
-    <div className={`p-5 rounded-[1.5rem] border shadow-sm flex items-center gap-4 hover:shadow-md transition-all ${styles[color] || "bg-white text-slate-900 border-slate-200"}`}>
-      <div className={`p-2.5 rounded-xl ${color === 'black' ? 'bg-white/10' : 'bg-white shadow-sm'}`}>{icon}</div>
-      <div>
-        <p className={`text-[8px] font-black uppercase tracking-widest leading-none mb-1.5 ${color === 'black' ? 'text-slate-400' : 'text-blue-400'}`}>{label}</p>
-        <p className="text-xl font-black leading-none">{value}</p>
+    <div className="space-y-1.5 w-full">
+      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</label>
+      <div className="relative">
+        {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
+        <input 
+          name={name} 
+          value={value} 
+          onChange={(e) => onChange(e.target.value)} 
+          type={type} 
+          placeholder={placeholder} 
+          className={`w-full ${icon ? 'pl-9' : 'px-3'} pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg font-semibold text-xs text-slate-800 outline-none focus:border-slate-400 focus:bg-white transition-all`} 
+        />
       </div>
     </div>
   );
 }
 
-function StatusBadge({ status }) {
-  const styles = {
-    'In Progress': 'bg-blue-600 text-white border-blue-600',
-    'Pending': 'bg-slate-100 text-slate-600 border-slate-200',
-    'Completed': 'bg-[#0F172A] text-white border-slate-900',
-  };
+function MiniMetric({ label, value, subtext, icon }) {
   return (
-    <span className={`px-3 py-1 rounded-lg text-[9px] font-black border uppercase italic tracking-tighter shadow-sm ${styles[status]}`}>
-      {status}
-    </span>
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+      <div className="space-y-0.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+        <span className="text-base font-bold tracking-tight text-slate-900 block">{value}</span>
+        <span className="text-[10px] text-slate-400 font-medium block">{subtext}</span>
+      </div>
+      <div className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-slate-400 shrink-0">{icon}</div>
+    </div>
   );
 }

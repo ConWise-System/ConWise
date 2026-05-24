@@ -1,296 +1,400 @@
-"use client";
-import React, { useState, useMemo, useRef } from 'react';
-import { 
-  Plus, Search, ArrowLeft, Camera, 
-  Users, Package, AlertTriangle, Send, 
-  X, Info, ShieldAlert, ChevronRight, Layout, Trash2
-} from 'lucide-react';
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  AlertTriangle, Zap, MapPin, User, X, CheckCircle2, ArrowLeft, Loader2, ChevronRight, Hash, Search, Briefcase, Layout, Filter, Calendar
+} from 'lucide-react';
+import Axios from '../../../../utils/Axios';
+import summeryApi from '../../../common/summeryApi';
+import Table from '../../../components/dashboard/Table';
+import Loader from '../../../components/dashboard/Loader';
 
-const INITIAL_ISSUES = [
-  { id: 'TKT-8842', title: 'Security Breach: Node 7', reporter: 'Marcus Chen', system: 'Server Infrastructure', status: 'OPEN', priority: 'HIGH' },
-  { id: 'TKT-8839', title: 'Database Latency Spike', reporter: 'Sarah Jenkins', system: 'Core API', status: 'IN PROGRESS', priority: 'MEDIUM' },
-  { id: 'TKT-8831', title: 'UI Glitch: Mobile Sidebar Overlay', reporter: 'David Miller', system: 'Frontend', status: 'RESOLVED', priority: 'LOW' },
-];
+export default function IssueManagement() {
+  const [view, setView] = useState('list'); // 'list' | 'issues'
+  const [projectList, setProjectList] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [issues, setIssues] = useState([]);
+  const [loadingIssues, setLoadingIssues] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState(null);
+  const [tempStatus, setTempStatus] = useState("");
 
-export default function IssueManagementSystem() {
-  const [view, setView] = useState('list');
-  const [issues, setIssues] = useState(INITIAL_ISSUES);
+  // Filters state
+  const [priorityFilter, setPriorityFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const addIssue = (newIssue) => {
-    setIssues([newIssue, ...issues]);
-    setView('list');
+  // Load Project Directory
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const res = await Axios({...summeryApi.getAllProjects});
+        const projects = res.data.data || res.data;
+        setProjectList(Array.isArray(projects) ? projects : []);
+      } catch (error) {
+        console.error("Failed to load projects:", error);
+      }
+    };
+    loadProjects();
+  }, []);
+
+  // Fetch Live Issues for Selected Project Context
+  const handleProjectClick = async (project) => {
+    setSelectedProject(project);
+    setView('issues');
+    setLoadingIssues(true);
+    setIssues([]);
+    setPriorityFilter('All');
+    setStatusFilter('All');
+    setSearchTerm('');
+
+    try {
+      const res = await Axios({
+        url: summeryApi.getAllIssues.url(project.id),
+        method: summeryApi.getAllIssues.method
+      });
+      setIssues(res.data.data || []);
+    } catch (error) {
+      console.error("Failed to load project issues:", error);
+    } finally {
+      setLoadingIssues(false);
+    }
   };
 
-  const deleteIssue = (id) => {
-    setIssues(issues.filter(issue => issue.id !== id));
+  // Sync state variables for Modal lifecycle edits
+  useEffect(() => {
+    if (selectedIssue) {
+      setTempStatus(selectedIssue.status);
+    }
+  }, [selectedIssue]);
+
+  const handleUpdateStatus = async () => {
+    if (!selectedIssue || !tempStatus || !selectedProject) return;
+    setUpdating(true);
+    
+    try {
+      await Axios({
+        url: summeryApi.updateIssueStatus.url(selectedProject.id, selectedIssue.id),
+        method: summeryApi.updateIssueStatus.method,
+        data: { status: tempStatus }
+      });
+
+      // Local mutations sync
+      setIssues(prev => prev.map(i => i.id === selectedIssue.id ? { ...i, status: tempStatus } : i));
+      setSelectedIssue(prev => ({ ...prev, status: tempStatus }));
+      
+      alert("Issue lifecycle status synchronized successfully.");
+    } catch (error) {
+      console.error("Status Mutation Error:", error);
+      const errMsg = error.response?.data?.errors?.[0]?.message || "Failed to update status.";
+      alert(errMsg);
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const resolveIssue = (id) => {
-    setIssues(issues.map(issue => 
-      issue.id === id ? { ...issue, status: 'RESOLVED' } : issue
-    ));
-  };
+  // Live filter runtime computations
+  const filteredIssues = useMemo(() => {
+    return issues.filter(issue => {
+      const matchPriority = priorityFilter === 'All' || issue.priority === priorityFilter.toUpperCase();
+      
+      const cleanStatusFilter = statusFilter.toUpperCase().replace(' ', '_');
+      const matchStatus = statusFilter === 'All' || issue.status === cleanStatusFilter;
+      
+      const combinedTerm = `${issue.title || ''} ${issue.id || ''} ${issue.description || ''}`.toLowerCase();
+      const matchSearch = combinedTerm.includes(searchTerm.toLowerCase());
+
+      return matchPriority && matchStatus && matchSearch;
+    });
+  }, [issues, priorityFilter, statusFilter, searchTerm]);
+
+  // --- Table Schema 1: Initial Projects Directory ---
+  const projectColumns = [
+    {
+      header: "Project Details",
+      accessor: "projectName",
+      cell: (row) => (
+        <div className="flex items-center gap-3 text-left">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200/40 shrink-0">
+            <Briefcase size={14} />
+          </div>
+          <div>
+            <span className="font-bold text-slate-900 block text-xs uppercase">{row.projectName}</span>
+            <span className="text-[10px] text-slate-400 font-medium block">System Registry ID: {row.id}</span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: "Workflow Linked Nodes",
+      accessor: "projectProgress.totalTasks",
+      cell: (row) => {
+        const taskCount = row.projectProgress?.totalTasks ?? 0;
+        return (
+          <span className="px-2 py-0.5 rounded bg-slate-50 border border-slate-100 text-[10px] font-bold text-slate-600 uppercase tracking-tight">
+            {taskCount} Associated Systems
+          </span>
+        );
+      }
+    },
+    {
+      header: "Operational Action",
+      align: "right",
+      width: "120px",
+      cell: (row) => (
+        <button 
+          onClick={(e) => { e.stopPropagation(); handleProjectClick(row); }}
+          className="p-1.5 hover:bg-slate-100 rounded border border-slate-200 text-slate-600 hover:text-slate-900 transition-colors inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-tight shadow-2xs"
+        >
+          Inspect Issues <ChevronRight size={12} />
+        </button>
+      )
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] font-sans antialiased text-slate-900 p-4 md:p-8">
+    <div className="w-full min-h-screen bg-[#F8FAFC] p-4 md:p-8 text-slate-900 font-sans antialiased text-left relative">
       <AnimatePresence mode="wait">
-        {view === 'list' ? (
-          <motion.div key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }}>
-            <IssueList 
-              issues={issues} 
-              onReportClick={() => setView('report')} 
-              onDelete={deleteIssue}
-              onResolve={resolveIssue}
+        
+        {/* VIEW 1: MASTER DIRECTORY OF LINKED ENTERPRISE PROJECTS */}
+        {view === 'list' && (
+          <motion.div key="list" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-[1300px] mx-auto space-y-6">
+            <header className="border-b border-slate-200 pb-5">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">Project Issues Management</h1>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Select an active context asset module core node to scan and parse operational ticket reports.</p>
+            </header>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MiniMetric label="Monitored Projects Modules" value={projectList.length} subtext="System Registry Nodes" icon={<Briefcase size={14}/>} />
+              <div className="bg-slate-900 rounded-xl p-4 text-white flex justify-between items-center border border-slate-800 shadow-sm">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Diagnostic Monitor State</p>
+                  <p className="text-base font-bold tracking-tight text-emerald-400">Sentinel Active</p>
+                  <p className="text-[10px] text-slate-400 font-medium block">Awaiting cluster query operations</p>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 shrink-0">
+                  <Zap size={14} className="text-amber-400 animate-pulse" />
+                </div>
+              </div>
+            </div>
+
+            <Table 
+              columns={projectColumns}
+              data={projectList}
+              searchPlaceholder="Filter project modular nodes..."
             />
           </motion.div>
-        ) : (
-          <motion.div key="report" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-            <ReportIssuePage 
-              onBack={() => setView('list')} 
-              onSubmit={addIssue} 
-            />
+        )}
+
+        {/* VIEW 2: DRILL-DOWN SPECIFIC PROJECT LIVE ISSUES HUB */}
+        {view === 'issues' && selectedProject && (
+          <motion.div key="issues" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="max-w-[1300px] mx-auto space-y-6">
+            
+            <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-slate-200 pb-5">
+              <div>
+                <button onClick={() => setView('list')} className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-900 mb-2 transition-colors">
+                  <ArrowLeft size={12} /> Back to Master Node Logs
+                </button>
+                <h2 className="text-xl font-bold text-slate-900 uppercase tracking-tight">{selectedProject.projectName}</h2>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">Displaying registered field vulnerabilities mapped onto Context Module: {selectedProject.id}</p>
+              </div>
+
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                <input 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Filter target tickets..." 
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 outline-none focus:border-slate-400 transition-all" 
+                />
+              </div>
+            </header>
+
+            {/* Direct Multi-Filter Option Tab Strip */}
+            <section className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center shadow-sm">
+              <FilterTab label="Priority Level" options={['All', 'High', 'Medium', 'Low']} active={priorityFilter} onChange={setPriorityFilter} />
+              <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+              <FilterTab label="Log Status" options={['All', 'Open', 'In Progress', 'Resolved', 'Closed']} active={statusFilter} onChange={setStatusFilter} />
+            </section>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MiniMetric label="Total Filtered Tickets" value={filteredIssues.length} subtext={`Out of ${issues.length} total nodes`} icon={<Layout size={14}/>} />
+              <MiniMetric label="Critical Threats Remaining" value={filteredIssues.filter(i => i.priority === 'CRITICAL' || i.priority === 'HIGH').length} subtext="Actionable items" icon={<AlertTriangle size={14}/>} danger={filteredIssues.some(i => i.priority === 'CRITICAL' || i.priority === 'HIGH')} />
+            </div>
+
+            {loadingIssues ? (
+              <Loader message="Querying live issue manifests..." />
+            ) : (
+              /* Custom Clean Built In Grid Matrix representation to completely professionalize row displays */
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="grid grid-cols-12 px-6 py-3.5 bg-slate-50 border-b border-slate-200 text-left font-semibold">
+                   <div className="col-span-5 text-[10px] uppercase tracking-wider text-slate-400">Anomaly Fault Descriptor</div>
+                   <div className="col-span-3 text-[10px] uppercase tracking-wider text-slate-400 text-center">Reporter Personnel</div>
+                   <div className="col-span-2 text-[10px] uppercase tracking-wider text-slate-400 text-center">Urgency Tier</div>
+                   <div className="col-span-2 text-[10px] uppercase tracking-wider text-slate-400 text-right">Lifecycle Management</div>
+                </div>
+                
+                <div className="divide-y divide-slate-100">
+                  {filteredIssues.length === 0 ? (
+                    <div className="p-8 text-center text-xs font-medium text-slate-400">
+                      No active ticket items map onto chosen filtration scopes.
+                    </div>
+                  ) : (
+                    filteredIssues.map((issue) => {
+                      const isCritical = issue.priority === 'CRITICAL' || issue.priority === 'HIGH';
+                      return (
+                        <div key={issue.id} className="grid grid-cols-12 px-6 py-4 items-center hover:bg-slate-50/70 transition-colors text-left group">
+                          <div className="col-span-5 pr-4 space-y-0.5">
+                            <h4 className="font-bold text-slate-900 text-xs uppercase tracking-tight group-hover:text-blue-600 transition-colors">{issue.title}</h4>
+                            <span className="text-[10px] text-slate-400 font-medium line-clamp-1 max-w-sm block">
+                              {issue.description || 'No detailed descriptor text input logged.'}
+                            </span>
+                          </div>
+                          <div className="col-span-3 flex justify-center items-center gap-2">
+                            <div className="w-6 h-6 rounded bg-slate-900 flex items-center justify-center text-white font-bold text-[10px] uppercase shrink-0">
+                              {issue.reporter?.firstName ? issue.reporter.firstName.charAt(0) : 'S'}
+                            </div>
+                            <span className="text-xs font-semibold text-slate-700">
+                              {issue.reporter ? `${issue.reporter.firstName} ${issue.reporter.lastName || ''}` : "Automated Bot"}
+                            </span>
+                          </div>
+                          <div className="col-span-2 flex justify-center">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[9px] font-bold uppercase ${
+                              isCritical ? 'bg-rose-50 text-rose-700 border-rose-100' : 'bg-slate-50 text-slate-600 border-slate-100'
+                            }`}>
+                              <span className={`w-1 h-1 rounded-full ${isCritical ? 'bg-rose-500 animate-pulse' : 'bg-slate-400'}`} />
+                              {issue.priority || 'NORMAL'}
+                            </span>
+                          </div>
+                          <div className="col-span-2 flex justify-end">
+                            <button 
+                              onClick={() => setSelectedIssue(issue)}
+                              className="px-2.5 py-1 rounded bg-white border border-slate-200 hover:border-slate-400 font-bold text-[10px] text-slate-700 shadow-2xs transition-all inline-flex items-center gap-1.5 uppercase"
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${issue.status === 'OPEN' ? 'bg-amber-500' : issue.status === 'IN_PROGRESS' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                              {issue.status ? issue.status.replace('_', ' ') : 'OPEN'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* COMPONENT MODAL DEEP TICKET MODIFICATION CONTROLS PANEL */}
+      <AnimatePresence>
+        {selectedIssue && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSelectedIssue(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.98, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.98, y: 10 }}
+              className="bg-white w-full max-w-4xl rounded-xl overflow-hidden border border-slate-200 shadow-xl relative flex flex-col md:flex-row max-h-[85vh] z-[10000]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button onClick={() => setSelectedIssue(null)} className="absolute top-4 right-4 z-10 p-1.5 bg-white rounded-md text-slate-400 hover:text-slate-900 border border-slate-200 transition-colors shadow-sm">
+                <X size={16} />
+              </button>
+
+              {/* LIVE FILE ATTACHED MEDIA CAPTURE WRAPPER */}
+              <div className="w-full md:w-1/2 bg-slate-50 h-56 md:h-auto overflow-hidden border-r border-slate-200 flex items-center justify-center">
+                {selectedIssue.photoUrls?.[0] ? (
+                  <img src={selectedIssue.photoUrls[0]} alt="Field Evidence Capture Frame" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center gap-1.5 text-slate-300">
+                    <AlertTriangle size={28} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">No Media Logs Provided</span>
+                  </div>
+                )}
+              </div>
+
+              {/* TICKET DISCOVERY DETAILS LOG */}
+              <div className="w-full md:w-1/2 p-6 md:p-8 text-left overflow-y-auto flex flex-col justify-between bg-white">
+                <div className="space-y-5">
+                  <div>
+                    <span className="text-[9px] font-bold bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded uppercase tracking-wider">
+                      {selectedIssue.priority} Priority
+                    </span>
+                    <h2 className="text-base font-bold text-slate-900 uppercase mt-3 tracking-tight">{selectedIssue.title}</h2>
+                    <div className="flex items-center gap-1.5 mt-1.5 text-slate-400 text-[11px] font-medium">
+                      <MapPin size={12} />
+                      <span>{selectedIssue.location || "No Registered Geographic Coordinates"}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vulnerability Descriptor</span>
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200/60">
+                      {selectedIssue.description || "No elaboration parameters appended to this file."}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-100 text-xs">
+                    <DetailItem label="Logged By User Node" value={selectedIssue.reporter ? `${selectedIssue.reporter.firstName} ${selectedIssue.reporter.lastName || ''}` : "System Automated"} />
+                    <DetailItem label="Filing Log Date" value={selectedIssue.createdAt ? new Date(selectedIssue.createdAt).toLocaleDateString() : 'N/A'} />
+                  </div>
+                </div>
+
+                {/* STATUS LIFECYCLE MANAGEMENT MUTATION CONTROL BLOCKS */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 mt-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alter Operational Lifecycle Status</label>
+                    <select 
+                      value={tempStatus}
+                      onChange={(e) => setTempStatus(e.target.value)}
+                      className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-slate-400 cursor-pointer transition-all"
+                    >
+                      <option value="OPEN">OPEN</option>
+                      <option value="IN_PROGRESS">IN PROGRESS</option>
+                      <option value="RESOLVED">RESOLVED</option>
+                      <option value="CLOSED">CLOSED</option>
+                    </select>
+                  </div>
+                  
+                  <button 
+                    onClick={handleUpdateStatus}
+                    disabled={updating || tempStatus === selectedIssue.status}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider disabled:bg-slate-100 disabled:text-slate-400 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    {updating ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                    {updating ? "Committing Database Sync..." : "Synchronize System Status"}
+                  </button>
+                </div>
+
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-function IssueList({ issues, onReportClick, onDelete, onResolve }) {
-  const [priorityFilter, setPriorityFilter] = useState('All');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const filteredIssues = useMemo(() => {
-    return issues.filter(issue => {
-      const pMatch = priorityFilter === 'All' || issue.priority === priorityFilter.toUpperCase();
-      const sMatch = statusFilter === 'All' || issue.status === statusFilter.toUpperCase() || (statusFilter === 'In Progress' && issue.status === 'IN PROGRESS');
-      const searchMatch = issue.title.toLowerCase().includes(searchTerm.toLowerCase()) || issue.id.toLowerCase().includes(searchTerm.toLowerCase());
-      return pMatch && sMatch && searchMatch;
-    });
-  }, [issues, priorityFilter, statusFilter, searchTerm]);
-
-  return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <header className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <nav className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.3em] text-blue-600 mb-1">
-            <span>Operations</span> <ChevronRight size={10} strokeWidth={3} /> <span className="text-slate-400">Audit Trail</span>
-          </nav>
-          <h1 className="text-2xl tracking-tight text-slate-900 uppercase">Issue Log</h1>
-        </div>
-        
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-            <input 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search tickets..." 
-              className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl text-[11px] font-bold outline-none focus:ring-4 focus:ring-blue-50 transition-all" 
-            />
-          </div>
-          <button onClick={onReportClick} className="bg-[#0F172A] text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-600 transition-all active:scale-95 shadow-xl shadow-blue-900/10">
-            <Plus size={14} strokeWidth={3} /> Initiate Report
-          </button>
-        </div>
-      </header>
-
-      <section className="bg-white p-2 rounded-[1.2rem] border border-slate-200 flex flex-wrap gap-6 items-center shadow-sm">
-        <FilterTab label="PRIORITY" options={['All', 'High', 'Medium', 'Low']} active={priorityFilter} onChange={setPriorityFilter} />
-        <div className="h-6 w-px bg-slate-100 hidden md:block" />
-        <FilterTab label="STATUS" options={['All', 'Open', 'In Progress', 'Resolved']} active={statusFilter} onChange={setStatusFilter} />
-      </section>
-
-      <div className="bg-white rounded-[1.5rem] border border-slate-200 overflow-hidden shadow-sm">
-        <div className="grid grid-cols-12 px-8 py-4 bg-slate-50/50 border-b border-slate-100">
-           <div className="col-span-5 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">Ticket Identity</div>
-           <div className="col-span-3 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Personnel</div>
-           <div className="col-span-2 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Protocol</div>
-           <div className="col-span-2 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</div>
-        </div>
-        
-        <div className="divide-y divide-slate-50">
-          {filteredIssues.map((issue) => (
-            <div key={issue.id} className="grid grid-cols-12 px-8 py-5 items-center hover:bg-blue-50/30 transition-colors group">
-              <div className="col-span-5">
-                <h4 className="font-black text-slate-800 text-[13px] tracking-tight group-hover:text-blue-600 transition-colors uppercase">{issue.title}</h4>
-                <p className="text-[9px] text-slate-400 font-bold tracking-tighter uppercase italic">{issue.id} • {issue.system}</p>
-              </div>
-              <div className="col-span-3 flex justify-center items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-[#0F172A] flex items-center justify-center text-white font-black text-[9px] uppercase tracking-tighter shadow-md shadow-slate-200">{issue.reporter.charAt(0)}</div>
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">{issue.reporter}</span>
-              </div>
-              <div className="col-span-2 flex justify-center">
-                <StatusBadge status={issue.status} />
-              </div>
-              <div className="col-span-2 flex justify-end gap-3">
-                {issue.status !== 'RESOLVED' && (
-                  <button onClick={() => onResolve(issue.id)} className="text-[9px] font-black text-blue-600 uppercase hover:underline">Resolve</button>
-                )}
-                <button onClick={() => onDelete(issue.id)} className="text-slate-300 hover:text-red-500 transition-colors">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ReportIssuePage({ onBack, onSubmit }) {
-  const fileInputRef = useRef(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    department: 'Operations',
-    assets: '',
-    challenges: '',
-    priority: 'HIGH'
-  });
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleCommit = () => {
-    if (!formData.title) return alert("Please enter incident summary");
-    onSubmit({
-      id: `TKT-${Math.floor(Math.random()*9000)+1000}`,
-      title: formData.title,
-      reporter: 'Executive',
-      system: formData.department,
-      status: 'OPEN',
-      priority: formData.priority,
-      image: imagePreview
-    });
-  };
-
-  return (
-    <div className="max-w-6xl mx-auto space-y-8 py-4">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <button onClick={onBack} className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-blue-600 transition-all">
-            <ArrowLeft size={14} /> Protocol Return
-          </button>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">New <span className="text-blue-600 italic underline decoration-slate-200 underline-offset-8">Incident</span></h1>
-        </div>
-        <div className="flex gap-3">
-            <button onClick={onBack} className="px-5 py-3 bg-white border border-slate-200 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50">Discard</button>
-            <button onClick={handleCommit} className="px-8 py-3 bg-[#0F172A] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl shadow-blue-900/20 hover:bg-blue-600 transition-all flex items-center gap-2 active:scale-95">
-              <Send size={14} fill="currentColor"/> Commit Ticket
-            </button>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-8">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Incident Summary</label>
-              <textarea 
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                rows={3} 
-                placeholder="What happened? (e.g. Server Timeout)" 
-                className="w-full bg-slate-50 rounded-2xl p-5 text-[12px] font-bold outline-none focus:ring-4 focus:ring-blue-50 transition-all border-none" 
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><Users size={12}/> Department</label>
-                  <select 
-                    value={formData.department}
-                    onChange={(e) => setFormData({...formData, department: e.target.value})}
-                    className="w-full bg-slate-50 rounded-2xl px-5 py-4 text-[12px] font-bold outline-none border-none appearance-none"
-                  >
-                    <option>Operations</option>
-                    <option>Infrastructure</option>
-                    <option>Financial Systems</option>
-                    <option>Frontend</option>
-                  </select>
-               </div>
-               <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2"><Package size={12}/> Asset ID</label>
-                  <input 
-                    value={formData.assets}
-                    onChange={(e) => setFormData({...formData, assets: e.target.value})}
-                    placeholder="e.g. SRV-092" 
-                    className="w-full bg-slate-50 rounded-2xl px-5 py-4 text-[12px] font-bold outline-none border-none" 
-                  />
-               </div>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              <label className="text-[9px] font-black text-blue-600 uppercase tracking-widest ml-1 flex items-center gap-2 italic"><AlertTriangle size={12}/> Critical Blockers</label>
-              <textarea 
-                value={formData.challenges}
-                onChange={(e) => setFormData({...formData, challenges: e.target.value})}
-                rows={2} 
-                placeholder="Any obstacles to resolution?" 
-                className="w-full bg-slate-50 border-l-4 border-l-blue-600 rounded-r-2xl p-5 text-[12px] font-bold outline-none focus:bg-white transition-all" 
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4 text-center">
-            <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Evidence Upload</h4>
-            <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
-            <div 
-              onClick={() => fileInputRef.current.click()}
-              className="aspect-video bg-slate-50 border-2 border-dashed border-slate-100 rounded-3xl flex flex-col items-center justify-center gap-2 group hover:border-blue-200 cursor-pointer transition-all overflow-hidden"
-            >
-              {imagePreview ? (
-                <img src={imagePreview} className="w-full h-full object-cover" alt="preview" />
-              ) : (
-                <>
-                  <Camera className="text-slate-300 group-hover:text-blue-600" size={24} strokeWidth={1.5}/>
-                  <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Select Image</p>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-5">
-             <div className="flex justify-between items-center">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tier</span>
-                <select 
-                  value={formData.priority}
-                  onChange={(e) => setFormData({...formData, priority: e.target.value})}
-                  className="bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-1 rounded border-none outline-none"
-                >
-                  <option>HIGH</option>
-                  <option>MEDIUM</option>
-                  <option>LOW</option>
-                </select>
-             </div>
-             <MetaItem label="System" value={formData.department} />
-             <MetaItem label="Timestamp" value={new Date().toLocaleDateString()} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function FilterTab({ label, options, active, onChange }) {
   return (
-    <div className="flex items-center gap-4 ml-2">
-      <span className="text-[8px] font-black text-slate-400 tracking-[0.2em] uppercase leading-none">{label}</span>
-      <div className="flex bg-slate-100 p-1 rounded-xl">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto text-left">
+      <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase shrink-0">{label}:</span>
+      <div className="flex bg-slate-100 p-1 rounded-lg w-full sm:w-auto overflow-x-auto">
         {options.map(opt => (
-          <button key={opt} onClick={() => onChange(opt)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black transition-all uppercase tracking-tighter ${active === opt ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>
+          <button 
+            key={opt} 
+            type="button"
+            onClick={() => onChange(opt)} 
+            className={`px-3 py-1 rounded text-[10px] font-bold transition-all uppercase whitespace-nowrap tracking-tight ${
+              active === opt 
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/40' 
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
             {opt}
           </button>
         ))}
@@ -299,20 +403,24 @@ function FilterTab({ label, options, active, onChange }) {
   );
 }
 
-function StatusBadge({ status }) {
-  const styles = {
-    'OPEN': 'bg-blue-600 text-white border-blue-600',
-    'RESOLVED': 'bg-[#0F172A] text-white border-slate-900',
-    'IN PROGRESS': 'bg-blue-50 text-blue-600 border-blue-100',
-  };
-  return <span className={`px-3 py-1 rounded-lg text-[9px] font-black border uppercase italic tracking-tighter shadow-sm ${styles[status] || 'bg-slate-100'}`}>{status}</span>;
+function MiniMetric({ label, value, subtext, icon, danger = false }) {
+  return (
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between text-left">
+      <div className="space-y-0.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+        <span className="text-base font-bold tracking-tight text-slate-900 block">{value}</span>
+        <span className={`text-[10px] font-semibold block ${danger ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>{subtext}</span>
+      </div>
+      <div className={`p-2 rounded-lg border shrink-0 ${danger ? 'bg-rose-50 border-rose-100 text-rose-500' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>{icon}</div>
+    </div>
+  );
 }
 
-function MetaItem({ label, value }) {
+function DetailItem({ label, value }) {
   return (
-    <div className="flex justify-between items-center border-b border-slate-50 pb-2 last:border-0 last:pb-0">
-      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
-      <span className="text-[10px] font-black text-slate-900 uppercase italic">{value}</span>
+    <div className="space-y-0.5 text-left">
+      <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{label}</p>
+      <p className="text-xs font-semibold text-slate-800 truncate">{value || 'N/A'}</p>
     </div>
   );
 }

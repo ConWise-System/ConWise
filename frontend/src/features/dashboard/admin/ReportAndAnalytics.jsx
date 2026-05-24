@@ -1,14 +1,15 @@
 "use client";
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Download, FileText, X, Trash2,
   CheckCircle2, Filter, Loader2,
   CloudSun, HardHat, Construction, AlertTriangle, 
-  Image as ImageIcon, Calendar, Clock, RefreshCw
+  Image as ImageIcon, Calendar, Clock, RefreshCw, ChevronDown, FileCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import summeryApi from '../../../common/summeryApi';
-import Axios from '../../../../utils/Axios'
+import Axios from '../../../../utils/Axios';
 
 export default function AdminReportSystem({ projectId = 1 }) {
   const [reports, setReports] = useState([]);
@@ -17,21 +18,19 @@ export default function AdminReportSystem({ projectId = 1 }) {
   const [filterType, setFilterType] = useState('ALL');
   const [selectedReport, setSelectedReport] = useState(null);
 
-  // --- API INTEGRATION ---
+  // --- API INTEGRATION (UNTOUCHED BACKEND CALLS) ---
 
   const fetchReports = async () => {
     try {
       setIsLoading(true);
       const response = await Axios({
         ...summeryApi.reports
-      })
-
-      console.log(response.data.success)
+      });
       
       if (response.data.success) {
         setReports(response.data.data || []);
       } else {
-        throw new Error(resData.message || "Failed to fetch");
+        throw new Error(response.data.message || "Failed to fetch");
       }
     } catch (err) {
       setError(err.message);
@@ -47,29 +46,22 @@ export default function AdminReportSystem({ projectId = 1 }) {
     }
   
     try {
-      // 1. Fetch the PDF as a blob
       const response = await Axios({
         url: summeryApi.downloadReport.url(reportId),
         method: "GET",
-        responseType: 'blob', // Critical for handling binary files like PDF
+        responseType: 'blob',
       });
   
-      // 2. Create a local URL for the downloaded blob
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const downloadUrl = window.URL.createObjectURL(blob);
   
-      // 3. Create a temporary 'a' tag to trigger the download
       const link = document.createElement('a');
       link.href = downloadUrl;
-      
-      // Set the filename (you can customize this)
       link.setAttribute('download', `Report_${reportId}.pdf`);
       
-      // 4. Append, click, and clean up
       document.body.appendChild(link);
       link.click();
       
-      // Clean up the DOM and the URL object
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
   
@@ -80,7 +72,6 @@ export default function AdminReportSystem({ projectId = 1 }) {
   };
 
   const handleDeleteReport = async (reportId) => {
-    // 1. Validate ID exists
     if (!reportId) {
         alert("Cannot delete: Report ID is missing.");
         return;
@@ -89,33 +80,25 @@ export default function AdminReportSystem({ projectId = 1 }) {
     if (!confirm("Are you sure you want to delete this report?")) return;
     
     try {
-        // 2. Use your API config and include the full backend URL
-        // Accessing the method and url dynamically from your summeryApi object
         const response = await Axios({
             method: summeryApi.deleteReport.method, 
             url: `http://localhost:8000${summeryApi.deleteReport.url(reportId)}`
         });
         
-        // 3. Axios puts the response body in .data
         if (response.data.success) {
-            // 4. Update state using both 'id' and '_id' for safety
             setReports(prev => prev.filter(r => (r.id || r._id) !== reportId));
-            
-            // Close the modal after deletion
             setSelectedReport(null);
-            
-            // Optional: Show success feedback
             console.log("Report deleted successfully");
         } else {
             throw new Error(response.data.message || "Server failed to delete");
         }
     } catch (err) {
         console.error("Delete Error:", err);
-        // Access server error message if available
         const errorMsg = err.response?.data?.message || "Delete failed";
         alert(errorMsg);
     }
-};
+  };
+
   useEffect(() => {
     fetchReports();
   }, [projectId]);
@@ -127,223 +110,241 @@ export default function AdminReportSystem({ projectId = 1 }) {
   }, [filterType, reports]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased text-slate-900">
-      <div className="max-w-[1200px] mx-auto p-6 md:p-10 space-y-8">
+    <div className="w-full min-h-screen bg-[#F8FAFC] p-4 md:p-8 text-slate-900 font-sans antialiased text-left relative">
+      <div className="max-w-[1300px] mx-auto space-y-6">
         
-        {/* Header */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-8 rounded-3xl shadow-sm border border-slate-100 gap-4">
+        {/* Professional Minimalist Header Container */}
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-200 pb-5">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black tracking-[0.3em] text-slate-400 uppercase">Live Project Feed</span>
-            </div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">
-              Report <span className="text-blue-600 italic font-medium tracking-normal">Vault</span>
-            </h1>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">Project Reports Directory</h1>
+            <p className="text-xs text-slate-500 mt-1 font-medium">Review field logging parameters, site status indices, structural inspections, and dynamic PDF downloads.</p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
              <button 
                 onClick={fetchReports} 
-                className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all border border-slate-100"
+                className="p-2 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-2xs"
+                title="Refresh log metrics"
              >
-                <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
+                <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
              </button>
-             <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-200">
-                <Filter size={14} className="text-blue-500" />
+             <div className="relative flex-1 sm:w-56">
+                <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10 pointer-events-none" />
                 <select 
-                    className="bg-transparent text-[11px] font-black uppercase tracking-widest outline-none cursor-pointer text-slate-600 min-w-[140px]"
+                    className="w-full pl-8 pr-8 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px] font-bold uppercase tracking-wider text-slate-700 outline-none focus:border-slate-400 appearance-none cursor-pointer shadow-2xs"
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
                 >
-                    <option value="ALL">All Report Types</option>
+                    <option value="ALL">All Report Formats</option>
                     <option value="DAILY_SITE_REPORT">Daily Logs</option>
-                    <option value="INSPECTION_REPORT">Inspections</option>
+                    <option value="INSPECTION_REPORT">Site Inspections</option>
                 </select>
+                <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
              </div>
           </div>
         </header>
 
-        {/* Loading/Error States */}
+        {/* Core Loading / Exception Handlers */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 opacity-40">
-            <Loader2 className="animate-spin mb-4" size={40} />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em]">Decrypting Archives...</p>
+          <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+            <Loader2 className="animate-spin mb-3 text-slate-600" size={28} />
+            <p className="text-[10px] font-bold uppercase tracking-wider">Querying secure report archives...</p>
           </div>
         ) : error ? (
-          <div className="p-10 bg-rose-50 border border-rose-100 rounded-[2rem] text-center">
-            <AlertTriangle className="text-rose-500 mx-auto mb-4" />
-            <p className="text-rose-900 font-bold uppercase text-xs tracking-widest">{error}</p>
+          <div className="p-8 bg-rose-50 border border-rose-200/60 rounded-xl text-center max-w-xl mx-auto">
+            <AlertTriangle className="text-rose-500 mx-auto mb-3" size={20} />
+            <p className="text-rose-900 font-bold uppercase text-[11px] tracking-wider mb-1">Server Connectivity Failure</p>
+            <p className="text-xs text-rose-700 font-medium">{error}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          /* Grid Representation Layout */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             <AnimatePresence mode="popLayout">
-              {filteredReports.map((report) => (
-                <motion.div 
-                  layout
-                  key={report.id} 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-between group cursor-pointer hover:shadow-xl hover:border-blue-200 transition-all duration-300"
-                  onClick={() => setSelectedReport(report)}
-                >
-                  <div className="space-y-5">
-                    <div className="flex justify-between items-center">
-                      <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[9px] font-black rounded-lg uppercase tracking-widest border border-blue-100">
-                          {report.reportType?.replace(/_/g, ' ')}
-                      </span>
-                      <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            // If Prisma/DB uses _id, use report._id here
-                            handleDownloadPDF(report.id || report._id); 
-                          }}
-                          className="..."
-                        >
-                          <Download size={18} />
-                      </button>
-                    </div>
-                    <div>
-                        <h4 className="text-lg font-black text-slate-800 leading-tight group-hover:text-blue-600 transition-colors">{report.reportTitle}</h4>
-                        <div className="flex items-center gap-2 mt-2 text-slate-400">
-                            <Calendar size={12} />
-                            <span className="text-[10px] font-bold uppercase tracking-tight">{new Date(report.reportDate).toDateString()}</span>
+              {filteredReports.length === 0 ? (
+                <div className="col-span-full py-16 bg-white border border-slate-200 rounded-xl text-center text-xs font-medium text-slate-400 shadow-2xs">
+                  No registered files map to this filtering parameter.
+                </div>
+              ) : (
+                filteredReports.map((report) => (
+                  <motion.div 
+                    layout
+                    key={report.id || report._id} 
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between group cursor-pointer hover:border-slate-400 transition-all text-left"
+                    onClick={() => setSelectedReport(report)}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start gap-4">
+                        <span className="px-2 py-0.5 bg-slate-100 border border-slate-200/60 text-slate-700 text-[9px] font-bold rounded uppercase tracking-tight">
+                            {report.reportType?.replace(/_/g, ' ')}
+                        </span>
+                        <button 
+                            type="button"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              handleDownloadPDF(report.id || report._id); 
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-slate-900 bg-slate-50 border border-slate-200/40 rounded transition-colors shrink-0"
+                            title="Download PDF Ledger"
+                          >
+                            <Download size={13} />
+                        </button>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-tight line-clamp-2 group-hover:text-blue-600 transition-colors leading-snug">
+                          {report.reportTitle}
+                        </h4>
+                        <div className="flex items-center gap-1.5 mt-2.5 text-slate-400 text-[10px] font-semibold tracking-wide font-mono">
+                          <Calendar size={11} className="text-slate-400" />
+                          <span>{new Date(report.reportDate).toLocaleDateString()}</span>
                         </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="pt-6 mt-6 border-t border-slate-50 flex items-center justify-between">
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Inspect Data &rarr;</span>
-                      <FileText size={14} className="text-slate-300" />
-                  </div>
-                </motion.div>
-              ))}
+                    
+                    <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold uppercase tracking-tight text-slate-400 group-hover:text-slate-700 transition-colors">
+                      <span>Inspect Ledger Details &rarr;</span>
+                      <FileText size={13} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+                    </div>
+                  </motion.div>
+                ))
+              )}
             </AnimatePresence>
           </div>
         )}
       </div>
 
-      {/* Detail Modal */}
+      {/* Structured Deep Inspection Drawer Modal */}
       <AnimatePresence>
         {selectedReport && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-8">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setSelectedReport(null)}
-              className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
             
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }} 
-              animate={{ scale: 1, opacity: 1, y: 0 }} 
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-4xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[85vh] border border-white/20"
+              initial={{ scale: 0.98, y: 10 }} 
+              animate={{ scale: 1, y: 0 }} 
+              exit={{ scale: 0.98, y: 10 }}
+              className="relative w-full max-w-4xl bg-white rounded-xl shadow-xl overflow-hidden flex flex-col md:flex-row max-h-[85vh] border border-slate-200"
             >
-              {/* Left Column: Evidence Image */}
-              <div className={`md:w-5/12 bg-slate-100 relative min-h-[300px] ${!selectedReport.progressPhotoUrl && 'bg-slate-900'}`}>
+              {/* Left Column: Visual Capture Canvas */}
+              <div className={`w-full md:w-5/12 bg-slate-50 relative min-h-[220px] md:min-h-0 border-r border-slate-200 flex items-center justify-center overflow-hidden ${!selectedReport.progressPhotoUrl && 'bg-slate-900'}`}>
                 {selectedReport.progressPhotoUrl ? (
                   <img 
                     src={selectedReport.progressPhotoUrl} 
                     className="w-full h-full object-cover" 
-                    alt="Site Evidence" 
+                    alt="Site evidence frame snapshot" 
                   />
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center p-12 text-center text-white">
-                    <ImageIcon size={48} className="text-slate-700 mb-4 opacity-20" />
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">No Evidence Attached</p>
+                  <div className="flex flex-col items-center justify-center p-6 text-center text-slate-400 gap-1.5">
+                    <ImageIcon size={28} className="text-slate-600 opacity-40" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">No Media Logs Provided</span>
                   </div>
                 )}
-                <div className="absolute top-6 left-6">
-                    <div className="px-4 py-2 bg-white/90 backdrop-blur shadow-xl rounded-2xl">
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Evidence</span>
-                    </div>
+                <div className="absolute top-4 left-4 z-10">
+                  <div className="px-2 py-0.5 bg-slate-900/80 backdrop-blur text-white text-[9px] font-bold rounded uppercase tracking-wider border border-white/10">
+                    Field Attachment
+                  </div>
                 </div>
               </div>
 
-              {/* Right Column: Information Ledger */}
-              <div className="flex-1 flex flex-col min-h-0 bg-white">
-                <div className="p-8 border-b border-slate-50 flex justify-between items-start bg-white sticky top-0 z-10">
-                    <div className="max-w-[80%]">
-                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-1 block">
+              {/* Right Column: Meta Metrics Matrix */}
+              <div className="w-full md:w-7/12 flex flex-col min-h-0 bg-white text-left">
+                
+                {/* Modal Title Block Area */}
+                <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-start sticky top-0 z-10">
+                    <div className="max-w-[82%] space-y-0.5">
+                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
                           {selectedReport.reportType?.replace(/_/g, ' ')}
                         </span>
-                        <h2 className="text-2xl font-black text-slate-900 leading-tight">
+                        <h2 className="text-sm font-bold text-slate-900 uppercase tracking-tight leading-tight">
                           {selectedReport.reportTitle}
                         </h2>
                     </div>
-                    <div className="flex gap-2">
-                    <button 
-                      onClick={() => handleDeleteReport(selectedReport.id || selectedReport._id)} 
-                      className="..."
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                        <button 
-                          onClick={() => setSelectedReport(null)} 
-                          className="p-2 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all"
-                        >
-                            <X size={20} />
-                        </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button 
+                        type="button"
+                        onClick={() => handleDeleteReport(selectedReport.id || selectedReport._id)} 
+                        className="p-1.5 text-slate-400 hover:text-red-600 bg-white border border-slate-200 rounded-md transition-colors shadow-2xs"
+                        title="Purge record file"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setSelectedReport(null)} 
+                        className="p-1.5 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 rounded-md transition-colors shadow-2xs"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
                 </div>
 
-                <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-8 bg-white">
-                    {/* Metadata Grid */}
-                    <div className="grid grid-cols-2 gap-4">
+                {/* Main Scroll Content Scope */}
+                <div className="p-6 md:p-8 overflow-y-auto flex-1 space-y-6 bg-white">
+                    {/* Core Grid Metadata Indicators */}
+                    <div className="grid grid-cols-2 gap-3.5">
                         <InfoBox 
-                          icon={<Calendar size={14}/>} 
-                          label="Date" 
+                          icon={<Calendar size={12} className="text-slate-400" />} 
+                          label="Logging Timestamp" 
                           value={new Date(selectedReport.reportDate).toLocaleDateString()} 
                         />
                         <InfoBox 
-                          icon={<HardHat size={14}/>} 
-                          label="Personnel" 
-                          value={`${selectedReport.workersPresent} Workers`} 
+                          icon={<HardHat size={12} className="text-slate-400" />} 
+                          label="Labor Manifest" 
+                          value={`${selectedReport.workersPresent || 0} Operators Present`} 
                         />
                         <InfoBox 
-                          icon={<CloudSun size={14}/>} 
-                          label="Weather" 
-                          value={selectedReport.weatherCondition} 
+                          icon={<CloudSun size={12} className="text-slate-400" />} 
+                          label="Environment Index" 
+                          value={selectedReport.weatherCondition || "Unspecified"} 
                         />
                         <InfoBox 
-                          icon={<Construction size={14}/>} 
-                          label="Materials" 
-                          value={selectedReport.materialsUsed} 
+                          icon={<Construction size={12} className="text-slate-400" />} 
+                          label="Material Allocation" 
+                          value={selectedReport.materialsUsed || "None Declared"} 
                         />
                     </div>
 
-                    <div className="space-y-6">
-                        <section>
-                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <CheckCircle2 size={14} className="text-blue-500" /> Work Summary
+                    {/* Textual Summaries Parameter Sets */}
+                    <div className="space-y-5">
+                        <div className="space-y-1.5">
+                            <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <CheckCircle2 size={12} className="text-emerald-500" /> Executive Progress Statement
                             </h5>
-                            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 leading-relaxed text-slate-700 text-sm italic shadow-inner">
-                                "{selectedReport.workCompleted}"
+                            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 leading-relaxed shadow-2xs">
+                                {selectedReport.workCompleted || "No clear summary report metrics submitted for this node iteration."}
                             </div>
-                        </section>
+                        </div>
 
-                        {/* Challenges Section - Only shows if data exists */}
+                        {/* Condition Blockers Check Exception Frame */}
                         {selectedReport.challenges && selectedReport.challenges !== "None" && (
-                            <section className="p-5 bg-rose-50 rounded-2xl border border-rose-100">
-                                <h5 className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <AlertTriangle size={14} /> Challenges
+                            <div className="p-4 bg-rose-50 border border-rose-200/50 rounded-lg space-y-1">
+                                <h5 className="text-[10px] font-bold text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <AlertTriangle size={12} /> Logged Deployment Obstacles
                                 </h5>
-                                <p className="text-sm text-rose-800 font-medium">{selectedReport.challenges}</p>
-                            </section>
+                                <p className="text-xs text-rose-900 font-semibold leading-relaxed">{selectedReport.challenges}</p>
+                            </div>
                         )}
                     </div>
                 </div>
 
-                {/* Footer Action Bar */}
-                <div className="p-8 bg-white border-t border-slate-100 sticky bottom-0">
+                {/* Footer Process Operation Download Bar */}
+                <div className="p-6 bg-slate-50 border-t border-slate-200 sticky bottom-0">
                     <button 
+                        type="button"
                         onClick={() => handleDownloadPDF(selectedReport.id || selectedReport._id)}
-                        className="w-full py-4 bg-[#0F172A] text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2 active:scale-95"
+                        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold uppercase tracking-wider shadow-sm transition-all flex items-center justify-center gap-2 active:scale-95"
                     >
-                        <Download size={14} /> PDF Ledger
+                        <Download size={13} /> Export Cryptographic PDF Ledger
                     </button>
                 </div>
               </div>
+
             </motion.div>
           </div>
         )}
@@ -354,9 +355,12 @@ export default function AdminReportSystem({ projectId = 1 }) {
 
 function InfoBox({ icon, label, value }) {
   return (
-    <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
-      <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase mb-1">{icon} {label}</div>
-      <div className="text-xs font-black tracking-tight text-slate-800">{value}</div>
+    <div className="p-3 bg-slate-50/50 border border-slate-200 rounded-lg text-left space-y-0.5 shadow-2xs">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+        {icon} 
+        <span>{label}</span>
+      </div>
+      <div className="text-xs font-bold tracking-tight text-slate-800 truncate">{value || 'N/A'}</div>
     </div>
   );
 }

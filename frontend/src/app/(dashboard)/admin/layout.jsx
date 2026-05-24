@@ -6,8 +6,9 @@ import { Search, Bell, UserCircle, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '../../../context/UserContext';
 import { useNotifications } from '../../../context/NotificationContext';
-import { MessagingProvider } from '../../../context/MessagingContext'; // 1. Imported Provider
-import Sidebar  from '../../../components/sidebar';
+import { MessagingProvider } from '../../../context/MessagingContext';
+import Sidebar from '../../../components/sidebar';
+import NotificationDrawer from "../../../components/dashboard/NotificationDrawer"
 
 
 export function useClickOutside(ref, callback) {
@@ -24,13 +25,17 @@ export function useClickOutside(ref, callback) {
 
 export default function DashboardLayout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
   const { user, loading, handleLogout } = useUser();
   const { unreadCount } = useNotifications();
   
   const router = useRouter();
   const menuRef = useRef(null);
+  const drawerRef = useRef(null); // Ref specifically for wrapping our new drawer wrapper click logic
   
   useClickOutside(menuRef, () => setShowProfileMenu(false));
+  useClickOutside(drawerRef, () => setShowNotifications(false));
 
   if (loading) return <div className="h-screen w-full bg-[#f8fafc] animate-pulse" />;
 
@@ -46,9 +51,8 @@ export default function DashboardLayout({ children }) {
   );
 
   return (
-    // 2. Wrapped everything using the centralized Context Engine passing authenticated state attributes
     <MessagingProvider currentUser={user}>
-      <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc]">
+      <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc] relative">
         {/* SIDEBAR */}
         <aside className="h-full shrink-0 z-[100] shadow-2xl shadow-slate-200">
           <Sidebar/>
@@ -76,10 +80,12 @@ export default function DashboardLayout({ children }) {
                 <span className="text-[10px] font-black uppercase tracking-widest">System Live</span>
               </div>
 
-              {/* NOTIFICATION BELL */}
+              {/* NOTIFICATION BELL ICON CONTAINER */}
               <button 
-                onClick={() => router.push('/admin/notification')} 
-                className="p-3 bg-white text-slate-500 hover:text-slate-900 rounded-2xl shadow-sm border border-slate-200 relative transition-all active:scale-95"
+                onClick={() => setShowNotifications(!showNotifications)} 
+                className={`p-3 rounded-2xl shadow-sm border transition-all active:scale-95 relative ${
+                  showNotifications ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'
+                }`}
               >
                 <Bell size={20} />
                 
@@ -90,8 +96,7 @@ export default function DashboardLayout({ children }) {
                       initial={{ scale: 0.4, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.4, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                      className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white rounded-full text-[9px] font-black tracking-tight flex items-center justify-center border-2 border-white shadow-sm unselectable"
+                      className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white rounded-full text-[9px] font-black tracking-tight flex items-center justify-center border-2 border-white shadow-sm select-none"
                     >
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </motion.span>
@@ -154,8 +159,16 @@ export default function DashboardLayout({ children }) {
               {children}
             </div>
           </div>
-
         </main>
+
+        {/* 3. INJECT THE STANDALONE SLIDE PANEL DRAWER COMPONENT */}
+        <div ref={drawerRef}>
+          <NotificationDrawer 
+            isOpen={showNotifications} 
+            onClose={() => setShowNotifications(false)} 
+          />
+        </div>
+
       </div>
     </MessagingProvider>
   );
