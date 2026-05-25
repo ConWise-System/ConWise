@@ -1,24 +1,26 @@
 import prisma from "../../config/prisma.js";
-// import { notificationService } from "../notification/notification.service.js";
+
+
 
 const createReport = async (userId, companyId, reportData) => {
+
   try {
+    
     // The companyId of the project report is creating and the user company id should be the same ,
     // if it not the current implementation is one user is creating report for another company project wich is logically not correct user can create report for only their companies project
-
+  
     if (reportData.projectId) {
       const project = await prisma.project.findUnique({
         where: { id: Number(reportData.projectId) },
         select: { companyId: true },
       });
       if (project && project.companyId !== Number(companyId)) {
-        throw new Error(
-          "Cannot create report for a project that does not belong to this company.",
-        );
+        throw new Error("Cannot create report for a project that does not belong to this company.");
       }
     }
+ 
 
-    const newReport = await prisma.report.create({
+    return await prisma.report.create({
       data: {
         reportTitle: reportData.reportTitle,
         reportType: reportData.reportType,
@@ -47,21 +49,6 @@ const createReport = async (userId, companyId, reportData) => {
         company: true, // optional
       },
     });
-
-    // this try catch block is used to send a notification to the project manager
-    try {
-      await notificationService.createNotification({
-        recipientUserId: reportData.project.projectManagerId,
-        notificationTitle: "New Report Submitted For you Project",
-        notificationDescription: `${reportData.user.firstName} submitted a ${reportData.reportType} for project ${reportData.project.projectName}.`,
-        relatedEntityType: "REPORT",
-        relatedEntityId: newReport.id,
-      });
-    } catch (error) {
-      console.error("Notification failed:", error.message);
-    }
-
-    return newReport;
   } catch (error) {
     throw new Error(error);
   }
@@ -81,11 +68,8 @@ const getReportsByProject = async (projectId) => {
   });
 };
 
-const getAllReports = async (companyId) => {
+const getAllReports = async () => {
   return await prisma.report.findMany({
-    where: {
-      companyId: Number(companyId),
-    },
     include: {
       user: {
         select: { firstName: true, lastName: true, role: true },
@@ -127,7 +111,7 @@ const filterReport = async (reportType) => {
   });
 };
 
-// delete report
+// delete report 
 
 const deleteReport = async (reportId) => {
   return await prisma.report.delete({

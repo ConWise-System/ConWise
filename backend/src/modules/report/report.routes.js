@@ -8,7 +8,6 @@ import {
   filerReportByTypeSchema,
 } from "./report.validation.js";
 import { ROLES } from "../../config/constants.js";
-import { get } from "https";
 
 const router = express.Router();
 
@@ -32,12 +31,7 @@ router.get(
 //get all reports
 router.get(
   "/all",
-  authorizeRoles(
-    ROLES.PROJECT_MANAGER,
-    ROLES.SITE_ENGINEER,
-    ROLES.SITE_SUPERVISOR,
-    ROLES.COMPANY_ADMIN,
-  ),
+  authorizeRoles(ROLES.PROJECT_MANAGER, ROLES.COMPANY_ADMIN),
   reportController.getAllReports,
 );
 

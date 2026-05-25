@@ -42,19 +42,12 @@ export const getPrivateHistory = async (userA, userB) => {
       OR: [
         { senderUserId: userA, receiverUserId: userB },
         { senderUserId: userB, receiverUserId: userA },
-      ]
+      ],
+      projectId: null, // Ensure we don't accidentally pull project messages
     },
     include: {
-      sender: { 
-        select: { 
-          firstName: true, 
-          lastName: true, 
-          role: true 
-        } 
-      },
+      sender: { select: { firstName: true, lastName: true, role: true } },
     },
-    orderBy: { 
-      timestamp: "asc" 
-    },
+    orderBy: { timestamp: "asc" },
   });
 };
