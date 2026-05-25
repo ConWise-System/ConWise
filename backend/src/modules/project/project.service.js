@@ -128,7 +128,7 @@ export const projectService = {
   },
 
   // Get single project — role-based visibility
- getAllProjects: async ({ companyId, userId, role }) => {
+getAllProjects: async ({ companyId, userId, role }) => {
     let where = { companyId };
 
     if (role === ROLES.SITE_ENGINEER || role === ROLES.SITE_SUPERVISOR) {
@@ -142,9 +142,9 @@ export const projectService = {
       where,
       include: {
         projectProgress: true,
-        // Pull only the status field to keep the query fast
+        // 1. Fix: Select 'taskStatus' instead of 'status'
         tasks: {
-          select: { status: true }
+          select: { taskStatus: true }
         },
         _count: {
           select: { tasks: true }
@@ -164,8 +164,8 @@ export const projectService = {
       
       let updatedStatus = project.status;
 
-      // Rule: If there are tasks, and ALL of them are "DONE"
-      if (tasks.length > 0 && tasks.every(task => task.status === "DONE")) {
+      // 2. Fix: Check 'task.taskStatus' against "DONE"
+      if (tasks.length > 0 && tasks.every(task => task.taskStatus === "DONE")) {
         if (project.status !== "COMPLETED") {
           updatedStatus = "COMPLETED";
           // Queue the DB update for execution outside the main loop execution timeline

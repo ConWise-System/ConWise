@@ -1,22 +1,33 @@
-import env from "../../config/env.js";
+// Helper to get the API key from either your env object configuration or process.env fallback
+const getApiKey = () => {
+  // If your central config maps it, use it. Otherwise fall back to raw process.env
+  const key = process.env.BREVO_API_KEY;
+  
+  if (!key) {
+    console.warn("⚠️ WARNING: BREVO_API_KEY is not defined in your environment variables!");
+  }
+  return key;
+};
 
 export const sendStaffInviteEmail = async (recipientEmail, temporaryPassword) => {
   if (!recipientEmail) {
     throw new Error("sendStaffInviteEmail: No recipient email provided");
   }
 
+  const apiKey = getApiKey();
+
   try {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         "accept": "application/json",
-        "api-key": process.env.BREVO_API_KEY, // Pulled from Render dashboard
+        "api-key": apiKey, 
         "content-type": "application/json"
       },
       body: JSON.stringify({
         sender: { 
           name: "ConWise Team", 
-          email: "firomsahika2022@gmail.com" // Your personal Gmail
+          email: "firomsahika2022@gmail.com" 
         },
         to: [{ email: recipientEmail }],
         subject: "You have been invited to join ConWise",
@@ -51,12 +62,14 @@ export const sendStaffInviteEmail = async (recipientEmail, temporaryPassword) =>
 export const sendVerificationEmail = async (to, code) => {
   if (!to) throw new Error("sendVerificationEmail: No recipient email provided");
 
+  const apiKey = getApiKey();
+
   try {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         "accept": "application/json",
-        "api-key": process.env.BREVO_API_KEY,
+        "api-key": apiKey,
         "content-type": "application/json"
       },
       body: JSON.stringify({
