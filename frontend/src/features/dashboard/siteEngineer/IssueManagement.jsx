@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom"; // Imported to handle isolated root layout rendering
 import {
   ShieldAlert,
   Lock,
@@ -19,11 +20,20 @@ import {
 } from "lucide-react";
 import Axios from "../../../../utils/Axios";
 import summeryApi from "../../../common/summeryApi";
+import Table from '../../../components/dashboard/Table';
 
 export default function SiteIssueRegistry() {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedIssue, setSelectedIssue] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Safety check to ensure document object exists in Next.js Client Components
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   useEffect(() => {
     fetchIssueData();
@@ -41,12 +51,104 @@ export default function SiteIssueRegistry() {
     }
   };
 
+  const issueColumns = [
+    {
+      header: "No.",
+      width: "8.33%",
+      align: "center",
+      cell: (issue, absoluteRowNumber) => (
+        <span 
+          onClick={() => setSelectedIssue(issue)} 
+          className="text-[10px] font-black text-slate-500 cursor-pointer block w-full h-full py-2"
+        >
+          {String(absoluteRowNumber).padStart(2, "0")}
+        </span>
+      )
+    },
+    {
+      header: "Project",
+      accessor: "title",
+      width: "25%",
+      align: "left",
+      cell: (issue) => (
+        <div 
+          onClick={() => setSelectedIssue(issue)} 
+          className="flex flex-col pr-4 cursor-pointer w-full h-full py-1"
+        >
+          <h3 className="text-[13px] font-black text-slate-800 uppercase tracking-tight leading-tight hover:text-blue-600 group-hover:text-blue-600 transition-colors">
+            {issue.title}
+          </h3>
+        </div>
+      )
+    },
+    {
+      header: "Blocked Task",
+      accessor: "blockedTask.taskTitle",
+      width: "25%",
+      align: "left",
+      cell: (issue) => (
+        <div 
+          onClick={() => setSelectedIssue(issue)} 
+          className="pr-4 cursor-pointer w-full h-full"
+        >
+          <div className="flex items-start py-2 rounded-xl w-fit">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] font-black truncate max-w-[180px] uppercase text-slate-700">
+                {issue.blockedTask?.taskTitle || 'Unassigned'}
+              </span>
+              <span className="text-[9px] font-bold uppercase tracking-widest leading-none text-slate-400 mt-1">
+                Impediment
+              </span>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: "Reporter",
+      accessor: "reporter.firstName",
+      width: "25%",
+      align: "left",
+      cell: (issue) => (
+        <div 
+          onClick={() => setSelectedIssue(issue)} 
+          className="space-y-2 cursor-pointer w-full h-full py-2"
+        >
+          <div className="flex items-center gap-2 text-slate-600">
+            <User size={13} className="text-slate-300" />
+            <span className="text-[11px] font-bold uppercase tracking-tight">
+              {issue.reporter?.firstName} {issue.reporter?.lastName}
+            </span>
+          </div>
+        </div>
+      )
+    },
+    {
+      header: "Status / Date",
+      accessor: "status",
+      width: "16.67%",
+      align: "right",
+      cell: (issue) => (
+        <div 
+          onClick={() => setSelectedIssue(issue)} 
+          className="flex flex-col items-end gap-2 pr-2 cursor-pointer w-full h-full py-1"
+        >
+          <div
+
+            className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm
+            ${issue.status === "RESOLVED" ? "bg-emerald-500 text-white border-emerald-100" : "bg-rose-500 text-white border-rose-100"}`}
+          >
+            {issue.status}
+          </div>
+        </div>
+      )
+    }
+  ];
+
   const filteredIssues = issues.filter(
     (issue) =>
-      issue.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      issue.project.projectName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()),
+      issue.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      issue.project?.projectName?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (loading) {
@@ -71,7 +173,7 @@ export default function SiteIssueRegistry() {
             </div>
             <div>
               <h1 className="text-lg font-black uppercase tracking-tight">
-                Incident <span className="text-rose-600">Registry</span>
+                Incident Registry
               </h1>
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
                 Blocked Task Monitoring & Forensics
@@ -80,10 +182,7 @@ export default function SiteIssueRegistry() {
           </div>
           <div className="flex items-center gap-4">
             <div className="relative bg-white rounded-xl shadow-sm hidden md:block">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
-                size={15}
-              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={15} />
               <input
                 type="text"
                 placeholder="Filter incidents..."
@@ -122,108 +221,13 @@ export default function SiteIssueRegistry() {
           </span>
         </div>
 
+
         {/* --- GRID TABLE --- */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.04)] overflow-hidden">
-          {/* Header Row */}
-          <div className="grid grid-cols-12 bg-slate-50/80 border-b border-slate-100 px-6 py-4 items-center">
-            <div className="col-span-1 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-              #
-            </div>
-            <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Incident & Project
-            </div>
-            <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Blocked Task
-            </div>
-            <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              Reporter & Location
-            </div>
-            <div className="col-span-2 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-              Status / Date
-            </div>
-          </div>
-
-          {/* Data Rows */}
-          <div className="divide-y divide-slate-50">
-            {filteredIssues.map((issue, index) => (
-              <div
-                key={issue.id}
-                className="grid grid-cols-12 items-center px-6 py-6 hover:bg-blue-50/30 transition-all group cursor-default"
-              >
-                {/* 1. Counter */}
-                <div className="col-span-1 text-center">
-                  <span className="text-[10px] font-black text-slate-300 group-hover:text-rose-500 transition-colors">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                </div>
-
-                {/* 2. Incident & Project */}
-                <div className="col-span-3 pr-4">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-tighter mb-0.5 truncate">
-                      {issue.project?.projectName}
-                    </span>
-                    <h3 className="text-[13px] font-black text-slate-800 uppercase tracking-tight leading-tight group-hover:text-rose-600 transition-colors">
-                      {issue.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-400 mt-1 line-clamp-1 italic italic leading-none">
-                      "{issue.description}"
-                    </p>
-                  </div>
-                </div>
-
-                {/* 3. Blocked Task */}
-                <div className="col-span-3 pr-4">
-                  <div className="flex items-center gap-2 bg-rose-50 border border-rose-100/50 px-3 py-2 rounded-xl w-fit">
-                    <ExternalLink size={12} className="text-rose-500" />
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[11px] font-black text-rose-700 truncate max-w-[180px] uppercase">
-                        {issue.blockedTask?.taskTitle}
-                      </span>
-                      <span className="text-[9px] font-bold text-rose-400 uppercase tracking-widest leading-none">
-                        Impediment
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4. Reporter & Location */}
-                <div className="col-span-3 space-y-2">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <User size={13} className="text-slate-300" />
-                    <span className="text-[11px] font-bold uppercase tracking-tight">
-                      {issue.reporter?.firstName} {issue.reporter?.lastName}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <MapPin size={13} className="text-slate-300" />
-                    <span className="text-[10px] font-bold uppercase tracking-tight truncate max-w-[200px]">
-                      {issue.location}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 5. Status / Date */}
-                <div className="col-span-2 flex flex-col items-end gap-2 pr-2">
-                  <div
-                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm
-                    ${issue.status === "RESOLVED" ? "bg-emerald-500 text-white border-emerald-100" : "bg-rose-500 text-rose-600 border-rose-100"}`}
-                  >
-                    {issue.status}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-tighter italic">
-                      {new Date(issue.updatedAt).toLocaleDateString()}
-                    </span>
-                    <div
-                      className={`w-2.5 h-2.5 rounded-full ${issue.status === "RESOLVED" ? "bg-emerald-500 shadow-emerald-100 shadow-lg" : "bg-rose-500 shadow-rose-100 shadow-lg"} `}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <Table
+          columns={issueColumns}
+          data={filteredIssues}
+          noResultsMessage="No incidents match your search."
+        />
 
         {/* --- FOOTER --- */}
         <footer className="flex justify-between items-center px-4 pt-4">
@@ -238,6 +242,123 @@ export default function SiteIssueRegistry() {
           </div>
         </footer>
       </div>
+
+      {/* --- DETAILED INSPECTION MODAL OVERLAY (PORTAL CONTAINER) --- */}
+      {mounted && selectedIssue && createPortal(
+        // z-[9999] combined with portal puts this card completely on top of sidebars/navbars
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
+          
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh] my-auto">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${selectedIssue.status === 'RESOLVED' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                  <ShieldAlert size={20} />
+                </div>
+                <div>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                    Incident Tracking Sheet
+                  </span>
+                  <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight mt-0.5 max-w-[320px] sm:max-w-[380px] truncate">
+                    {selectedIssue.title}
+                  </h2>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedIssue(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Content Space */}
+            <div className="p-6 space-y-5 overflow-y-auto text-xs font-sans">
+              
+              {/* Context Description Abstract */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block">Incident Context</span>
+                <div className="bg-slate-50 border border-slate-100 p-4 rounded-xl text-slate-700 italic leading-relaxed break-words">
+                  "{selectedIssue.description || 'No descriptive structural abstract documented for this incident item node.'}"
+                </div>
+              </div>
+
+              {/* Data Blocks Key-Value Distribution */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="border border-slate-100 rounded-xl p-3 bg-white">
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                    <Briefcase size={10} /> Associated Project
+                  </span>
+                  <span className="text-slate-700 font-bold block mt-1 uppercase tracking-tight truncate">
+                    {selectedIssue.project?.projectName || 'N/A'}
+                  </span>
+                </div>
+
+
+                <div className="border border-slate-100 rounded-xl p-3 bg-white">
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                    <MapPin size={10} /> Location Node
+                  </span>
+                  <span className="text-slate-700 font-bold block mt-1 uppercase tracking-tight truncate">
+                    {selectedIssue.location || 'Site Location Unspecified'}
+                  </span>
+                </div>
+
+                <div className="border border-slate-100 rounded-xl p-3 bg-white">
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                    <User size={10} /> Logged By Reporter
+                  </span>
+                  <span className="text-slate-700 font-bold block mt-1 uppercase tracking-tight truncate">
+                    {selectedIssue.reporter?.firstName} {selectedIssue.reporter?.lastName}
+                  </span>
+                </div>
+
+                <div className="border border-slate-100 rounded-xl p-3 bg-white">
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
+                    <Calendar size={10} /> Timeline Index
+                  </span>
+                  <span className="text-slate-700 font-bold block mt-1 tracking-tight">
+                    {selectedIssue.updatedAt ? new Date(selectedIssue.updatedAt).toLocaleDateString('en-US', {
+                      month: 'short', day: 'numeric', year: 'numeric'
+                    }) : 'N/A'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Blocked Task Impediment Element Section */}
+              {selectedIssue.blockedTask && (
+                <div className="bg-rose-50/60 border border-rose-100/60 rounded-xl p-4 flex items-start gap-3">
+                  <ExternalLink size={14} className="text-rose-500 mt-0.5 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] font-black uppercase text-rose-500 tracking-widest block">
+                      Blocked Operational Dependency Task
+                    </span>
+                    <span className="text-slate-800 font-black text-xs block mt-1 uppercase tracking-tight break-words">
+                      {selectedIssue.blockedTask?.taskTitle}
+                    </span>
+                    <span className="text-[10px] text-rose-600 block mt-0.5 italic">
+                      Critical path task workflow operation is completely locked by this registry abstract item.
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Bottom Close Panel Controls */}
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end bg-slate-50/30 shrink-0">
+              <button
+                onClick={() => setSelectedIssue(null)}
+                className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-md shadow-slate-200"
+              >
+                Dismiss View
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

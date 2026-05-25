@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import Axios from "../../../../utils/Axios";
 import summeryApi from "../../../common/summeryApi";
+import Table from "../../../components/dashboard/Table";
 
 export default function SiteEngineerLedger() {
   const [tasks, setTasks] = useState([]);
@@ -29,6 +30,112 @@ export default function SiteEngineerLedger() {
   useEffect(() => {
     fetchLedgerData();
   }, []);
+
+  const taskColumns = [
+    {
+      header: "#",
+      width: "5%",
+      align: "center",
+      cell: (_, rowNumber) => (
+        <span className="text-[10px] font-black text-slate-300 group-hover:text-blue-500 transition-colors">
+          {rowNumber}
+        </span>
+      )
+    },
+    {
+      header: "Project Name",
+      accessor: "project.projectName",
+      width: "22%",
+      cell: (task) => (
+        <div 
+          onClick={() => {
+            setSelectedTask(task);
+            setIsModalOpen(true);
+          }}
+          className="flex flex-col max-w-[180px] cursor-pointer"
+        >
+          <span className="text-[11px] font-black text-slate-800 uppercase truncate group-hover:text-blue-600 transition-colors">
+            {task.project?.projectName}
+          </span>
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter truncate">
+            ID-{task.projectId}
+          </span>
+        </div>
+      )
+    },
+    {
+      header: "Task Description",
+      accessor: "taskTitle",
+      width: "33%",
+      cell: (task) => (
+        <div 
+          onClick={() => {
+            setSelectedTask(task);
+            setIsModalOpen(true);
+          }}
+          className="max-w-[280px] flex flex-col justify-center cursor-pointer"
+        >
+          <p className="text-[13px] font-bold text-slate-700 leading-tight truncate">
+            {task.taskTitle}
+          </p>
+          <p className="text-[12px] text-slate-400 truncate mt-0.5 italic">
+            {task.taskDescription}
+          </p>
+        </div>
+      )
+    },
+    {
+      header: "Priority",
+      accessor: "taskPriority",
+      width: "10%",
+      align: "center",
+      cell: (task) => (
+        <span
+          className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${
+            task.taskPriority === "HIGH" 
+              ? "text-rose-500 bg-rose-50" 
+              : "text-slate-400 bg-slate-100"
+          }`}
+        >
+          {task.taskPriority}
+        </span>
+      )
+    },
+    {
+      header: "Status",
+      accessor: "taskStatus",
+      width: "10%",
+      cell: (task) => <StatusPill status={task.taskStatus} />
+    },
+    {
+      header: "Budget",
+      accessor: "taskBudget",
+      width: "10%",
+      align: "right",
+      cell: (task) => (
+        <span className="font-black text-[11px] text-slate-700">
+          ${Number(task.taskBudget).toLocaleString()}
+        </span>
+      )
+    },
+    {
+      header: "Remaining Days",
+      accessor: "daysRemaining",
+      width: "10%",
+      align: "center",
+      cell: (task) => (
+        <div className="flex flex-col items-center">
+          <span className="text-[11px] font-black text-slate-700">
+            {task.daysRemaining}
+          </span>
+          <span className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">
+            Days
+          </span>
+        </div>
+      )
+    }
+  ];
+
 
   const fetchLedgerData = async () => {
     try {
@@ -47,7 +154,6 @@ export default function SiteEngineerLedger() {
       setSubmitting(true);
       const apiConfig = summeryApi.changeTaskStatus;
 
-      // Handle both dynamic function mapping or static token string replacement templates
       const targetUrl = typeof apiConfig.url === 'function' 
         ? apiConfig.url(taskId) 
         : apiConfig.url.replace("{taskId}", taskId);
@@ -59,13 +165,11 @@ export default function SiteEngineerLedger() {
       });
 
       if (response.data.success) {
-        // Sync collection rows instantly
         setTasks((prevTasks) =>
           prevTasks.map((t) =>
             t.id === taskId ? { ...t, taskStatus: newStatus } : t,
           ),
         );
-        // Sync active modal display values immediately
         setSelectedTask(prev => prev ? { ...prev, taskStatus: newStatus } : null);
       }
     } catch (error) {
@@ -129,13 +233,14 @@ export default function SiteEngineerLedger() {
             </button>
           </div>
 
+
           {/* Modal Body */}
           <div className="p-8 space-y-6 max-h-[65vh] overflow-y-auto scroll-smooth">
             <div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
                 {selectedTask.taskTitle}
               </h2>
-              <p className="text-[13px] text-slate-500 font-medium mt-3 leading-relaxed bg-slate-50/60 p-4 rounded-2xl border border-slate-100 italic">
+              <p className="text-[13px] text-slate-500 font-medium mt-3 leading-relaxed bg-slate-50/60 p-4 rounded-2xl border border-slate-100 italic break-words">
                 "{selectedTask.taskDescription}"
               </p>
             </div>
@@ -144,8 +249,8 @@ export default function SiteEngineerLedger() {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-2xl border border-slate-100 bg-white shadow-sm">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Project Site</p>
-                <p className="text-[12px] font-black text-slate-800 mt-1 uppercase truncate">{selectedTask.project.projectName}</p>
-                <p className="text-[9px] font-black text-blue-600 mt-1.5 uppercase bg-blue-50 inline-block px-2 py-0.5 rounded-md">Stage: {selectedTask.project.status}</p>
+                <p className="text-[12px] font-black text-slate-800 mt-1 uppercase break-words">{selectedTask.project?.projectName}</p>
+                <p className="text-[9px] font-black text-blue-600 mt-1.5 uppercase bg-blue-50 inline-block px-2 py-0.5 rounded-md">Stage: {selectedTask.project?.status}</p>
               </div>
               <div className="p-4 rounded-2xl border border-slate-100 bg-white shadow-sm">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Financial Budget</p>
@@ -177,17 +282,15 @@ export default function SiteEngineerLedger() {
             </div>
           </div>
 
+
           {/* Modal Footer (Actions) */}
           <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-4 relative">
-            
             {isTaskDone ? (
-              /* Static archived locked badge if status === DONE */
               <div className="flex items-center gap-2.5 text-emerald-600 bg-emerald-50 border border-emerald-100 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] shadow-sm">
                 <CheckCircle2 size={15} />
                 Task Completed & Locked
               </div>
             ) : (
-              /* Interactive select menu for state configurations */
               <div className="flex items-center gap-3 flex-1 relative">
                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
                   Status:
@@ -210,12 +313,10 @@ export default function SiteEngineerLedger() {
                     )}
                   </button>
 
-                  {/* Backdrop Closer */}
                   {isDropdownOpen && (
                     <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
                   )}
 
-                  {/* Dropdown Options List */}
                   <AnimatePresence>
                     {isDropdownOpen && (
                       <motion.div
@@ -254,6 +355,7 @@ export default function SiteEngineerLedger() {
               </div>
             )}
 
+
             <button
               onClick={() => setIsModalOpen(false)}
               className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all shadow-sm active:scale-95 shrink-0"
@@ -279,10 +381,10 @@ export default function SiteEngineerLedger() {
             </div>
             <div>
               <h1 className="text-base font-black uppercase tracking-tight">
-                Ledger <span className="text-blue-600">Pro</span>
+                Tasks 
               </h1>
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                Cross-Site Synchronization
+                Cross-Site
               </p>
             </div>
           </div>
@@ -292,7 +394,7 @@ export default function SiteEngineerLedger() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={15} />
             <input
               type="text"
-              placeholder="Filter tasks..."
+              placeholder="Search by project or task..."
               className="pl-9 pr-4 py-2.5 border border-slate-100 rounded-xl text-[12px] font-medium w-64 focus:ring-2 focus:ring-blue-100 outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -305,84 +407,15 @@ export default function SiteEngineerLedger() {
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <Loader2 className="animate-spin mb-2" />
             <span className="text-[10px] font-bold uppercase tracking-widest">
-             Loading tasks...
+              Loading tasks...
             </span>
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.04)] overflow-hidden">
-            <table className="w-full text-left table-fixed">
-              <thead className="bg-slate-50/80 border-b border-slate-100">
-                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <th className="px-4 py-3 w-[5%] text-center">#</th>
-                  <th className="px-5 py-3 w-[20%]">Project Name</th>
-                  <th className="px-5 py-3 w-[30%]">Task Description</th>
-                  <th className="px-5 py-3 w-[12%] text-center">Priority</th>
-                  <th className="px-5 py-3 w-[12%]">Status</th>
-                  <th className="px-5 py-3 w-[11%] text-right">Budget</th>
-                  <th className="px-5 py-3 w-[10%] text-center">Remaining Days</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredTasks.map((task, index) => (
-                  <tr
-                    key={task.id}
-                    onClick={() => {
-                      setSelectedTask(task);
-                      setIsModalOpen(true);
-                    }}
-                    className="group hover:bg-blue-50/30 transition-colors cursor-pointer"
-                  >
-                    <td className="px-4 py-3 text-center align-middle">
-                      <span className="text-[10px] font-black text-slate-300 group-hover:text-blue-500">
-                        {index + 1}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 align-top">
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-black text-slate-800 uppercase line-clamp-1 group-hover:text-blue-600">
-                          {task.project.projectName}
-                        </span>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                          ID-{task.projectId}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 align-top">
-                      <p className="text-[13px] font-bold text-slate-700 leading-tight line-clamp-1">
-                        {task.taskTitle}
-                      </p>
-                      <p className="text-[12px] text-slate-400 line-clamp-1 mt-0.5 italic">
-                        {task.taskDescription}
-                      </p>
-                    </td>
-                    <td className="px-5 py-3 text-center align-top">
-                      <span
-                        className={`text-[9px] font-black px-2 py-0.5 rounded uppercase ${task.taskPriority === "HIGH" ? "text-rose-500 bg-rose-50" : "text-slate-400 bg-slate-100"}`}
-                      >
-                        {task.taskPriority}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 align-top">
-                      <StatusPill status={task.taskStatus} />
-                    </td>
-                    <td className="px-5 py-3 text-right align-top font-black text-[11px] text-slate-700">
-                      ${Number(task.taskBudget).toLocaleString()}
-                    </td>
-                    <td className="px-5 py-3 text-center align-top">
-                      <div className="flex flex-col items-center">
-                        <span className="text-[11px] font-black text-slate-700">
-                          {task.daysRemaining}
-                        </span>
-                        <span className="text-[8px] font-black text-slate-300 uppercase tracking-tighter">
-                          Days
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            columns={taskColumns}
+            data={filteredTasks}
+            searchPlaceholder="Search by project or task..."
+          />
         )}
       </div>
       <TaskDetailModal />

@@ -8,6 +8,7 @@ import { useUser } from '../../../context/UserContext';
 import { useNotifications } from '../../../context/NotificationContext';
 import { MessagingProvider } from '../../../context/MessagingContext'; // 1. Imported Provider
 import SiteEngineerSideBar from '../../../components/siteEngineerSideBar';
+import NotificationDrawer from '../../../components/dashboard/NotificationDrawer';
 
 export function useClickOutside(ref, callback) {
   useEffect(() => {
@@ -25,11 +26,14 @@ export default function DashboardLayout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const { user, loading, handleLogout } = useUser();
   const { unreadCount } = useNotifications();
+  const [showNotifications, setShowNotifications] = useState(false);
   
   const router = useRouter();
   const menuRef = useRef(null);
+  const drawerRef = useRef(null);
   
   useClickOutside(menuRef, () => setShowProfileMenu(false));
+  useClickOutside(drawerRef, () => setShowNotifications(false));
 
   if (loading) return <div className="h-screen w-full bg-[#f8fafc] animate-pulse" />;
 
@@ -57,28 +61,21 @@ export default function DashboardLayout({ children }) {
         <main className="flex-1 flex flex-col min-w-0 h-full relative">
           
           {/* FIXED TOP NAVBAR */}
-          <header className="h-24 min-h-[96px] px-8 flex justify-between items-center bg-[#f8fafc]/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-[60]">
-            <div className="flex items-center gap-6">
-              <div className="relative group hidden md:block">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="Search everything..." 
-                  className="bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-6 text-sm w-80 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 transition-all outline-none shadow-sm font-medium" 
-                />
-              </div>
-            </div>
-
+          <header className="h-24 min-h-[96px] px-8 flex justify-end items-center bg-[#f8fafc]/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-[60]">
+            
             <div className="flex items-center gap-4">
               <div className="hidden lg:flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full border border-emerald-100 mr-2">
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-widest">System Live</span>
               </div>
 
+
               {/* NOTIFICATION BELL */}
               <button 
-                onClick={() => router.push('/siteEngineer/notification')} 
-                className="p-3 bg-white text-slate-500 hover:text-slate-900 rounded-2xl shadow-sm border border-slate-200 relative transition-all active:scale-95"
+                onClick={() => setShowNotifications(!showNotifications)} 
+                className={`p-3 rounded-2xl shadow-sm border transition-all active:scale-95 relative ${
+                  showNotifications ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'
+                }`}
               >
                 <Bell size={20} />
                 
@@ -117,6 +114,7 @@ export default function DashboardLayout({ children }) {
                   </div>
                 </div>
 
+
                 <AnimatePresence>
                   {showProfileMenu && (
                     <>
@@ -153,6 +151,14 @@ export default function DashboardLayout({ children }) {
               {children}
             </div>
           </div>
+
+          {/* 3. INJECT THE STANDALONE SLIDE PANEL DRAWER COMPONENT */}
+        <div ref={drawerRef}>
+          <NotificationDrawer 
+            isOpen={showNotifications} 
+            onClose={() => setShowNotifications(false)} 
+          />
+        </div>
 
         </main>
       </div>

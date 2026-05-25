@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '../../../context/UserContext';
 import { useNotifications } from '../../../context/NotificationContext';
 import { MessagingProvider } from '../../../context/MessagingContext'; // 1. Imported Provider
-import ProjectManagerSideBar from '../../../components/projectManagerSideBar';
+import SupervisorSidebar from "../../../components/supervisorSideBar";
+
 
 export function useClickOutside(ref, callback) {
   useEffect(() => {
@@ -19,7 +20,7 @@ export function useClickOutside(ref, callback) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [ref, callback]);
-}
+}SupervisorSidebar
 
 export default function DashboardLayout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -50,7 +51,7 @@ export default function DashboardLayout({ children }) {
       <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc]">
         {/* SIDEBAR */}
         <aside className="h-full shrink-0 z-[100] shadow-2xl shadow-slate-200">
-          <ProjectManagerSideBar/>
+          <SupervisorSidebar />
         </aside>
 
         {/* MAIN CONTAINER */}

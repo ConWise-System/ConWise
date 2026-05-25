@@ -39,6 +39,7 @@ export default function TaskCenter() {
 
   const loadInitialData = async () => {
     try {
+      isLoadingTasks(true);
       const [projRes, userRes, matRes] = await Promise.all([
         Axios({...summeryApi.getAllProjects}),
         Axios({...summeryApi.getUsers}),
@@ -50,6 +51,8 @@ export default function TaskCenter() {
       setMaterialList(matRes.data.data || []); 
     } catch (error) {
       console.error("Initial Load Error:", error);
+    } finally{
+      isLoadingTasks(false);
     }
   };
 
@@ -241,10 +244,7 @@ export default function TaskCenter() {
             </div>
           
             {isLoadingTasks ? (
-              <div className="w-full min-h-[350px] flex flex-col items-center justify-center gap-2 bg-white border border-slate-200 rounded-xl shadow-sm">
-                <Loader2 size={24} className="animate-spin text-slate-700" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Accessing Enterprise Directory...</span>
-              </div>
+              <Loader message="Loading tasks ..." />
             ) : (
               <Table 
                 columns={projectColumns}
