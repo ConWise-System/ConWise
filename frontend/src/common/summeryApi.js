@@ -71,7 +71,7 @@ const summeryApi = {
     method: "get",
   },
   projectMilestones: {
-    url: (projectId) => `/api/milestones/${projectId}`,
+    url: "/api/milestones/my-projects",
     method: "get",
   },
   assignTask: {

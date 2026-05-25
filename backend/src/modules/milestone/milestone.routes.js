@@ -70,7 +70,7 @@ router.use(authenticate);
  *       500:
  *         description: Internal server error
  */
-router.get("/:projectId", milestoneController.getProjectMilestones);
+router.get("/my-projects", milestoneController.getProjectManagerMilestones);
 
 /**
  * @swagger
@@ -133,6 +133,6 @@ router.get("/:projectId", milestoneController.getProjectMilestones);
  *       500:
  *         description: Internal server error
  */
-router.get("/:projectId/:taskId", milestoneController.getTaskMilestoneByProject);
+// router.get("/:projectId/:taskId", milestoneController.getTaskMilestoneByProject);
 
 export default router;

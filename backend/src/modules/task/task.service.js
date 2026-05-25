@@ -37,6 +37,12 @@ export const taskService = {
         },
       });
 
+      // ─── FORCE PROJECT STATUS TO ACTIVE ───
+      await tx.project.update({
+        where: { id: Number(taskData.projectId) },
+        data: { status: "ACTIVE" }
+      });
+
       if (materialIds.length) {
         const updated = await tx.materialUsed.updateMany({
           where: { id: { in: materialIds } },
@@ -99,7 +105,12 @@ export const taskService = {
 
   getTasksByAssignee: async (userId) => {
     const tasks = await prisma.task.findMany({
-      where: { assigneeUserId: parseInt(userId) },
+      where: { 
+        assigneeUserId: parseInt(userId),
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
       include: {
         project: { select: { id: true, projectName: true, status: true } },
         taskProgress: true,

@@ -112,6 +112,7 @@ export default function SupervisorIssueCenter() {
     const linkedTask = tasks.find(t => t.id === Number(newIssue.relatedTaskId) || t._id === newIssue.relatedTaskId);
     const targetProjectId = linkedTask?.project?.id || linkedTask?.projectId || tasks[0]?.project?.id;
 
+
     if (!targetProjectId) {
       alert("Validation Error: Cannot identify target project tracking sequence context.");
       return;
@@ -176,7 +177,7 @@ export default function SupervisorIssueCenter() {
             <div className="bg-slate-900 p-1 rounded-sm text-white"><ShieldAlert size={12}/></div>
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Terminal / Issue Management</span>
           </div>
-          <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter italic">Supervisor Console</h1>
+          <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Issues</h1>
         </div>
 
         <button 
@@ -184,7 +185,7 @@ export default function SupervisorIssueCenter() {
           disabled={tasks.length === 0}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-md active:scale-95"
         >
-          <Plus size={14} strokeWidth={3}/> New Report
+          <Plus size={14} strokeWidth={3}/> New Issue
         </button>
       </div>
 
@@ -194,15 +195,16 @@ export default function SupervisorIssueCenter() {
         <div className="col-span-12 lg:col-span-8 space-y-3">
           <div className="flex items-center justify-between px-1 mb-2">
             <h2 className="text-[9px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-              <ListTodo size={12}/> Site Impediments <span className="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-sm">{issues.length}</span>
+              <ListTodo size={12}/> Site Issues<span className="bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-sm">{issues.length}</span>
             </h2>
           </div>
+
 
           <div className="space-y-2">
             {isLoading ? (
               <div className="w-full flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-200 gap-3">
                 <Loader2 className="text-blue-600 animate-spin" size={20} />
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Synchronizing Issue Ledger...</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Loading Issues...</p>
               </div>
             ) : error ? (
               <div className="text-center py-12 bg-red-50 text-red-600 rounded-2xl border border-red-100 p-6">
@@ -254,6 +256,7 @@ export default function SupervisorIssueCenter() {
             )}
           </div>
         </div>
+
 
         {/* RIGHT: INSPECTION SIDEBAR */}
         <aside className="col-span-12 lg:col-span-4">
@@ -322,6 +325,7 @@ export default function SupervisorIssueCenter() {
         </aside>
       </div>
 
+
       {/* MODAL SYSTEM */}
       <AnimatePresence>
         {showLogModal && (
@@ -355,10 +359,10 @@ export default function SupervisorIssueCenter() {
                     value={newIssue.relatedTaskId}
                     onChange={(e) => setNewIssue({...newIssue, relatedTaskId: e.target.value})}
                   >
-                    <option value="">-- Choose Assigned System Task Reference --</option>
+                    <option value="">Choose Assigned Project</option>
                     {tasks.map(task => (
                       <option key={task.id || task._id} value={task.id || task._id}>
-                        [{task.project?.projectName || "Sector"}] {task.taskTitle}
+                        {task.project?.projectName || "Sector"}
                       </option>
                     ))}
                   </select>
@@ -387,6 +391,7 @@ export default function SupervisorIssueCenter() {
                     onChange={(e) => setNewIssue({...newIssue, desc: e.target.value})}
                   />
                 </div>
+
 
                 {/* PRIORITY SELECTION */}
                 <div className="space-y-2">
@@ -450,7 +455,7 @@ export default function SupervisorIssueCenter() {
                       ) : (
                         <Send size={15} strokeWidth={2.5}/>
                       )}
-                      Log to Registry
+                      Log Issue
                     </button>
                   </div>
                 </div>

@@ -5,21 +5,20 @@ import {
   Clock,
   AlertOctagon,
   FileText,
-  LayoutDashboard,
-  Calendar,
   ChevronRight,
-  TrendingUp,
   HardHat,
+  Activity,
+  ArrowUpRight
 } from "lucide-react";
 import Axios from "../../../../utils/Axios";
 import summeryApi from "../../../common/summeryApi";
 
 export default function SiteEngineerDashboard() {
   const [stats, setStats] = useState({
-    tasks: { TODO: 0, DONE: 0 },
+    tasks: { IN_PROGRESS: 0, DONE: 0 },
     overdueTaskCount: 0,
     assignedIssueCount: 0,
-    myReportCount: 0,SiteEngineerDashboard
+    myReportCount: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -39,223 +38,193 @@ export default function SiteEngineerDashboard() {
     fetchDashboardData();
   }, []);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  const totalTasks = stats.tasks.IN_PROGRESS + stats.tasks.DONE;
+  const completionRate = totalTasks > 0 ? Math.round((stats.tasks.DONE / totalTasks) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 lg:p-12 font-sans text-slate-900">
-      {/* HEADER SECTION */}
-      <header className="mb-10 flex justify-between items-end">
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 text-slate-900 font-sans antialiased selection:bg-blue-500 selection:text-white">
+      
+      {/* HEADER BAR */}
+      <header className="max-w-[1400px] mx-auto mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200/60 pb-6">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-blue-600 rounded-lg text-white shadow-md shadow-blue-200">
-              <HardHat size={16} />
+          <div className="flex items-center gap-2 mb-1">
+            <div className="p-1 bg-slate-900 text-white rounded">
+              <HardHat size={12} />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
-              Field Operations
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Field Execution Overview
             </span>
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">
-            ENGINEER <span className="text-blue-600">CONSOLE</span>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">
+            Site Operations Management Console
           </h1>
-          <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-widest">
-            Sector Access • Level 04 Control
-          </p>
         </div>
 
-        <div className="hidden md:flex bg-white px-6 py-3 rounded-2xl border border-slate-200 items-center gap-4 shadow-sm">
-          <div className="text-right">
-            <p className="text-[9px] font-black text-slate-400 uppercase">
-              System Status
-            </p>
-            <p className="text-xs font-black text-emerald-600 uppercase">
-              Live Connection
-            </p>
-          </div>
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+        <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-2xs">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Node Server Live Connection
+          </span>
         </div>
       </header>
 
-      {/* KPI GRID - Direct Backend Mapping */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        <EngineerStatCard
-          label="Pending Tasks"
-          value={stats.tasks.TODO}
-          subtext="Assigned to you"
-          icon={<Clock className="text-blue-600" />}
-          color="blue"
-        />
-        <EngineerStatCard
-          label="Critical Issues"
-          value={stats.assignedIssueCount}
-          subtext="Immediate Attention"
-          icon={<AlertOctagon className="text-rose-600" />}
-          color="rose"
-        />
-        <EngineerStatCard
-          label="Reports Filed"
-          value={stats.myReportCount}
-          subtext="Current Cycle"
-          icon={<FileText className="text-slate-600" />}
-          color="slate"
-        />
-        <EngineerStatCard
-          label="Completed"
-          value={stats.tasks.DONE}
-          subtext="Milestones Hit"
-          icon={<CheckCircle2 className="text-emerald-600" />}
-          color="emerald"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* TASK VELOCITY PANEL */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
-            <div className="flex justify-between items-start mb-8">
-              <div>
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-1">
-                  Weekly Output Velocity
-                </h3>
-                <p className="text-xs text-slate-400 font-bold uppercase">
-                  Efficiency Analysis
-                </p>
-              </div>
-              <div className="bg-slate-50 px-4 py-2 rounded-xl text-[10px] font-black text-slate-500 border border-slate-100 uppercase">
-                Current:{" "}
-                {Math.round(
-                  (stats.tasks.DONE /
-                    (stats.tasks.TODO + stats.tasks.DONE || 1)) *
-                    100,
-                )}
-                %
-              </div>
-            </div>
-            {/* Simple Bar Chart Style */}
-            <div className="flex items-end gap-2 h-32 pt-4">
-              {[30, 45, 25, 60, 40, 80, 50].map((h, i) => (
-                <div
-                  key={i}
-                  className="flex-1 bg-slate-100 rounded-lg relative group transition-all hover:bg-blue-100"
-                >
-                  <div
-                    style={{ height: `${h}%` }}
-                    className={`absolute bottom-0 w-full rounded-lg transition-all ${i === 6 ? "bg-blue-600" : "bg-slate-300"}`}
-                  ></div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* QUICK ACTIONS TABLE */}
-          <div className="bg-white rounded-[1.5rem] border border-slate-200 overflow-hidden shadow-sm">
-            <div className="px-8 py-5 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                Active Schedule Preview
-              </span>
-              <span className="text-[9px] font-black bg-white text-blue-600 px-3 py-1 rounded-full border border-slate-200">
-                {stats.tasks.TODO} ACTIVE
-              </span>
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:border-blue-200 transition-all cursor-pointer group">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                    <Calendar size={18} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 uppercase tracking-tight">
-                      Morning Site Walkthrough
-                    </p>
-                    <p className="text-[10px] font-bold text-slate-400">
-                      Target: 09:00 AM
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight
-                  size={16}
-                  className="text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all"
-                />
-              </div>
-            </div>
-          </div>
+      {/* CORE PERFORMANCE ANALYTICS GRID */}
+      <main className="max-w-[1400px] mx-auto space-y-6">
+        
+        {/* KPI CARD REGION */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPIStatCard
+            label="In Progress Operations"
+            value={stats.tasks.IN_PROGRESS}
+            indicatorText="Active Assignments"
+            icon={<Activity size={14} className="text-amber-600" />}
+            accent="amber"
+          />
+          <KPIStatCard
+            label="Completed Tasks"
+            value={stats.tasks.DONE}
+            indicatorText="System Schema Saved"
+            icon={<CheckCircle2 size={14} className="text-emerald-600" />}
+            accent="emerald"
+          />
+          <KPIStatCard
+            label="Pending Field Issues"
+            value={stats.assignedIssueCount}
+            indicatorText="Requires Signature"
+            icon={<AlertOctagon size={14} className="text-slate-400" />}
+            accent="slate"
+          />
+          <KPIStatCard
+            label="Submitted Daily Logs"
+            value={stats.myReportCount}
+            indicatorText="Current Cycle Logs"
+            icon={<FileText size={14} className="text-blue-600" />}
+            accent="blue"
+          />
         </div>
 
-        {/* STATUS PANEL */}
-        <div className="space-y-6">
-          <div className="bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-slate-300">
-            <div className="flex items-center gap-3 mb-10">
-              <div className="p-3 bg-white/10 rounded-2xl text-rose-400">
-                <AlertOctagon size={24} />
-              </div>
-              <h3 className="font-black text-xs uppercase tracking-widest text-slate-400">
-                Risk Assessment
-              </h3>
-            </div>
-            <div className="space-y-8">
+        {/* WORKFLOW SPLIT VIEW */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* EFFICIENCY ENGINE GRAPHICAL CARD */}
+          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs flex flex-col justify-between">
+            <div className="flex justify-between items-center mb-6">
               <div>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">
-                  Overdue Commitments
-                </p>
-                <p className="text-5xl font-black text-white">
-                  {stats.overdueTaskCount}
-                </p>
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Project Metric Metrics</h2>
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight mt-0.5">Task Fulfillment Volume</h3>
               </div>
-              <div className="pt-6 border-t border-white/5">
-                <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">
-                  System audit detects{" "}
-                  <span className="text-rose-400">
-                    {stats.assignedIssueCount} assigned issues
-                  </span>{" "}
-                  requiring resolution signatures.
-                </p>
+              <div className="bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg text-xs font-mono font-bold text-slate-700">
+                Fulfillment Vector: {completionRate}%
               </div>
-              <button className="w-full py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-blue-500 hover:text-white transition-all active:scale-95">
-                Review All Issues
+            </div>
+
+            {/* Custom Visual Data Progress Tracker */}
+            <div className="space-y-4 my-auto py-4">
+              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden flex">
+                <div 
+                  style={{ width: `${completionRate}%` }} 
+                  className="bg-slate-900 rounded-full h-full transition-all duration-500"
+                />
+              </div>
+              <div className="flex justify-between text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <span>Total Workload Nodes: {totalTasks} items</span>
+                <span>Remaining: {stats.tasks.IN_PROGRESS} tasks pending</span>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 pt-4 flex justify-between items-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <span>Operational Analytics Status</span>
+              <span className="text-slate-900 inline-flex items-center gap-1 cursor-pointer hover:underline">
+                View Task Logs <ArrowUpRight size={12} />
+              </span>
+            </div>
+          </div>
+
+          {/* CRITICAL RISK MANAGEMENT SUMMARY CARD */}
+          <div className="bg-slate-900 border border-slate-950 rounded-2xl p-6 text-white shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-white/10 rounded-lg text-rose-400">
+                  <Clock size={14} />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Risk Mitigation Spectrum</span>
+              </div>
+              {stats.overdueTaskCount > 0 && (
+                <span className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[9px] font-bold uppercase px-2 py-0.5 rounded tracking-wide animate-pulse">
+                  Attention Required
+                </span>
+              )}
+            </div>
+
+            <div className="my-6">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Overdue Engineering Commitments</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-black tracking-tighter text-white">{stats.overdueTaskCount}</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Critical Items</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                System telemetry parsing registers <span className="text-white font-bold">{stats.overdueTaskCount} expired schedule timeline</span> configuration. Immediate intervention required to restore sprint velocity.
+              </p>
+              <button className="w-full bg-white hover:bg-slate-100 active:scale-[0.98] text-slate-900 rounded-xl py-3 text-xs font-bold uppercase tracking-wider transition-all shadow-sm">
+                Initiate Timeline Review
               </button>
             </div>
           </div>
+
         </div>
-      </div>
+      </main>
     </div>
   );
 }
 
-// HUMANIZED COMPONENTS
-function EngineerStatCard({ label, value, subtext, icon, color }) {
-  const colorMap = {
-    blue: "border-blue-100 bg-white group-hover:border-blue-300",
-    rose: "border-rose-100 bg-white group-hover:border-rose-300",
-    slate: "border-slate-100 bg-white group-hover:border-slate-300",
-    emerald: "border-emerald-100 bg-white group-hover:border-emerald-300",
+// Clean Sub-Component Core Parameter Structure
+function KPIStatCard({ label, value, indicatorText, icon, accent }) {
+  const accentMap = {
+    amber: "border-amber-100 bg-white hover:border-amber-300",
+    emerald: "border-emerald-100 bg-white hover:border-emerald-300",
+    slate: "border-slate-200/80 bg-white hover:border-slate-400",
+    blue: "border-blue-100 bg-white hover:border-blue-300",
+  };
+
+  const bulletMap = {
+    amber: "bg-amber-500",
+    emerald: "bg-emerald-500",
+    slate: "bg-slate-300",
+    blue: "bg-blue-500"
   };
 
   return (
-    <div
-      className={`p-8 rounded-[1.5rem] border-2 shadow-sm transition-all group cursor-default ${colorMap[color]}`}
-    >
-      <div className="flex justify-between items-start mb-6">
-        <div className="p-3 bg-slate-50 rounded-xl group-hover:scale-110 transition-transform">
+    <div className={`p-5 rounded-xl border border-slate-200 shadow-2xs transition-all flex flex-col justify-between h-32 cursor-default ${accentMap[accent]}`}>
+      <div className="flex justify-between items-start">
+        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          {label}
+        </span>
+        <div className="p-1.5 bg-slate-50 border border-slate-200/60 rounded-lg">
           {icon}
         </div>
-        <div className="text-right">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-            {label}
-          </p>
-          <p className="text-3xl font-black text-slate-900">{value}</p>
-        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <div
-          className={`w-1 h-1 rounded-full ${value > 0 ? "bg-orange-500 animate-pulse" : "bg-slate-300"}`}
-        ></div>
-        <p className="text-[9px] font-black text-slate-500 uppercase tracking-tighter">
-          {subtext}
-        </p>
+      
+      <div className="flex items-end justify-between mt-2">
+        <span className="text-3xl font-bold tracking-tight text-slate-900 leading-none">
+          {value}
+        </span>
+        <div className="flex items-center gap-1.5 pb-0.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${bulletMap[accent]} ${value > 0 && accent === "amber" ? "animate-pulse" : ""}`} />
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">
+            {indicatorText}
+          </span>
+        </div>
       </div>
     </div>
   );

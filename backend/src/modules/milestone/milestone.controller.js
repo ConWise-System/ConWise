@@ -16,46 +16,56 @@ const handleError = (res, error, context) => {
 };
 
 export const milestoneController = {
-  getProjectMilestones: async (req, res) => {
+  getProjectManagerMilestones: async (req, res) => {
     try {
-      const projectId = parsePositiveInt(req.params.projectId);
-      if (!projectId) {
-        return res.status(400).json({
+    const { id: userId, companyId } = req.user;
+      
+      if (!userId) {
+        return res.status(401).json({
           success: false,
-          message: "Invalid project ID. Must be a positive integer.",
+          message: "Unauthorized access profile configuration.",
         });
       }
 
-      const data = await milestoneService.getProjectMilestones(projectId);
-      return res.status(200).json({ success: true, data });
+      const data = await milestoneService.getMilestonesByManager(userId,companyId);
+      
+      return res.status(200).json({ 
+        success: true, 
+        data 
+      });
     } catch (error) {
-      return handleError(res, error, "getProjectMilestones");
-    }
-  },
-
-  getTaskMilestoneByProject: async (req, res) => {
-    try {
-      const projectId = parsePositiveInt(req.params.projectId);
-      const taskId = parsePositiveInt(req.params.taskId);
-
-      if (!projectId) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid project ID. Must be a positive integer.",
-        });
-      }
-
-      if (!taskId) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid task ID. Must be a positive integer.",
-        });
-      }
-
-      const data = await milestoneService.getTaskMilestoneByProject(projectId, taskId);
-      return res.status(200).json({ success: true, data });
-    } catch (error) {
-      return handleError(res, error, "getTaskMilestoneByProject");
+      return res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Failed to parse project analytics properties."
+      });
     }
   },
 };
+ 
+
+//    getTaskMilestoneByProject: async (req, res) => {
+//     try {
+//       const projectId = parsePositiveInt(req.params.projectId);
+//       const taskId = parsePositiveInt(req.params.taskId);
+
+//       if (!projectId) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid project ID. Must be a positive integer.",
+//         });
+//       }
+
+//       if (!taskId) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid task ID. Must be a positive integer.",
+//         });
+//       }
+
+//       const data = await milestoneService.getTaskMilestoneByProject(projectId, taskId);
+//       return res.status(200).json({ success: true, data });
+//     } catch (error) {
+//       return handleError(res, error, "getTaskMilestoneByProject");
+//     }
+//   },
+// };

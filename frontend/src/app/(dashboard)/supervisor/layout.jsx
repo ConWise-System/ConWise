@@ -6,8 +6,9 @@ import { Search, Bell, UserCircle, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '../../../context/UserContext';
 import { useNotifications } from '../../../context/NotificationContext';
-import { MessagingProvider } from '../../../context/MessagingContext'; // 1. Imported Provider
-import SupervisorSidebar from "../../../components/supervisorSideBar";
+import { MessagingProvider } from '../../../context/MessagingContext';
+import SiteSuperVisor from '../../../components/supervisorSideBar';
+import NotificationDrawer from "../../../components/dashboard/NotificationDrawer"
 
 
 export function useClickOutside(ref, callback) {
@@ -20,17 +21,21 @@ export function useClickOutside(ref, callback) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [ref, callback]);
-}SupervisorSidebar
+}
 
 export default function DashboardLayout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
   const { user, loading, handleLogout } = useUser();
   const { unreadCount } = useNotifications();
   
   const router = useRouter();
   const menuRef = useRef(null);
+  const drawerRef = useRef(null); // Ref specifically for wrapping our new drawer wrapper click logic
   
   useClickOutside(menuRef, () => setShowProfileMenu(false));
+  useClickOutside(drawerRef, () => setShowNotifications(false));
 
   if (loading) return <div className="h-screen w-full bg-[#f8fafc] animate-pulse" />;
 
@@ -46,12 +51,11 @@ export default function DashboardLayout({ children }) {
   );
 
   return (
-    // 2. Wrapped everything using the centralized Context Engine passing authenticated state attributes
     <MessagingProvider currentUser={user}>
-      <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc]">
+      <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc] relative">
         {/* SIDEBAR */}
         <aside className="h-full shrink-0 z-[100] shadow-2xl shadow-slate-200">
-          <SupervisorSidebar />
+          <SiteSuperVisor/>
         </aside>
 
         {/* MAIN CONTAINER */}
@@ -60,14 +64,17 @@ export default function DashboardLayout({ children }) {
           {/* FIXED TOP NAVBAR */}
           <header className="h-24 min-h-[96px] px-8 flex justify-between items-center bg-[#f8fafc]/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-[60]">
             <div className="flex items-center gap-6">
-              <div className="relative group hidden md:block">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="Search everything..." 
-                  className="bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-6 text-sm w-80 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 transition-all outline-none shadow-sm font-medium" 
-                />
+             <div className="hidden md:flex items-center gap-3 bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-xl shadow-2xs">
+              <div className="flex flex-col text-left">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                  Active Environment
+                </span>
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-tight mt-1 inline-flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-sm" />
+                  Site Supervisor Dashboard
+                </span>
               </div>
+            </div>
             </div>
 
             <div className="flex items-center gap-4">
@@ -76,10 +83,12 @@ export default function DashboardLayout({ children }) {
                 <span className="text-[10px] font-black uppercase tracking-widest">System Live</span>
               </div>
 
-              {/* NOTIFICATION BELL */}
+              {/* NOTIFICATION BELL ICON CONTAINER */}
               <button 
-                onClick={() => router.push('/supervisor/Notification')} 
-                className="p-3 bg-white text-slate-500 hover:text-slate-900 rounded-2xl shadow-sm border border-slate-200 relative transition-all active:scale-95"
+                onClick={() => setShowNotifications(!showNotifications)} 
+                className={`p-3 rounded-2xl shadow-sm border transition-all active:scale-95 relative ${
+                  showNotifications ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-500 border-slate-200'
+                }`}
               >
                 <Bell size={20} />
                 
@@ -90,8 +99,7 @@ export default function DashboardLayout({ children }) {
                       initial={{ scale: 0.4, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.4, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                      className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white rounded-full text-[9px] font-black tracking-tight flex items-center justify-center border-2 border-white shadow-sm unselectable"
+                      className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white rounded-full text-[9px] font-black tracking-tight flex items-center justify-center border-2 border-white shadow-sm select-none"
                     >
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </motion.span>
@@ -154,8 +162,16 @@ export default function DashboardLayout({ children }) {
               {children}
             </div>
           </div>
-
         </main>
+
+        {/* 3. INJECT THE STANDALONE SLIDE PANEL DRAWER COMPONENT */}
+        <div ref={drawerRef}>
+          <NotificationDrawer 
+            isOpen={showNotifications} 
+            onClose={() => setShowNotifications(false)} 
+          />
+        </div>
+
       </div>
     </MessagingProvider>
   );

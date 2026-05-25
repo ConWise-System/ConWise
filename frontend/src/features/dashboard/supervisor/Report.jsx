@@ -99,6 +99,7 @@ export default function ReportManagementEngine() {
     setActiveInspectionReport(report);
   };
 
+
   // --- 3. BINARY LOCAL FILE UPLOAD HANDLER ---
   const handleImageUpload = async (e) => {
     const selectedFile = e.target.files?.[0];
@@ -201,6 +202,7 @@ export default function ReportManagementEngine() {
     return matchesSearch && matchesFilter;
   });
 
+
   // --- RENDERING ROUTER CONDITIONAL LOGIC ---
   if (activeView === 'CREATE_FORM') {
     return (
@@ -266,6 +268,7 @@ export default function ReportManagementEngine() {
                   />
                 </div>
 
+
                 <div className="space-y-1.5">
                   <label className="block text-[8px] font-black uppercase text-slate-400 tracking-widest">Report Type</label>
                   <select
@@ -315,6 +318,7 @@ export default function ReportManagementEngine() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs focus:outline-none focus:ring-1 focus:ring-blue-600 text-[#111827] tracking-normal font-medium leading-relaxed"
                 />
               </div>
+
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* MATERIALS SELECT DROPDOWN INDEX */}
@@ -374,6 +378,7 @@ export default function ReportManagementEngine() {
                   )}
                 </div>
               </div>
+
 
               <div className="space-y-1.5">
                 <label className="block text-[8px] font-black uppercase text-slate-400 tracking-widest">Challenges</label>
@@ -448,6 +453,7 @@ export default function ReportManagementEngine() {
             />
           </div>
 
+
           <div className="w-full md:w-auto flex justify-end">
             <select
               value={selectedFilter}
@@ -514,6 +520,7 @@ export default function ReportManagementEngine() {
                           <h4 className="text-[13px] font-black text-[#111827] uppercase tracking-tight mt-1 group-hover:text-blue-600 transition-colors truncate">
                             {report.reportTitle || report.title || 'Untitled Performance Abstract'}
                           </h4>
+
                           <div className="flex items-center gap-4 text-[9px] font-bold text-slate-400 mt-2 uppercase tracking-wide">
                             <span className="flex items-center gap-1">
                               <Calendar size={10} /> {formatDateString(report.reportDate || report.createdAt)}
@@ -576,6 +583,7 @@ export default function ReportManagementEngine() {
                   <X size={14} />
                 </button>
               </div>
+
 
               {/* Data Field Stream (Scrollable Center) */}
               <div className="flex-1 overflow-y-auto p-6 md:p-8 pt-4 space-y-4 text-xs font-bold text-slate-700 uppercase tracking-tight">

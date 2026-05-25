@@ -4,81 +4,60 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Milestone, Calendar, CheckCircle2, Clock, 
-  AlertTriangle, XCircle, BarChart3, 
-  Layers, ChevronDown, Briefcase, RefreshCw, AlertCircle
+  Layers, ChevronDown, RefreshCw, AlertCircle,
+  Activity, ArrowUpRight
 } from 'lucide-react';
 import summeryApi from '../../../common/summeryApi';
 import Axios from '../../../../utils/Axios';
 
 export default function ProjectMilestonesDashboard() {
-  // Database infrastructure state arrays
-  const [projectsList, setProjectsList] = useState([]);
+  // Main repository matrix states
+  const [projectsData, setProjectsData] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [projectData, setProjectData] = useState(null);
+  const [activeProject, setActiveProject] = useState(null);
   
-  // Isolated status monitors
+  // Interface status monitors
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
 
-  // --- 1. FETCH ALL PROJECT LOOKUP NODES ---
-  const fetchAllProjects = async () => {
+  // --- FETCH ALL ACTIVE PROJECTS METRICS ---
+  const fetchProjectMilestones = async () => {
     try {
+      // Calls your updated manager-scoped milestone backend endpoint
       const response = await Axios({
-        url: summeryApi.getAllProjects.url,
-        method: summeryApi.getAllProjects.method,
+        url: summeryApi.projectMilestones.url,
+        method: 'GET',
         withCredentials: true
       });
 
-      if (response.data?.success) {
-        const structuralData = response.data.data || [];
-        setProjectsList(structuralData);
+      if (response.data?.success && response.data.data) {
+        const structuralArray = response.data.data;
+        setProjectsData(structuralArray);
         
-        // Auto-select the leading instance if records exist in the repository
-        if (structuralData.length > 0) {
-          const initialId = structuralData[0].id || structuralData[0]._id || structuralData[0].projectId;
-          setSelectedProjectId(initialId);
+        // Auto-select the first project in the array if it exists
+        if (structuralArray.length > 0) {
+          setSelectedProjectId(structuralArray[0].projectId);
+          setActiveProject(structuralArray[0]);
         }
       }
     } catch (error) {
-      console.error("Critical fault fetching comprehensive projects portfolio index:", error);
+      console.error("Critical fault syncing project management milestone telemetry:", error);
     } finally {
       setIsInitialLoad(false);
     }
   };
 
-  // Run portfolio index fetch once on component initial execution frame
   useEffect(() => {
-    fetchAllProjects();
+    fetchProjectMilestones();
   }, []);
 
-  // --- 2. FETCH SPECIFIC MILESTONE TELEMETRY STREAM ---
-  const fetchProjectTelemetry = async (projectId) => {
-    if (!projectId) return;
-    setIsLoadingMetrics(true);
-    try {
-      const response = await Axios({
-        url: summeryApi.projectMilestones.url(projectId),
-        method: summeryApi.projectMilestones.method,
-        withCredentials: true
-      });
-
-      if (response.data?.success) {
-        setProjectData(response.data.data);
-      }
-    } catch (error) {
-      console.error("Critical error pulling raw project milestones telemetry:", error);
-    } finally {
-      setIsLoadingMetrics(false);
-    }
+  // Update active view layout whenever selection changes inside the state matrix
+  const handleProjectSelection = (id) => {
+    setSelectedProjectId(id);
+    const matched = projectsData.find(p => p.projectId === id);
+    if (matched) setActiveProject(matched);
+    setIsDropdownOpen(false);
   };
-
-  // Trigger metrics api stream whenever the selection token mutates
-  useEffect(() => {
-    if (selectedProjectId) {
-      fetchProjectTelemetry(selectedProjectId);
-    }
-  }, [selectedProjectId]);
 
   const formatEpoch = (isoString) => {
     if (!isoString) return '---';
@@ -89,47 +68,35 @@ export default function ProjectMilestonesDashboard() {
     });
   };
 
-  // Extract current dropdown presentation context string values dynamically
-  const activeSelectionObject = projectsList.find(p => (p.id || p._id || p.projectId) === selectedProjectId);
-  const activeProjectLabel = activeSelectionObject?.projectName || activeSelectionObject?.name || "Select Project Matrix...";
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#111827] font-sans antialiased p-6 md:p-12 text-left">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased p-4 md:p-8">
+      <div className="max-w-[1400px] mx-auto space-y-6">
         
-        {/* --- DASHBOARD HEADER & DROPDOWN CONTROLS --- */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-6 gap-6">
+        {/* --- PROFESSIONAL INTERFACE CONTROL HEADER --- */}
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-200 pb-6 gap-4">
           <div>
-            <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] tracking-[0.2em] uppercase mb-1">
+            <div className="flex items-center gap-1.5 text-blue-600 font-bold text-[10px] tracking-widest uppercase mb-1">
               <Milestone size={12} /> Milestone Analytics Dashboard
             </div>
-            <h1 className="text-3xl font-black tracking-tighter uppercase italic text-[#111827]">
-              {/* FIXED: Uses optional chaining and falls back to active dynamic dropdown name to prevent null pointer exceptions */}
-              {projectData?.projectName || activeProjectLabel}
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 uppercase">
+              {activeProject ? activeProject.projectName : "Project Portfolios Tracker"}
             </h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-              Data Scope: {projectsList.length} Authenticated Repositories
-            </p>
           </div>
 
-          {/* DENSE TECHNICAL DROPDOWN SELECTION HUB */}
-          <div className="relative w-full md:w-80 z-50">
-            <label className="block text-[8px] font-black uppercase text-slate-400 tracking-widest mb-1.5 pl-1">
-              Active Context Project
-            </label>
+          {/* MINIMALIST DESIGN DROPDOWN SELECTOR */}
+          <div className="relative w-full sm:w-72 z-50">
             <button
               type="button"
-              disabled={isInitialLoad || projectsList.length === 0}
+              disabled={isInitialLoad || projectsData.length === 0}
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full bg-white border border-slate-200 p-3.5 rounded-xl text-left text-xs font-black uppercase tracking-tight text-[#111827] flex items-center justify-between shadow-sm hover:border-slate-300 transition-colors focus:outline-none disabled:bg-slate-50 disabled:text-slate-400"
+              className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-left text-xs font-bold uppercase tracking-tight text-slate-800 flex items-center justify-between shadow-2xs hover:border-slate-300 transition-colors focus:outline-none"
             >
               <span className="truncate">
-                {isInitialLoad ? "Synchronizing Portfolio..." : activeProjectLabel}
+                {isInitialLoad ? "Synchronizing Context..." : (activeProject?.projectName || "Select Managed Project...")}
               </span>
-              <ChevronDown size={14} className={`text-slate-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* EXPANDABLE INTERACTION OVERLAY PANEL */}
             <AnimatePresence>
               {isDropdownOpen && (
                 <>
@@ -138,32 +105,21 @@ export default function ProjectMilestonesDashboard() {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.1 }}
-                    className="absolute right-0 left-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto z-50"
+                    className="absolute right-0 left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto z-50 p-1"
                   >
-                    {projectsList.map((project) => {
-                      const currentId = project.id || project._id || project.projectId;
-                      const isSelected = currentId === selectedProjectId;
-                      const nameDisplay = project.projectName || project.name || "Unnamed Target Cluster";
-                      
+                    {projectsData.map((project) => {
+                      const isSelected = project.projectId === selectedProjectId;
                       return (
                         <button
-                          key={currentId}
+                          key={project.projectId}
                           type="button"
-                          onClick={() => {
-                            setSelectedProjectId(currentId);
-                            setIsDropdownOpen(false);
-                          }}
-                          className={`w-full text-left p-3.5 border-b border-slate-50 last:border-b-0 text-xs font-bold uppercase tracking-tight flex flex-col transition-colors ${
-                            isSelected 
-                              ? 'bg-slate-50 text-blue-600 font-black' 
-                              : 'text-[#111827] hover:bg-slate-50 hover:text-blue-600'
+                          onClick={() => handleProjectSelection(project.projectId)}
+                          className={`w-full text-left px-4 py-2.5 rounded-lg text-xs font-semibold uppercase tracking-tight flex items-center justify-between transition-all ${
+                            isSelected ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-50'
                           }`}
                         >
-                          <span className="truncate">{nameDisplay}</span>
-                          <span className="text-[8px] font-bold text-slate-400 tracking-wider mt-0.5">
-                            ID Token: {String(currentId).toUpperCase()}
-                          </span>
+                          <span className="truncate">{project.projectName}</span>
+                          <span className="font-mono text-[10px] opacity-60">{project.completionPercentage}%</span>
                         </button>
                       );
                     })}
@@ -174,180 +130,122 @@ export default function ProjectMilestonesDashboard() {
           </div>
         </header>
 
-        {/* --- MAIN METRICS VIEWER HUB WORKSPACE --- */}
-        <div className="relative min-h-[400px]">
-          {isLoadingMetrics ? (
-            <div className="absolute inset-0 bg-[#F8FAFC]/50 flex items-center justify-center z-10">
-              <div className="flex flex-col items-center gap-3">
-                <RefreshCw size={24} className="animate-spin text-blue-600" />
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Syncing Node Metrics Array...</p>
+        {/* --- PERFORMANCE ANALYTICS CONTAINER --- */}
+        {isInitialLoad ? (
+          <div className="h-[400px] flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200">
+            <RefreshCw size={20} className="animate-spin text-blue-600 mb-2" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Parsing Active Registries...</span>
+          </div>
+        ) : activeProject ? (
+          <div className="space-y-6">
+            
+            {/* COMPACT STATISTICS OVERVIEW ROW */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Operational Timeline</span>
+                  <span className="text-xs font-bold text-slate-800 mt-1 block">
+                    {formatEpoch(activeProject.projectStartDate)} — {formatEpoch(activeProject.projectDueDate)}
+                  </span>
+                </div>
+                <Calendar size={16} className="text-slate-300" />
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Active Components</span>
+                  <span className="text-2xl font-bold tracking-tight text-slate-900 mt-1 block">{activeProject.inProgressTasks}</span>
+                </div>
+                <Activity size={16} className="text-amber-500" />
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Completed Targets</span>
+                  <span className="text-2xl font-bold tracking-tight text-slate-900 mt-1 block">{activeProject.completedTasks}</span>
+                </div>
+                <CheckCircle2 size={16} className="text-emerald-500" />
+              </div>
+
+              {/* INTEGRATED GLOBAL COMPACT PROGRESS RADIAL */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overall Metrics</span>
+                  <span className="text-xs font-bold font-mono text-slate-900">{activeProject.completionPercentage}%</span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div 
+                    style={{ width: `${activeProject.completionPercentage}%` }}
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      activeProject.completionPercentage === 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
-          ) : null}
 
-          <AnimatePresence mode="wait">
-            {projectData ? (
-              <motion.main
-                key={projectData.projectId}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.15 }}
-                className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start"
-              >
-                
-                {/* PRIMARY LEFT LOG PARAMETERS GRID */}
-                <section className="lg:col-span-2 space-y-6">
-                  
-                  {/* TIMELINE RUNTIME DATES VECTORS */}
-                  <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                    <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-                      Project Lifespan Lifecycles
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block mb-1">Project Start Date</span>
-                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-tight text-slate-700">
-                          <Calendar size={12} className="text-slate-400" />
-                          {formatEpoch(projectData.projectStartDate)}
-                        </div>
-                      </div>
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider block mb-1">Project Due Date</span>
-                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-tight text-slate-700">
-                          <Calendar size={12} className="text-slate-400" />
-                          {formatEpoch(projectData.projectDueDate)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* TASK LOG QUANTITIES COMPACT MATRIX */}
-                  <div className="space-y-4">
-                    <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-2">
-                      Tasks MileStone ({projectData.projectId || '---'})
-                    </h3>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      
-                      {/* Completed Tasks Card */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600"><CheckCircle2 size={16} /></div>
-                          <div>
-                            <h4 className="text-[12px] font-black uppercase tracking-tight text-[#111827]">Completed</h4>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Successful closures</p>
-                          </div>
-                        </div>
-                        <span className="text-2xl font-black text-[#111827] italic tracking-tight">{projectData.completedTasks || 0}</span>
-                      </div>
-
-                      {/* In Progress Tasks Card */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-blue-50 text-blue-600"><Clock size={16} /></div>
-                          <div>
-                            <h4 className="text-[12px] font-black uppercase tracking-tight text-[#111827]">In Progress</h4>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Active sprint threads</p>
-                          </div>
-                        </div>
-                        <span className="text-2xl font-black text-[#111827] italic tracking-tight">{projectData.inProgressTasks || 0}</span>
-                      </div>
-
-                      {/* Under Review Tasks Card */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-purple-50 text-purple-600"><Layers size={16} /></div>
-                          <div>
-                            <h4 className="text-[12px] font-black uppercase tracking-tight text-[#111827]">Under Review</h4>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Quality verification</p>
-                          </div>
-                        </div>
-                        <span className="text-2xl font-black text-[#111827] italic tracking-tight">{projectData.underReviewTasks || 0}</span>
-                      </div>
-
-                      {/* Blocked Tasks Card */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-amber-50 text-amber-600"><AlertTriangle size={16} /></div>
-                          <div>
-                            <h4 className="text-[12px] font-black uppercase tracking-tight text-[#111827]">Blocked</h4>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Open dependencies</p>
-                          </div>
-                        </div>
-                        <span className="text-2xl font-black text-[#111827] italic tracking-tight">{projectData.blockedTasks || 0}</span>
-                      </div>
-
-                      {/* Rejected Tasks Card */}
-                      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between sm:col-span-2">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-xl bg-rose-50 text-rose-600"><XCircle size={16} /></div>
-                          <div>
-                            <h4 className="text-[12px] font-black uppercase tracking-tight text-[#111827]">Rejected Tasks</h4>
-                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Requires logic updates</p>
-                          </div>
-                        </div>
-                        <span className="text-2xl font-black text-[#111827] italic tracking-tight">{projectData.rejectedTasks || 0}</span>
-                      </div>
-
-                    </div>
-                  </div>
-
-                </section>
-
-                {/* RIGHT SIDEBAR COLUMN: PERFORMANCE GAUGES */}
-                <section className="space-y-4">
-                  <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-2">
-                    Velocity Profile Metric
-                  </h3>
-
-                  <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm text-center space-y-6">
-                    <div>
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Aggregated Performance Threshold</p>
-                      <h2 className="text-7xl font-black text-[#111827] tracking-tighter italic leading-none mt-4">
-                        {projectData.completionPercentage || 0}<span className="text-xl text-slate-300 ml-1">%</span>
-                      </h2>
-                    </div>
-
-                    {/* HIGH EFFICIENCY COMPLETION LOG TRACK BAR */}
-                    <div className="space-y-2 text-left">
-                      <div className="flex justify-between text-[8px] font-black uppercase text-slate-400 tracking-wider">
-                        <span>Total Tasks Target Boundary</span>
-                        <span>{projectData.totalTasks || 0} Log Units</span>
-                      </div>
-                      <div className="h-2.5 w-full bg-slate-50 border border-slate-100 rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ width: 0 }}
-                          animate={{ width: `${projectData.completionPercentage || 0}%` }}
-                          transition={{ duration: 0.5, ease: "easeOut" }}
-                          className="h-full bg-blue-600 rounded-full"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="border-t border-slate-100 pt-6 text-left">
-                      <div className="flex items-start gap-3 text-[10px] text-slate-400 font-bold uppercase tracking-wide leading-relaxed">
-                        <BarChart3 size={16} className="text-slate-300 shrink-0 mt-0.5" />
-                        <span>Data calculations scale metrics automatically dynamically sourced directly from project telemetry files.</span>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-              </motion.main>
-            ) : (
-              !isLoadingMetrics && !isInitialLoad && (
-                <div className="bg-white p-12 rounded-[2rem] border border-dashed border-slate-200 text-center text-slate-400 py-24">
-                  <AlertCircle className="mx-auto opacity-40 mb-3 text-slate-400" size={32} />
-                  <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">
-                    No active projects identified in this supervisor profile context
-                  </p>
+            {/* --- GRANULAR PROGRESS MILESTONES WORKFLOW TIMELINE --- */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Milestone Progress Workflow</h2>
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-tight mt-0.5">Chronological Project Breakdown</h3>
                 </div>
-              )
-            )}
-          </AnimatePresence>
-        </div>
+                <span className="text-[10px] font-bold bg-slate-50 border border-slate-200 px-3 py-1 rounded-lg text-slate-500">
+                  {activeProject.milestones.length} SEQUENTIAL NODES
+                </span>
+              </div>
 
+              <div className="space-y-4">
+                {activeProject.milestones.map((milestone) => {
+                  const isDone = milestone.completionPercentage === 100;
+                  return (
+                    <div 
+                      key={milestone.milestoneId} 
+                      className="group border border-slate-100 bg-slate-50/40 hover:bg-white hover:border-slate-200 p-5 rounded-xl transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-3xs"
+                    >
+                      <div className="space-y-1 max-w-xl">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${isDone ? 'bg-emerald-500' : 'bg-blue-500 animate-pulse'}`} />
+                          <h4 className="text-xs font-bold text-slate-900 uppercase tracking-tight leading-tight group-hover:text-blue-600 transition-colors">
+                            {milestone.milestoneName}
+                          </h4>
+                        </div>
+                        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <Calendar size={10} /> Target Due Window: {formatEpoch(milestone.milestoneDueDate)}
+                        </p>
+                      </div>
+
+                      {/* INDIVIDUAL PROGRESS GAUGES */}
+                      <div className="w-full md:w-64 space-y-1.5 shrink-0">
+                        <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          <span className="font-mono">
+                            {isDone ? "Stage Verification Saved" : "Execution Thread In Progress"}
+                          </span>
+                          <span className="font-mono text-slate-900">{milestone.completionPercentage}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200/60 h-2 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${milestone.completionPercentage}%` }}
+                            className={`h-full rounded-full ${isDone ? 'bg-emerald-500' : 'bg-blue-600'}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-200 text-center text-slate-400 py-20">
+            <AlertCircle className="mx-auto opacity-30 mb-2" size={28} />
+            <p className="text-[10px] font-bold uppercase tracking-widest">No active engineering project tracks registered.</p>
+          </div>
+        )}
       </div>
     </div>
   );

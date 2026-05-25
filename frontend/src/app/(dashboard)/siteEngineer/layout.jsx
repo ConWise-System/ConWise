@@ -6,9 +6,10 @@ import { Search, Bell, UserCircle, Settings, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '../../../context/UserContext';
 import { useNotifications } from '../../../context/NotificationContext';
-import { MessagingProvider } from '../../../context/MessagingContext'; // 1. Imported Provider
-import SiteEngineerSideBar from '../../../components/siteEngineerSideBar';
-import NotificationDrawer from '../../../components/dashboard/NotificationDrawer';
+import { MessagingProvider } from '../../../context/MessagingContext';
+import SiteEngineerSidebar from '../../../components/siteEngineerSideBar';
+import NotificationDrawer from "../../../components/dashboard/NotificationDrawer"
+
 
 export function useClickOutside(ref, callback) {
   useEffect(() => {
@@ -24,13 +25,14 @@ export function useClickOutside(ref, callback) {
 
 export default function DashboardLayout({ children }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  
   const { user, loading, handleLogout } = useUser();
   const { unreadCount } = useNotifications();
-  const [showNotifications, setShowNotifications] = useState(false);
   
   const router = useRouter();
   const menuRef = useRef(null);
-  const drawerRef = useRef(null);
+  const drawerRef = useRef(null); // Ref specifically for wrapping our new drawer wrapper click logic
   
   useClickOutside(menuRef, () => setShowProfileMenu(false));
   useClickOutside(drawerRef, () => setShowNotifications(false));
@@ -49,28 +51,39 @@ export default function DashboardLayout({ children }) {
   );
 
   return (
-    // 2. Wrapped the layout shell to inject real-time socket events for the engineer session
     <MessagingProvider currentUser={user}>
-      <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc]">
+      <div className="flex h-screen w-full overflow-hidden bg-[#f8fafc] relative">
         {/* SIDEBAR */}
         <aside className="h-full shrink-0 z-[100] shadow-2xl shadow-slate-200">
-          <SiteEngineerSideBar/>
+          <SiteEngineerSidebar />
         </aside>
 
         {/* MAIN CONTAINER */}
         <main className="flex-1 flex flex-col min-w-0 h-full relative">
           
           {/* FIXED TOP NAVBAR */}
-          <header className="h-24 min-h-[96px] px-8 flex justify-end items-center bg-[#f8fafc]/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-[60]">
-            
+          <header className="h-24 min-h-[96px] px-8 flex justify-between items-center bg-[#f8fafc]/80 backdrop-blur-md border-b border-slate-200/50 sticky top-0 z-[60]">
+            <div className="flex items-center gap-6">
+             <div className="hidden md:flex items-center gap-3 bg-slate-50 border border-slate-200/80 px-4 py-2.5 rounded-xl shadow-2xs">
+              <div className="flex flex-col text-left">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">
+                  Active Environment
+                </span>
+                <span className="text-xs font-bold text-slate-900 uppercase tracking-tight mt-1 inline-flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-sm" />
+                  Site Engineer Dashboard
+                </span>
+              </div>
+            </div>
+            </div>
+
             <div className="flex items-center gap-4">
               <div className="hidden lg:flex items-center gap-2 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full border border-emerald-100 mr-2">
                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                 <span className="text-[10px] font-black uppercase tracking-widest">System Live</span>
               </div>
 
-
-              {/* NOTIFICATION BELL */}
+              {/* NOTIFICATION BELL ICON CONTAINER */}
               <button 
                 onClick={() => setShowNotifications(!showNotifications)} 
                 className={`p-3 rounded-2xl shadow-sm border transition-all active:scale-95 relative ${
@@ -86,8 +99,7 @@ export default function DashboardLayout({ children }) {
                       initial={{ scale: 0.4, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       exit={{ scale: 0.4, opacity: 0 }}
-                      transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                      className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white rounded-full text-[9px] font-black tracking-tight flex items-center justify-center border-2 border-white shadow-sm unselectable"
+                      className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white rounded-full text-[9px] font-black tracking-tight flex items-center justify-center border-2 border-white shadow-sm select-none"
                     >
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </motion.span>
@@ -113,7 +125,6 @@ export default function DashboardLayout({ children }) {
                     </span>
                   </div>
                 </div>
-
 
                 <AnimatePresence>
                   {showProfileMenu && (
@@ -151,8 +162,9 @@ export default function DashboardLayout({ children }) {
               {children}
             </div>
           </div>
+        </main>
 
-          {/* 3. INJECT THE STANDALONE SLIDE PANEL DRAWER COMPONENT */}
+        {/* 3. INJECT THE STANDALONE SLIDE PANEL DRAWER COMPONENT */}
         <div ref={drawerRef}>
           <NotificationDrawer 
             isOpen={showNotifications} 
@@ -160,7 +172,6 @@ export default function DashboardLayout({ children }) {
           />
         </div>
 
-        </main>
       </div>
     </MessagingProvider>
   );
