@@ -11,9 +11,11 @@ export const sendMessageSchema = z
     message: "Either projectId or receiverUserId must be provided",
   });
 
-export const getPrivateChatHistorySchema = z.object({
-  receiverUserId: z
-    .string()
-    .regex(/^\d+$/, { message: "receiverUserId must be a valid numeric string" })
-    .transform(Number), // Transforms "4" into 4 and saves it back to req.query
-});
+export const getChatHistorySchema = z
+  .object({
+    projectId: z.string().regex(/^\d+$/).transform(Number).optional(),
+    receiverUserId: z.string().regex(/^\d+$/).transform(Number).optional(),
+  })
+  .refine((data) => data.projectId || data.receiverUserId, {
+    message: "Either projectId or receiverUserId is required",
+  });
