@@ -113,7 +113,7 @@ export const materialService = {
     const existing = await prisma.materialUsed.findFirst({
       where: { id: materialId, companyId },
       include: {
-        tasks: {
+        task: {
           select: {
             assigneeUserId: true,
             project: { select: { companyId: true } },
@@ -126,11 +126,9 @@ export const materialService = {
 
     // SITE_ENGINEER: can only update materials linked to their own tasks
     if (role === ROLES.SITE_ENGINEER) {
-      const isAssigned = existing.tasks.some(
-        (task) =>
-          task.assigneeUserId === userId &&
-          task.project?.companyId === companyId,
-      );
+      const isAssigned =
+        existing.task?.assigneeUserId === userId &&
+        existing.task?.project?.companyId === companyId;
       if (!isAssigned) {
         const error = new Error(
           "You can only update materials linked to your assigned tasks.",
@@ -157,7 +155,7 @@ export const materialService = {
   deleteMaterial: async ({ materialId, role, companyId }) => {
     const existing = await prisma.materialUsed.findFirst({
       where: { id: materialId, companyId },
-      include: { tasks: { select: { id: true } } },
+      include: { task: { select: { id: true } } },
     });
 
     if (!existing) return null;
@@ -165,9 +163,9 @@ export const materialService = {
     if (role === ROLES.COMPANY_ADMIN) {
       // Full access — no extra check
     } else if (role === ROLES.PROJECT_MANAGER) {
-      if (existing.tasks.length > 0) {
+      if (existing.task) {
         const error = new Error(
-          "Cannot delete a material that is still linked to tasks. Unlink it from all tasks first.",
+          "Cannot delete a material that is still linked to a task. Unlink it from the task first.",
         );
         error.statusCode = 409;
         throw error;
