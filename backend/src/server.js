@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
-import passport from "./config/passport.js";
 
 import http from "http"; // 1. Import http
 import { initSocket } from "./socket.js";
@@ -16,12 +15,11 @@ import taskRoutes from "./modules/task/task.routes.js";
 import materialRoutes from "./modules/material/material.routes.js";
 import reportRotues from "./modules/report/report.routes.js";
 import messagingRoutes from "./modules/messaging/messaging.routes.js";
-import issueRoutes from "./modules/issue/issue.routes.js";
+import issueRoutes, { assigneeIssueRouter } from "./modules/issue/issue.routes.js";
 import milestoneRoutes from "./modules/milestone/milestone.routes.js";
-import uploadRoute from "../routes/upload.js";
 import analyticsRoutes from "./modules/analytics/analytics.routes.js";
 import analyticssRoutes from "./modules/analytics/analyticss.routes.js";
-import notifcationRoutes from "./modules/notification/notification.routes.js";
+import notificationRoutes from "./modules/notification/notification.routes.js";
 
 dotenv.config();
 
@@ -30,7 +28,7 @@ const server = http.createServer(app); // 3. Wrap Express with HTTP
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
-  : ["http://localhost:3000"];
+  : [];
 
 app.use(
   cors({
@@ -49,8 +47,6 @@ app.use(
 );
 app.use(morgan("dev"));
 app.use(express.json());
-app.use(passport.initialize());
-
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -65,11 +61,11 @@ app.use("/api/reports", reportRotues);
 app.use("/api/messaging", messagingRoutes);
 app.use("/api/milestones", milestoneRoutes);
 app.use("/api", taskRoutes);
-app.use("/api", analyticsRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/analytics", analyticssRoutes);
-app.use("/api/projects", issueRoutes);
-app.use("/api/notifications", notifcationRoutes);
-app.use("/api/upload", uploadRoute);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api", assigneeIssueRouter);
+app.use("/api/projects/:projectId/issues", issueRoutes);
 
 // Swagger docs
 app.use(
@@ -102,8 +98,10 @@ app.use(errorHandler);
 initSocket(server);
 
 const PORT = process.env.PORT || 8000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 export default app;
