@@ -1,8 +1,6 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
-
 }
 
 datasource db {
@@ -60,6 +58,10 @@ enum TaskStatus {
   IN_PROGRESS
   BLOCKED
   DONE
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
 }
 
 enum IssueStatus {
@@ -145,9 +147,9 @@ model User {
   reportedIssues Issue[]            @relation("IssueReporter")
   assignedIssues Issue[]            @relation("IssueAssignee")
   issueAuditLogs IssueAuditLog[]
-  sentMessages   Chat[]             @relation("ChatSender")
+  sentMessages     Chat[]             @relation("ChatSender")
   receivedMessages Chat[]             @relation("ChatReceiver")
-  sessions       Session[]
+  sessions         Session[]
   verifications  VerificationCode[]
 
   @@index([companyId])
@@ -300,33 +302,27 @@ model CostSummary {
 }
 
 model Report {
-  id          Int        @id @default(autoincrement())
-  userId      Int
-  projectId   Int
-  companyId   Int // Critical for multi-tenancy
-  reportTitle String
-  reportType  ReportType @default(DAILY_SITE_REPORT)
-  reportDate  DateTime
-
-  // Requirement fields: work, workers, materials, challenges
-  workCompleted    String  @db.Text
-  workersPresent   Int     @default(0)
-  materialsUsed    String? @db.Text
+  id               Int        @id @default(autoincrement())
+  userId           Int
+  projectId        Int
+  reportTitle      String
+  reportType       ReportType
+  reportDate       DateTime
+  workCompleted    String
+  workersPresent   Int?
+  materialsUsed    String?
   weatherCondition String?
-  challenges       String? @db.Text
-
+  challenges       String?
   progressPhotoUrl String?
-  submittedAt      DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  submittedAt      DateTime   @default(now())
 
-  // Relations
-  user    User    @relation(fields: [userId], references: [id])
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [companyId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id])
+  companyId Int?
 
   @@index([userId])
   @@index([projectId])
-  @@index([companyId])
   @@map("reports")
 }
 
@@ -401,20 +397,18 @@ model IssueAuditLog {
 model Chat {
   id             Int      @id @default(autoincrement())
   senderUserId   Int
-  receiverUserId Int      // Added field for direct 1-to-1 tracking
-  projectId      Int?     // Made optional so private chats can have null values
+  projectId      Int?
+  receiverUserId Int?
   messageContent String
   timestamp      DateTime @default(now())
-  isRead         Boolean  @default(false) 
   chatType       ChatType @default(TEXT)
 
-  // Explicit, separated relation actions matching your application architecture
-  sender   User     @relation("ChatSender", fields: [senderUserId], references: [id])
-  receiver User     @relation("ChatReceiver", fields: [receiverUserId], references: [id])
+  sender   User    @relation("ChatSender", fields: [senderUserId], references: [id])
+  receiver User?   @relation("ChatReceiver", fields: [receiverUserId], references: [id])
   project  Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([senderUserId])
-  @@index([receiverUserId])
   @@index([projectId])
+  @@index([receiverUserId])
   @@map("chats")
 }
