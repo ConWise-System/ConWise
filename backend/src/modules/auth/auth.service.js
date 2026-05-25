@@ -8,8 +8,6 @@ import {
   USER_STATUSES,
   VERIFICATION_TYPES,
 } from "../../config/constants.js";
-import * as notificationService from "../notification/notification.service.js";
-
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -90,9 +88,9 @@ const createError = (message, statusCode = 400, errors = null) => {
   return error;
 };
 
-export const getDashboardPath = (role) => DASHBOARD_BY_ROLE[role] || "/dashboard";
+const getDashboardPath = (role) => DASHBOARD_BY_ROLE[role] || "/dashboard";
 
-export const sanitizeUser = (user) => {
+const sanitizeUser = (user) => {
   if (!user) return null;
 
   return {
@@ -207,25 +205,15 @@ const ensureCompanyScopedActor = (actor) => {
     throw createError(AUTH_MESSAGES.UNAUTHORIZED, 401);
   }
 
-  // Add PROJECT_MANAGER here
-  const allowedRoles = [
-    ROLES.COMPANY_ADMIN, 
-    ROLES.PLATFORM_ADMIN, 
-    ROLES.PROJECT_MANAGER,
-    ROLES.SITE_ENGINEER,
-    ROLES.SITE_SUPERVISOR
-  ];
-
-  if (!allowedRoles.includes(actor.role)) {
+  if (
+    actor.role !== ROLES.COMPANY_ADMIN &&
+    actor.role !== ROLES.PLATFORM_ADMIN
+  ) {
     throw createError(AUTH_MESSAGES.FORBIDDEN, 403);
   }
 
-  // Update this to ensure both Admins and PMs have a companyId
-  if (
-    (actor.role === ROLES.COMPANY_ADMIN || actor.role === ROLES.PROJECT_MANAGER) && 
-    !actor.companyId
-  ) {
-    throw createError("User must belong to a company to perform this action.", 400);
+  if (actor.role === ROLES.COMPANY_ADMIN && !actor.companyId) {
+    throw createError("Company admin must belong to a company.", 400);
   }
 };
 
@@ -263,7 +251,7 @@ const ensureActorCanChangeStatus = (actorRole, targetRole) => {
   }
 };
 
-export const issueTokens = async (user, meta = {}) => {
+const issueTokens = async (user, meta = {}) => {
   const payload = buildAuthPayload(user);
   const accessToken = generateAccessToken(payload, env.jwt.expiresIn);
   const refreshToken = generateRefreshToken(payload, env.jwt.refreshExpiresIn);
@@ -618,7 +606,7 @@ export const verifyAccount = async (payload) => {
       code: verificationCode,
       usedAt: null,
       expiresAt: { gt: new Date() },
-      type: VERIFICATION_TYPES.EMAIL_VERIFICATION, // since it's company admin email verification
+      type: VERIFICATION_TYPES.EMAIL_VERIFICATION,   // since it's company admin email verification
     },
     orderBy: { createdAt: "desc" },
     include: {
@@ -673,6 +661,7 @@ export const verifyAccount = async (payload) => {
     redirectTo: "/login",
   };
 };
+
 
 export const resendVerificationCode = async (payload, meta = {}) => {
   const identifier = resolveIdentifierPayload(payload);
@@ -756,7 +745,7 @@ export const loginUser = async (payload, meta = {}) => {
     },
   });
 
-   const tokens = await issueTokens(user, meta);
+  const tokens = await issueTokens(user, meta);
 
   return {
     message: AUTH_MESSAGES.LOGIN_SUCCESS,
@@ -949,7 +938,7 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
       await sendStaffInviteEmail(createdUser.email, temporaryPassword);
     } catch (error) {
       console.error("Staff invite email failed to send:", error);
-    }
+      }
   }
 
   return {
@@ -962,49 +951,22 @@ export const createStaffUser = async (actor, payload, meta = {}) => {
 };
 
 export const changePassword = async (userId, newPassword) => {
-  try {
-    // 1. Hash the new password
-    const { value: hashedPassword } = await hashPassword(newPassword);
+  const { value: hashedPassword } = await hashPassword(newPassword);
 
-    // 2. Update the user record in the database
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        passwordHash: hashedPassword,
-        isVerified: true,
-        status: USER_STATUSES.ACTIVE,
-      },
-    });
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordHash: hashedPassword,
+      isVerified: true,
+      status: USER_STATUSES.ACTIVE,
+    },
+  });
 
-    // 3. Handle Notification (Wrapped in its own try-catch so it's non-blocking)
-    try {
-      console.log(
-        "Attempting to call notificationService for user:",
-        updatedUser.id,
-      );
-      await notificationService.createNotification({
-        recipientUserId: updatedUser.id,
-        notificationTitle: "Security Update: Password Changed",
-        notificationDescription:
-          "Your password has been successfully updated. Your account is now fully verified and activated!.",
-        relatedEntityType: "USER",
-        relatedEntityId: updatedUser.id,
-      });
-    } catch (error) {
-      // We log this for the backend team, but the user doesn't need to see a crash
-      console.error("Notification Service Error:", error.message);
-    }
-
-    // 4. Return the sanitized user to the controller
-    return sanitizeUser(updatedUser);
-  } catch (error) {
-    // This catches database errors or hashing errors
-    // Throwing it here allows your 'catchAsync' in the controller to pass it to 'errorMiddleware'
-    throw error;
-  }
+  return sanitizeUser(updatedUser);
 };
 
-export const searchUser = async (query, companyId, limit = 20) => {
+
+export const searchUser = async (query, companyId,  limit = 20) => {
   if (!query || query.trim() === "") {
     return [];
   }
@@ -1012,16 +974,16 @@ export const searchUser = async (query, companyId, limit = 20) => {
   const users = await prisma.user.findMany({
     where: {
       companyId: Number(companyId),
-      OR: [
+      OR:( [
         { firstName: { contains: query.trim(), mode: "insensitive" } },
-        { lastName: { contains: query.trim(), mode: "insensitive" } },
-        { email: { contains: query.trim(), mode: "insensitive" } },
-      ],
+        { lastName:  { contains: query.trim(), mode: "insensitive" } },
+        { email:     { contains: query.trim(), mode: "insensitive" } },
+      ]),
     },
     orderBy: {
       firstName: "asc",
     },
-    take: limit, // Prevent returning too many users
+    take: limit,           // Prevent returning too many users
   });
 
   return users.map(sanitizeUser);
@@ -1038,7 +1000,7 @@ export const filterUserByRole = async (companyId, role) => {
   });
 
   return users.map(sanitizeUser);
-};
+}
 
 export const inviteUser = async (actor, payload, meta = {}) => {
   ensureCompanyScopedActor(actor);

@@ -119,16 +119,6 @@ export const issueController = {
     }
   },
 
-  getIssueByAssignee: async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const issues = await issueService.getIssueByAssignee(userId);
-      return res.status(200).json({ success: true, data: issues });
-    } catch (error) {
-      return handleError(res, error, "getIssueByAssignee");
-    }
-  },
-
   /**
    * @swagger
    * /api/projects/{projectId}/issues/{issueId}:
@@ -301,6 +291,18 @@ export const issueController = {
       return res.status(200).json({ success: true, data: result });
     } catch (error) {
       return handleError(res, error, "deleteIssue");
+    }
+  },
+
+  getIssuesByAssignee: async (req, res) => {
+    try {
+      const issues = await issueService.getIssuesByAssignee({
+        userId: req.user.id,
+        companyId: req.user.companyId,
+      });
+      return res.status(200).json({ success: true, data: issues });
+    } catch (error) {
+      return handleError(res, error, "getIssuesByAssignee");
     }
   },
 };

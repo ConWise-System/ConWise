@@ -1,6 +1,5 @@
 import prisma from "../../config/prisma.js";
 import { ROLES } from "../../config/constants.js";
-import * as notificationService from "../notification/notification.service.js";
 
 // Helper to parse and validate dates
 const parseDate = (value) => {
@@ -64,34 +63,6 @@ export const projectService = {
 
       return { ...project, projectProgress: progress };
     });
-
-    // send notification to admin of the company the project is created under
-
-    try {
-      // find company id
-      const companyAdmin = await prisma.user.findFirst({
-        where: {
-          companyId: companyId,
-          role: "COMPANY_ADMIN",
-        },
-        select: {
-          id: true,
-        },
-      });
-
-      // 2. Only send if an admin exists
-      if (companyAdmin) {
-        await notificationService.createNotification({
-          recipientUserId: companyAdmin.id,
-          notificationTitle: "New Project Created",
-          notificationDescription: `A new project "${result.projectName}" has been registered for your company.`,
-          relatedEntityType: "PROJECT",
-          relatedEntityId: result.id,
-        });
-      }
-    } catch (err) {
-      console.error("Notification failed in project service:", err.message);
-    }
 
     return serializeProject(result);
   },
@@ -207,35 +178,6 @@ export const projectService = {
 
         return { id: projectId, projectName: project.projectName };
       });
-
-      // Send notification to company admins
-      try {
-        const companyAdmin = await prisma.user.findFirst({
-          where: {
-            companyId: companyId,
-            role: "COMPANY_ADMIN",
-          },
-          select: {
-            id: true,
-          },
-        });
-
-        if (companyAdmin) {
-          await notificationService.createNotification({
-            recipientUserId: companyAdmin.id,
-            notificationTitle: "Project Deleted",
-            notificationDescription: `Project "${deletedProject.projectName}" has been deleted.`,
-            relatedEntityType: "PROJECT",
-            relatedEntityId: companyId,
-          });
-        }
-      } catch (error) {
-        // Notification failures don't block project deletion
-        console.error(
-          "Notification failed in project deletion service",
-          error.message,
-        );
-      }
 
       return deletedProject;
     } catch (error) {

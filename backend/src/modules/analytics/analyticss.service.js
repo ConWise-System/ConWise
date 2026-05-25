@@ -15,7 +15,7 @@ async function getProjectsWithProgress(projectIds) {
     const pid = group.projectId;
     if (!progressMap[pid]) progressMap[pid] = { total: 0, done: 0 };
     progressMap[pid].total += group._count.id;
-    if (group.taskStatus === "DONE") {
+    if (group.taskStatus === "APPROVED") {
       progressMap[pid].done += group._count.id;
     }
   }
@@ -123,7 +123,7 @@ async function getAdminDashboard(companyId) {
       where: {
         project: { companyId },
         dueDate: { lt: now },
-        taskStatus: { notIn: ["DONE"] },
+        taskStatus: { notIn: ["APPROVED"] },
       },
     }),
 
@@ -306,7 +306,7 @@ async function getEngineerDashboard(userId, companyId) {
           assigneeUserId: userId,
           project: { companyId },
           dueDate: { lt: now },
-          taskStatus: { notIn: ["DONE"] },
+          taskStatus: { notIn: ["APPROVED"] },
         },
       }),
 
@@ -372,7 +372,7 @@ async function getSupervisorDashboard(userId, companyId) {
           assigneeUserId: userId,
           project: { companyId },
           dueDate: { lt: now },
-          taskStatus: { notIn: ["DONE"] },
+          taskStatus: { notIn: ["APPROVED"] },
         },
       }),
     ]);

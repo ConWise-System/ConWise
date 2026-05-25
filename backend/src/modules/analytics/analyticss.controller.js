@@ -15,7 +15,7 @@ const getDashboardSummary = async (req, res, next) => {
       data,
     });
   } catch (error) {
-    next(err);
+    next(error);
   }
 };
 

@@ -40,7 +40,7 @@ export const projectController = {
       if (!companyId) {
         return res.status(400).json({
           success: false,
-          q: "User is not associated with a company.",
+          message: "User is not associated with a company.",
         });
       }
 
