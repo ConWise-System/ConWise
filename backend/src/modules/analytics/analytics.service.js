@@ -209,8 +209,8 @@ export const analyticsService = {
 
   // ---- VARIANCE STATUS ----
   let varianceStatus = "ON_BUDGET";
-  if (costVariance < 0) varianceStatus = "UNDER_BUDGET";
-  if (costVariance > 0) varianceStatus = "OVER_BUDGET";
+  if (costVariance > 0) varianceStatus = "UNDER_BUDGET";
+  if (costVariance < 0) varianceStatus = "OVER_BUDGET";
 
   // ---- UTILIZATION ----
   const budgetUsedPercentage =
