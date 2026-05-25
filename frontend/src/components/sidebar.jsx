@@ -72,18 +72,16 @@ export default function Sidebar() {
         </div>
 
         {/* 2. Navigation (Scroll Disabled) */}
-      <nav className="flex-1 px-4 space-y-1 py-4 overflow-hidden">
+        <nav className="flex-1 px-4 space-y-1 py-4 overflow-hidden">
           {menuItems.map((item, idx) => {
             const isActive = pathname === item.path;
-return (
+            return (
               <Link
                 key={idx}
                 href={item.path}
-                className={`relative flex items-center rounded-xl transition-all duration-200 group ${
-                  isCollapsed ? 'justify-center px-0 h-11' : 'px-4 py-2.5 gap-3'
-                } ${
-                  isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/10' : 'hover:bg-white/5 hover:text-slate-100'
-                }`}
+                className={`relative flex items-center rounded-xl transition-all duration-200 group ${isCollapsed ? 'justify-center px-0 h-11' : 'px-4 py-2.5 gap-3'
+                  } ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/10' : 'hover:bg-white/5 hover:text-slate-100'
+                  }`}
               >
                 <span className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-blue-400'}`}>
                   {item.icon}
@@ -103,37 +101,15 @@ return (
           })}
         </nav>
 
-        {/* Profile + Logout */}
-        <div className="p-4 mt-auto border-t border-white/5">
-          <div className="bg-white/[0.03] border border-white/5 rounded-xl p-3 flex items-center justify-between">
-
-            {!isCollapsed && (
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg overflow-hidden border border-white/10">
-                  <img
-                    src="https://api.dicebear.com/7.x/avataaars/svg?seed=Gifti"
-                    alt="profile"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div>
-                  <p className="text-[11px] font-bold text-red-400 uppercase">
-                    Logout
-                  </p>
-            
-                </div>
+        <div className="p-4 mt-auto">
+          <div className="flex bg-white/[0.03] border border-white/5 rounded-xl justify-center p-3">
+            {!isCollapsed ? (
+              <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                ConWise System v1.0
               </div>
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
             )}
-
-            <button
-              onClick={() => router.push('/login')}
-              className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
-
           </div>
         </div>
 

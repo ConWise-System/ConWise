@@ -15,7 +15,7 @@ const menuItems = [
   { icon: <FolderRoot size={16} />, label: 'Site Task', path: '/siteEngineer/siteTask' },
   { icon: <CheckSquare size={16} />, label: 'Site Issue Tracking', path: '/siteEngineer/siteIssue' },
   { icon: <BarChart3 size={16} />, label: 'Site Engineer Reports', path: '/siteEngineer/siteReport' },
-  { icon: <Bell size={16} />, label: 'Notifications', path: '/siteEngineer/notification' },
+  // { icon: <Bell size={16} />, label: 'Notifications', path: '/siteEngineer/notification' },
   { icon: <MessageSquare size={16} />, label: 'Messages', path: '/siteEngineer/siteMessage' },
   { icon: <Bell size={16} />, label: 'Settings', path: '/siteEngineer/siteSetting' },
 ];

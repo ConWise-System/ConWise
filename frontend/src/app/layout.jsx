@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "ConWise Admin Dashboard",
-  description: "Sovereign Executive Dashboard",
+  title: "ConWise",
+  description: "Construction Project Collaboration and Reporting system",
   icons: {
     icon: [],
   },

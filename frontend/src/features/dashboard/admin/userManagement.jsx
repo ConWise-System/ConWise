@@ -171,7 +171,7 @@ export default function UserManagementSystem() {
         </div>
         
         <div className="flex flex-wrap gap-1">
-          {['All', 'ADMIN', 'PROJECT_MANAGER', 'SITE_ENGINEER'].map(role => (
+          {['All','PROJECT_MANAGER', 'SITE_ENGINEER', 'SITE_SUPERVISOR'].map(role => (
             <button
               key={role}
               onClick={() => setActiveRoleFilter(role)}
@@ -277,7 +277,7 @@ function CreateUserPage({ onCancel, onSuccess }) {
                   onChange={(e) => handleChange('role', e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg font-semibold text-xs outline-none focus:border-slate-400 appearance-none cursor-pointer text-slate-800"
                 >
-                  <option value="ADMIN">Platform Admin</option>
+                  <option value="COMPANY_ADMIN">Company Admin</option>
                   <option value="PROJECT_MANAGER">Project Manager</option>
                   <option value="SITE_ENGINEER">Site Engineer</option>
                   <option value="SITE_SUPERVISOR">Site Supervisor</option>

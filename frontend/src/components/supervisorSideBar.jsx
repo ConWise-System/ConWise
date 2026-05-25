@@ -15,7 +15,7 @@ const menuItems = [
   { icon: <FolderRoot size={16} />, label: 'Task', path: '/supervisor/Task' },
   { icon: <CheckSquare size={16} />, label: 'Issue Tracking', path: '/supervisor/Issue' },
   { icon: <BarChart3 size={16} />, label: 'Reports', path: '/supervisor/Report' },
-  { icon: <Bell size={16} />, label: 'Notifications', path: '/supervisor/Notification' },
+  // { icon: <Bell size={16} />, label: 'Notifications', path: '/supervisor/Notification' },
   { icon: <MessageSquare size={16} />, label: 'Messages', path: '/supervisor/Message' },
   { icon: <Bell size={16} />, label: 'Settings', path: '/supervisor/Setting' },
 ];
@@ -100,7 +100,7 @@ export default function SupervisorSideBar() {
           })}
         </nav>
 
-        <div className="p-4 mt-auto">
+         <div className="p-4 mt-auto">
           <div className="flex bg-white/[0.03] border border-white/5 rounded-xl justify-center p-3">
             {!isCollapsed ? (
               <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">

@@ -142,8 +142,12 @@ export const projectService = {
       where,
       include: {
         projectProgress: true,
+        // Pull only the status field to keep the query fast
+        tasks: {
+          select: { status: true }
+        },
         _count: {
-          select: { tasks: true } // 👈 Prisma accurately calculates your relation rows here
+          select: { tasks: true }
         },
         owner: {
           select: { id: true, firstName: true, lastName: true, email: true, role: true },
@@ -152,10 +156,30 @@ export const projectService = {
       orderBy: { createdAt: "desc" },
     });
 
-    return projects.map(project => {
-      const actualLiveCount = project._count?.tasks ?? 0;
+    const projectUpdatesToSync = [];
 
-      const serialized = serializeProject(project);
+    const mappedProjects = projects.map(project => {
+      const actualLiveCount = project._count?.tasks ?? 0;
+      const tasks = project.tasks || [];
+      
+      let updatedStatus = project.status;
+
+      // Rule: If there are tasks, and ALL of them are "DONE"
+      if (tasks.length > 0 && tasks.every(task => task.status === "DONE")) {
+        if (project.status !== "COMPLETED") {
+          updatedStatus = "COMPLETED";
+          // Queue the DB update for execution outside the main loop execution timeline
+          projectUpdatesToSync.push(
+            prisma.project.update({
+              where: { id: project.id },
+              data: { status: "COMPLETED" }
+            }).catch(err => console.error(`Background sync failed for project ${project.id}:`, err))
+          );
+        }
+      }
+
+      // Override status structure on the object before serialization
+      const serialized = serializeProject({ ...project, status: updatedStatus });
       
       if (!serialized.projectProgress) {
         serialized.projectProgress = {
@@ -169,8 +193,18 @@ export const projectService = {
       
       serialized.projectProgress.totalTasks = actualLiveCount;
       
+      // Clean up the tasks array so you don't leak it to the frontend response payload
+      delete serialized.tasks;
+      
       return serialized;
     });
+
+    // Fire off all status updates to PostgreSQL in parallel without blocking the server response
+    if (projectUpdatesToSync.length > 0) {
+      Promise.all(projectUpdatesToSync);
+    }
+
+    return mappedProjects;
   },
 
   // Delete project
