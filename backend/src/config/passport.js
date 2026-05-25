@@ -3,6 +3,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import prisma from "./prisma.js";
 import { USER_STATUSES, ROLES } from "./constants.js";
 
+if (process.env.GOOGLE_CLIENT_ID) {
 passport.use(
   new GoogleStrategy(
     {
@@ -70,5 +71,6 @@ passport.use(
     },
   ),
 );
+}
 
 export default passport;
