@@ -1,4 +1,4 @@
-export const baseURL = "http://localhost:8000";
+export const baseURL = "https://conwise-backend.onrender.com";
 
 const summeryApi = {
   register: {
