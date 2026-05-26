@@ -5,7 +5,7 @@ import summeryApi from '../../../common/summeryApi'
 import { 
   Search, UserPlus, Edit3, Trash2, Shield, User, 
   Upload, Mail, Briefcase, Phone, Lock, X, ShieldCheck,
-  Loader2, ArrowLeft
+  Loader2, ArrowLeft, AlertTriangle
 } from 'lucide-react';
 import Table from '../../../components/dashboard/Table';
 import Loader from '../../../components/dashboard/Loader';
@@ -16,6 +16,11 @@ export default function UserManagementSystem() {
   const [activeRoleFilter, setActiveRoleFilter] = useState("All");
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // --- DELETE MODAL STATE LAYERS ---
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // --- FETCH PERSONNEL ---
   const fetchPersonnel = async () => {
@@ -39,6 +44,36 @@ export default function UserManagementSystem() {
   const handleCreateSuccess = () => {
     setIsCreating(false);
     fetchPersonnel();
+  };
+
+  // --- TRIGGER DELETE CONFIRMATION INTERCEPTOR ---
+  const triggerDeleteConfirmation = (user) => {
+    setUserToDelete(user);
+    setDeleteModal(true);
+  };
+
+  // --- EXECUTE BACKEND DELETION ---
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    try {
+      const response = await Axios({
+        url: summeryApi.deleteUser.url(userToDelete.id),
+        method: summeryApi.deleteUser.method
+      });
+
+      if (response.data.success) {
+        // Optimistically clean up local UI array layout instantly
+        setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+        setDeleteModal(false);
+        setUserToDelete(null);
+      }
+    } catch (error) {
+      console.error("Deletion Protocol Fault: Unable to purge user asset", error);
+      alert(error?.response?.data?.message || "Failed to complete deletion routine.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // --- FILTER LOGIC ---
@@ -69,7 +104,7 @@ export default function UserManagementSystem() {
       header: "No.",
       width: "60px",
       align: "center",
-      cell: (_, rowIndex) => <span className="text-slate-400 font-bold font-mono">{rowIndex}</span>
+      cell: (_, rowIndex) => <span className="text-slate-400 font-bold font-mono">{rowIndex + 1}</span>
     },
     {
       header: "Identity Details",
@@ -121,7 +156,10 @@ export default function UserManagementSystem() {
           <button className="p-1.5 hover:bg-slate-100 rounded border border-slate-200/60 hover:text-slate-900 transition-colors shadow-2xs">
             <Edit3 size={12}/>
           </button>
-          <button className="p-1.5 hover:bg-rose-50 rounded border border-slate-200/60 hover:text-rose-600 hover:border-rose-100 transition-colors shadow-2xs">
+          <button 
+            onClick={() => triggerDeleteConfirmation(row)}
+            className="p-1.5 hover:bg-rose-50 rounded border border-slate-200/60 hover:text-rose-600 hover:border-rose-100 transition-colors shadow-2xs"
+          >
             <Trash2 size={12}/>
           </button>
         </div>
@@ -137,7 +175,7 @@ export default function UserManagementSystem() {
   )
 
   return (
-    <div className="p-4 md:p-8 max-w-[1300px] mx-auto space-y-6 text-left">
+    <div className="p-4 md:p-8 max-w-[1300px] mx-auto space-y-6 text-left relative">
       {/* --- HEADER --- */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-200 pb-5">
         <div>
@@ -187,7 +225,7 @@ export default function UserManagementSystem() {
         </div>
       </div>
 
-      {/* --- CENTRALIZED COMPONENT DATA TABLE INTERACTION LAYER --- */}
+      {/* --- CENTRALIZED DATA TABLE LAYOUT --- */}
       {isLoading ? (
         <div className="w-full min-h-[350px] flex flex-col items-center justify-center gap-2 bg-white border border-slate-200 rounded-xl shadow-sm">
           <Loader2 size={24} className="animate-spin text-slate-700" />
@@ -199,6 +237,51 @@ export default function UserManagementSystem() {
           data={filteredUsers}
           searchPlaceholder="Filter personnel identities..."
         />
+      )}
+
+      {/* --- CLEAN ENTERPRISE CONFIRMATION MODAL --- */}
+      {deleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div className="space-y-1 text-left">
+                <h3 className="font-bold text-slate-900 text-sm uppercase tracking-tight">Revoke Account Access?</h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  Are you sure you want to completely purge <span className="font-bold text-slate-800">{userToDelete?.firstName} {userToDelete?.lastName}</span> from the system records? This operational action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 flex flex-col gap-y-0.5 text-[11px]">
+              <span className="text-slate-400 font-semibold uppercase tracking-wider">Identity Details Mapping</span>
+              <span className="font-bold text-slate-700 truncate">{userToDelete?.email}</span>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button 
+                onClick={() => { setDeleteModal(false); setUserToDelete(null); }}
+                disabled={isDeleting}
+                className="px-3.5 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold text-xs hover:bg-slate-50 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteUser}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all disabled:bg-rose-400"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" /> Purging...
+                  </>
+                ) : "Confirm Deletion"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -250,10 +333,12 @@ function CreateUserPage({ onCancel, onSuccess }) {
   };
 
   return (
-    <div className="p-4 md:p-6 bg-[#F8FAFC] flex  justify-center animate-in zoom-in-98 text-left">
+    <div className="p-4 md:p-6 bg-[#F8FAFC] flex justify-center animate-in zoom-in-98 text-left">
       <div className="w-full max-w-5xl bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden flex flex-col lg:flex-row">
         <div className="flex-1 p-6 md:p-8 space-y-6">
-                      <button onClick={onCancel} className="p-1.5 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors flex gap-x-3 text-slate-400"><ArrowLeft size={16}/> Return back</button>
+          <button onClick={onCancel} className="p-1.5 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors flex gap-x-3 text-slate-400 text-xs font-bold items-center">
+            <ArrowLeft size={14}/> Return back
+          </button>
 
           <div className="flex justify-between items-center border-b border-slate-100 pb-4">
             <div>
@@ -292,7 +377,7 @@ function CreateUserPage({ onCancel, onSuccess }) {
                 type="checkbox" 
                 id="isVerified"
                 checked={formData.isVerified}
-                onChange={(e) => handleChange('isVerified', e.target.checked)}
+                onChange={(e) => handleChange('isVerified', e.checked)}
                 className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500 cursor-pointer" 
               />
               <label htmlFor="isVerified" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">Verify Profile Automatically</label>
@@ -315,7 +400,7 @@ function CreateUserPage({ onCancel, onSuccess }) {
           <div className="space-y-4 w-full my-auto">
             <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 mx-auto overflow-hidden relative group shadow-inner">
               {imagePreview ? (
-                <img src={imagePreview} className="w-full h-full object-cover" />
+                <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
               ) : (
                 <Shield size={24} className="text-slate-400" />
               )}

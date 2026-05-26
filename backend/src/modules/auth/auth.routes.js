@@ -127,6 +127,8 @@ router.post(
   authController.verifyAccount,
 );
 
+
+
 router.post(
   "/resend-verification-code",
   validate(resendVerificationCodeSchema),
@@ -202,6 +204,11 @@ router.get(
  */
 
 router.get("/me/sessions", authController.getUserSessions);
+
+router.delete("/users/:id", 
+  authorizeRoles(ROLES.COMPANY_ADMIN),
+  authController.deleteUser
+);
 
 router.delete(
   "/me/sessions/:sessionId",

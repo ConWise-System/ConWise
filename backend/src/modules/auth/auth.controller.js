@@ -378,6 +378,41 @@
     });
   });
 
+ const deleteUser = async (req, res) => {
+  try {
+    // Extract the id parameter from the route (/api/auth/users/:id)
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID parameter is required.",
+      });
+    }
+
+    // Call your backend service layer execution step
+    await authService.deleteUser(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "User account deleted successfully.",
+    });
+  } catch (error) {
+    // If the error has a custom statusCode assigned in the service layer, use it
+    const statusCode = error.statusCode || 500;
+    
+    // Check if you use a centralized handleError utility or fallback to inline JSON
+    if (typeof handleError === "function") {
+      return handleError(res, error, "deleteUserController");
+    }
+
+    return res.status(statusCode).json({
+      success: false,
+      message: error.message || "Internal server error during user deletion.",
+    });
+  }
+};
+
   const revokeMySession = catchAsync(async (req, res) => {
     const result = await authService.revokeSession(
       req.user.id,
@@ -409,6 +444,7 @@
     refreshToken,
     logout,
     getCurrentUser,
+    deleteUser,
     createStaffUser,
     inviteUser,
     acceptInvite,

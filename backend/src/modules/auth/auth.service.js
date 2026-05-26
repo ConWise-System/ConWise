@@ -834,6 +834,39 @@ export const refreshUserToken = async (payload, meta = {}) => {
   };
 };
 
+export const deleteUser = async (userId) => {
+  try {
+    // 1. Convert userId to an integer if your Prisma schema uses Auto-Increment IDs
+    const parsedId = parseInt(userId, 10);
+    if (isNaN(parsedId)) {
+      const error = new Error("Invalid user ID format.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // 2. Check if the user exists before trying to delete
+    const existingUser = await prisma.user.findUnique({
+      where: { id: parsedId },
+    });
+
+    if (!existingUser) {
+      const error = new Error("User not found.");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // 3. Execute the deletion
+    await prisma.user.delete({
+      where: { id: parsedId },
+    });
+
+    return { message: "User deleted successfully." };
+  } catch (error) {
+    console.error(`Error in deleteUser service for ID ${userId}:`, error.message);
+    throw error;
+  }
+};
+
 export const logoutUser = async (payload = {}) => {
   const refreshToken = payload.refreshToken
     ? String(payload.refreshToken).trim()
@@ -1419,6 +1452,7 @@ const authService = {
   loginUser,
   refreshUserToken,
   logoutUser,
+  deleteUser,
   logoutAllSessions,
   getMyProfile,
   createStaffUser,

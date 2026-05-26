@@ -29,6 +29,10 @@ const summeryApi = {
       url: "/api/auth/users",
       method: "get",
     },
+    deleteUser: {
+    url: (userId) => `/api/auth/users/${userId}`,
+    method: "delete",
+  },
   createProject: {
     url: "/api/projects",
     method: "post",
