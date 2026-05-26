@@ -86,7 +86,7 @@ export const sendVerificationEmail = async (to, code) => {
             to: [{ email: to }]
           }
         ],
-        from: { name: "ConWise", email: "firomsahika2022@gmail.com" },
+        from: { name: "ConWise", email: "firomsa.hika@astu.edu.et" },
         subject: "Verify your Company Account",
         content: [
           {
